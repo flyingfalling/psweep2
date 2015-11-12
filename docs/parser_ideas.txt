@@ -1,0 +1,35 @@
+So, need to have it construct "executable" scripts that it will do over and over again for each "parameter point"
+
+
+I iterate through the PARAMPOINT, which is a vector of PSET
+
+PSET is NAME, NREP, and then list of STMNT (which is content)
+
+STMNT is just TAG and list of LEAF_STMNT (which are args)
+
+Recursively iterate and find the thing? Note that changing variables might happen e.g. in case of for loops?
+Need to "set" variables?
+
+
+OK, so there is the basic "read" types? And "set" types? Setting a constant is the same as a simple "set"?
+At any rate, eventually everything is a STMNT containing LEAF_STMNT. LEAFT_STMNT is recursive, i.e. contains list of LEAF_STMNT...so we can't just
+judge based on type. We have to judge based on CONTENT? I.e. add a new type...?
+
+Recursively remove all arguments (by type?) Until there are only "SET VARIABLE" types?
+
+Note variables can be either "string" type or "array" type? Can arrays be taken as arg?
+
+
+At runtime, iteratively move all ARGS above, order is left-to-right. I.e. I create a new PSET for each, with new ordering and only parsing down to
+basic reading of variables. Need to be only "reading" variables at each time point. How to handle FOR loops? There are no for loops. Only PSETS.
+Special functions that create variables? We need a way to reference all variables at the point in time where we keep them ideal. I .e. hierarchical
+variables or something like that? Or reference them based on the model?
+
+Problem is to give semantic meaning to statements, allow user to read from previous psets etc.
+Also, to make directories, etc.
+Read from temps
+Requirements, etc.
+
+Add to HDF5 file.
+
+Eventually, we want to avoid using files at all, and use only memory. Oh well.
