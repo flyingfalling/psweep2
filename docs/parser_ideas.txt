@@ -10,6 +10,10 @@ STMNT is just TAG and list of LEAF_STMNT (which are args)
 Recursively iterate and find the thing? Note that changing variables might happen e.g. in case of for loops?
 Need to "set" variables?
 
+Need to make functions "executable", i.e. have a list of functs (by strings) that I can search for, that tells required # of arguments, etc., and
+errors out if not correct. I.e. even if parse is correct, "semantics" may be incorrect? Do I allow variable # of arg functs? I can do it...quite easily.
+Note types are only parsed inside, because args are all passed as strings...
+
 
 OK, so there is the basic "read" types? And "set" types? Setting a constant is the same as a simple "set"?
 At any rate, eventually everything is a STMNT containing LEAF_STMNT. LEAFT_STMNT is recursive, i.e. contains list of LEAF_STMNT...so we can't just
@@ -18,6 +22,9 @@ judge based on type. We have to judge based on CONTENT? I.e. add a new type...?
 Recursively remove all arguments (by type?) Until there are only "SET VARIABLE" types?
 
 Note variables can be either "string" type or "array" type? Can arrays be taken as arg?
+
+Need a way to "hold" functions. Make the struct. Struct may modify variables etc. Mostly in fact that is exactly what they do. And eventually we
+generate a string (cmd)
 
 
 At runtime, iteratively move all ARGS above, order is left-to-right. I.e. I create a new PSET for each, with new ordering and only parsing down to
