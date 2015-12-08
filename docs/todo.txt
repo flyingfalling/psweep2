@@ -1,0 +1,39 @@
+REV: OK, so I have:
+
+1) hierarchical varlists. 2 of them. The named one, and the parampoint ones.
+
+2) script reader, which reads scripts into strings.
+   -Once I have strings, I can look them up in function list. Such registered functions will eventually produce strings always. Setting variables. OK.
+   -Some "set" variables have semantic meaning in the context of my program, e.g. setting directory for worker, referencing other paramsets/workers.
+
+
+What is the overall structure of my program?
+
+There is the "master" guy, who may be doing some sharing on a CPU? He farms out to workers of course. But, what it does at the basic point is to
+take a single parameter point, and run the user's script on it.
+
+The user's script is defined by the config file which is read in. This defines how to handle a PARAMPOINT. Do I have the config script do everything, or
+are some things automatic, such as e.g. making a directory for the worker (or specifying the existing one), copying in "REQUIRED FILES", etc.?
+
+Note the PARAMPOINT, is made up of PSET, which are things run in parallel, and there are N of those. I.e. number of workers.
+
+Define the thing. It has:
+
+A PARAMPOINT HAS:
+1) Just the list of PSETS.
+2) Index of my hierarchical varlist
+3) My dir.
+
+A PSET HAS:
+1) The number of parallel WORKERS
+2) My dir.
+3) My index in the PARAMPOINT hierarchical varlist
+
+A WORKER HAS:
+1) Required (start) files (?) for running.
+2) "Produced" success files (if they don't exist, it will restart each PSET (worker)?)
+3) My dir.
+4) My index in the PARAMPOINT hierarchical varlist
+
+Using these, I have functions to index (as size_t), the Xth worker of the Yth PSET of this PARAMPOINT. Via string variable name? Need to "construct"
+that variable name, which will have a set internal format (e.g. prefixed by __)

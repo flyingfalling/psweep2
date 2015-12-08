@@ -1,0 +1,5 @@
+Store an example and a hash of all required files (supposedly) including EXE
+etc. files.. All scripts etc. This gives us proof.
+
+All variables are stored as well. They are unmuted I guess. All passing ones are stored separately as some files. "Model" variables, as well as param
+point specific variables.
