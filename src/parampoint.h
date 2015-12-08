@@ -84,13 +84,73 @@ struct registered_functs
 //REV: this is absolutely nasty. I will return two things: one is the new (checked) SET_VAR with some guys reset. Other is list of new STMNTS
 
 
+//Make a thing that takes the client::STMNT or LEAF_STMNT, and produces
+//an executable thing (based on variables). Note, FUNCTNAMES cannot be
+//variable I assume...? I could do that later.
+
+//So, takes a STMNT, poops out a thing that actually searches for the function, binds the executable functional, and has args, and allows it to be "called", along with variable references etc. to extract it? In the end, functions all just take string lists. They're guaranteed to be first-level.
+//Functs always return a string, and take a string vector argument?
+//nargs is the
+
+//REV: basically takes a "stmnt" passed by user and applies this to it.
+
+//REV: Functions must have access to appropriate variable lists to do things.
+
+std::vector< std::string > vars_to_strings( std::vector< client::LEAF_STMNT > args, std::vector< hierarchical_varlist >& hvs, const std::vector< size_t >& my_hv_idxs )
+{
+  //find meanings of args in there. Note that for some cases (SETVAR) the args are actually ALWAYS variable references (to find or add). Depends on
+  //semantics of function. In case of SETVAR, it is different though... treat them differently if setvar is the tag.
+  //Handle those directly. All args refer directly to variables. Note that the TAG is the arg (shit)
+  //LEAF_STMNT, we are directly taking only the TAG.
+  
+  //REV: we don't know if it is an array type or a non-array type....? That will depend on user's application...need a way to hold both? No, we ALWAYS
+  //are making them into single strings? A variable could hold an array, ah, in which case we will handle it differently. So way user will access it is
+  //different. It will depend on user's functional. He will access it how he wants. So, we can'T pass string vectors, we must pass something slightly
+  //more complex, something that allows variables to still be arrays. I.e. keep the names until quite late, beacuse user needs to know how to blah it.
+  
+  
+}
+
+struct functlist_item
+{
+  std::string tag; //tag (name) of this function.
+  size_t nargs; //correct # of args for this function.
+  std::vector< std::string > args;
+  std::function<std::string(std::vector<std::string>)> funct; //pointer to actual function to call
+  
+  //Constructor
+functlist_item( const std::string _tag, const std::function< std::string( std::vector< std::string > ) > _funct, const size_t _nargs )
+: tag(_tag),
+    funct(_funct),
+    nargs(_nargs)
+  {
+    //REV: do nothing
+  }
+
+  //Actually has a LIST of hvs? Crap...? Need access to my "target" in each hv though
+  std::string execute( const client::STMNT& fs, std::vector< hierarchical_varlist >& hvs, const std::vector< size_t >& my_hv_idxs )
+  {
+    if( fs.ARGS.size() != nargs )
+      {
+	fprintf(stderr, "ERROR: in execute of functlist_item [%s]: nargs (%ld) != args of passed STMNT (%ld)\n", tag.c_str(), nargs, fs.ARGS.size());
+	exit(1);
+      }
+    else
+      {
+	//construct strings from varlists.
+	std::vector< std::string > evaluated_arglist = vars_to_strings( fs.ARGS, std::vector< hierarchical_varlist >& hvs, const std::vector< size_t >& my_hv_idxs );
+	
+	return funct(  );
+      }
+  }
+};
 
 
 struct functional_representation
 {
   std::vector< functsig > stmntlist;
-
-  //Takes some registered functions struct (list?), and the 
+  
+  //Takes some registered functions struct (list?), and the (unrolled) stmnts thing.
   functional_representation( std::vector< client::STMNT >& stmnts, registered_functs& regfunts )
   {
     //Make a linked list or something, since I want to be able to insert...

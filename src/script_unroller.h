@@ -239,3 +239,25 @@ std::deque< client::STMNT > recursive_unroll_nested_functs( const std::deque< cl
   //fprintf(stdout, "Finished SOME level of recursive unrolling...returning locals of size [%ld]\n", locals.size() );
   return locals;
 }
+
+
+
+//client::PARAMPOINT unrollall(client::PARAMPOINT& src, size_t& varidx)
+void unrollall(client::PARAMPOINT& src, size_t& varidx)
+{
+  //client::PARAMPOINT pp;
+  
+  //fprintf(stdout, "=======PSET # [%ld]\n\n\n", a);
+  //enum_pset( r.psets[a] );
+  //fprintf(stdout, "\n\n++++ UNROLLED:\n");
+  //std::deque< client::STMNT > tounroll(r.psets[a].CONTENT); //vector to deque?
+  for(size_t a=0; a<src.psets.size(); ++a)
+    {
+      std::deque< client::STMNT > tounroll(src.psets[a].CONTENT.begin(), src.psets[a].CONTENT.end()); //vector to deque?
+      std::deque< client::STMNT > unrolled = recursive_unroll_nested_functs(tounroll, varidx);
+      //client::PSET p( r.psets[a]
+      src.psets[a].CONTENT = std::vector<client::STMNT>(unrolled.begin(), unrolled.end()); //deque to vect?
+      //enum_pset( r.psets[a] );
+    }
+  
+}
