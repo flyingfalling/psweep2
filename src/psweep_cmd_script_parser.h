@@ -153,8 +153,14 @@ namespace client
       NREP = s[1];
       
     }
-    
-    PSET()
+
+  PSET(std::string n, std::string r, std::vector< client::STMNT >& s)
+  : NAME(n), NREP(r), CONTENT(s)
+    {
+      //nothing
+    }
+
+  PSET()
       : NAME("ERROR_NO_NAME"), NREP("ERROR_NO_NREP")
     {
       //nothing
@@ -508,7 +514,7 @@ void enum_leaf_stmnt( const client::LEAF_STMNT& s, const size_t& depth )
 	  fprintf(stdout, " |");
 	}
       
-      fprintf(stdout, "--LSTMNT: (%s), ARGS:\n", s.TAG.c_str());
+      fprintf(stdout, "LSTMNT: (%s), ARGS:\n", s.TAG.c_str());
       for( size_t c=0; c<s.ARGS.size(); ++c)
 	{
 	  enum_leaf_stmnt( s.ARGS[c], depth+1 );
@@ -542,3 +548,5 @@ client::PARAMPOINT parse_psweep_script( std::string input )
     }
   return result;
 }
+
+

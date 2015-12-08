@@ -95,6 +95,20 @@ void concat_deque( std::deque< T >& topushto, const std::deque< T >& src )
     }
 }
 
+template <typename T >
+void insert_deque( std::deque< T >& topushto, const std::deque< T >& src, size_t loc )
+{
+  if( loc >= topushto.size() )
+    {
+      fprintf(stderr, "ERROR in insert_deque, trying to insert outside of size of target queue\n");
+      exit(1);
+    }
+
+  topushto.insert( topushto.begin()+loc, src.begin(), src.end() );
+
+  return;
+}
+
 
 std::string make_tmpvar ( size_t& varidx )
 {
@@ -211,45 +225,51 @@ std::deque< client::STMNT > check_atomic( const client::STMNT& ss, size_t& varid
 }
 
 
-//REV: Could do this in a WHILE loop to make it "easier" to understand?
-std::deque< client::STMNT > recursive_unroll_nested_functs( std::vector< client::STMNT >& stmnts, size_t& varidx )
+//RECURSIVE:
+//We have a list of statements. Each one can/could be expanded to (replaced by) a larger set of statements. Ideally in place. But it will go deep.
+//Just do as a single. For any given vector of statements, it will iterate through, and replace each with the next (depth) guy.
+//Just make sure to not modify for loops while I go through them.
+std::deque< client::STMNT > recursive_unroll_nested_functs( std::deque< client::STMNT >& stmnts, size_t& varidx )
 {
-  std::deque< client::STMNT > locals = stmnts; //can I go from vector to deque?
-
-  
-    
+  std::deque <client::STMNT> locals = stmnts;
   bool finished = false;
   while( !finished )
     {
       finished=true;
-      std::deque< client::STMNT > 
       
-      for( size_t s=0; s<locals.size(); ++s )
+      for(size_t s=0; s<locals.size(); ++s)
 	{
 	  client::STMNT st = locals[s];
-	  //is function a read function?
-	  if( st.ARGS.size() == 0 )
+	  std::deque< client::STMNT > tmpvec;
+	  tmpvec.push_back ( st );
+
+	  std::deque< client::STMNT > retval = recursive_unroll_nested_functs( tmpvec, varidx );
+
+	  //If it returned only a single value, it means that it was recursively unrolled already
+	  if(retval.size () < 1 )
 	    {
-	      //ERROR
-	      fprintf(stderr, "ERROR, unrolling a statement that is a first-level statement, but it is a READVAR (var=[%s])\n", st.TAG.c_str() );
-	      exit(1);
-	      //REV: This is functions without arguments, i.e. variable reference.
-	      //we can sanity check these now. Wait, READVAR, must happen ONLY inside a function (be it SETVAR or other). And furthermore, it must have
-	      //only a single STRING argument (string references must contain only (), which stringifies them. How do I differentiate btw no-arg funct? )
-	      //What is difference from READVAR and VAR()?
+	      fprintf(stderr, "ERror returned val from recurisve unroll was 0, \n"), exit(1);
 	    }
-	  else if( st.TAG == "SETVAR" )
+	  
+	  if( retval.size() == 1 )
 	    {
-	      
-	      std::deque< client::STMNT > newstmnts = check_atomic_setvar( st, varidx );
-	      concat_deque( 
+	      //do nothing.
 	    }
 	  else
 	    {
-	      //ELSE, it can be any function that HAS at least one argument. This must have ONLY leaf string variables as arguments.
+	      //Insert them all to the beginning of S location, and restart s loop. Note we must delete S...?
+	      locals.erase( locals.begin() + s );
+
+	      insert_deque( locals, retval, s );
+	      //concat_deque( locals, retval ); //pushing to beginning. I *could* do an insert in place...which might actually be better heh.
+	      
+	      finished = false;
+	      break; //this should break the for loop, but not the outer while loop
 	    }
 	}
     }
+  
+  return locals;
 }
 
 

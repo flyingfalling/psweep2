@@ -1,4 +1,5 @@
 #include <psweep_cmd_script_parser.h>
+#include <script_unroller.h>
 
 
 
@@ -29,11 +30,29 @@ int main(int argc, char **argv)
     }
   
   client::PARAMPOINT r = parse_psweep_script( input );
+
   
   fprintf(stdout, "PARSED PARAMPOINT, got [%ld] PSETS\n", r.psets.size());
-  for(size_t a=0; a<r.psets.size(); ++a)
+
+  /*for(size_t a=0; a<r.psets.size(); ++a)
     {
       fprintf(stdout, "PSET # [%ld]\n", a);
+      enum_pset( r.psets[a] );
+    }
+  */
+
+  size_t varidx=0;
+  
+  for(size_t a=0; a<r.psets.size(); ++a)
+    {
+      fprintf(stdout, "=======PSET # [%ld]\n\n\n", a);
+      enum_pset( r.psets[a] );
+      fprintf(stdout, "\n\n++++ UNROLLED:\n");
+      //std::deque< client::STMNT > tounroll(r.psets[a].CONTENT); //vector to deque?
+      std::deque< client::STMNT > tounroll(r.psets[a].CONTENT.begin(), r.psets[a].CONTENT.end()); //vector to deque?
+      std::deque< client::STMNT > unrolled = recursive_unroll_nested_functs(tounroll, varidx);
+      //client::PSET p( r.psets[a]
+      r.psets[a].CONTENT = std::vector<client::STMNT>(unrolled.begin(), unrolled.end()); //deque to vect?
       enum_pset( r.psets[a] );
     }
   
