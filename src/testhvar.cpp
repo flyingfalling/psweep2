@@ -5,8 +5,8 @@ main()
 {
 
   varlist<std::string> vl1("ROOTVLIST");
-  vl1.addTvar( "V1", "YOLOV1");
-  vl1.addTvar( "V2", "YOLOV2");
+  vl1.addTvar( "V1", "32");
+  vl1.addTvar( "V2", "42");
   std::vector<std::string> arr;
   arr.push_back( "AV1" );
   arr.push_back( "AV2" );
@@ -16,11 +16,11 @@ main()
 
   varlist<std::string> vl2("LEFT1LEVEL");
   
-  vl2.addTvar( "V1-1", "YOLOV1");
-  vl2.addTvar( "V1-2", "YOLOV2");
+  vl2.addTvar( "V1-1", "X-CMD");
+  vl2.addTvar( "V1-2", "493");
   std::vector<std::string> arr2;
-  arr2.push_back( "AV1-1" );
-  arr2.push_back( "AV1-2" );
+  arr2.push_back( "222.1" );
+  arr2.push_back( "830.94" );
   vl2.addArrayvar( "V21", arr2 );
 
   
@@ -52,5 +52,10 @@ main()
 
   hvl.enumerate();
   //hvl.add_child( 0, vl2 );
+
+  fprintf(stdout, "Getting V4-2\n");
+  std::string varval = hvl.get_val_var("V4-2", hvl.get_children(0)[1] );
+  //fprintf(stdout, "Got it\n");
+  fprintf(stdout, "Val of var V4-2: [%s]\n", varval.c_str());
   
 }

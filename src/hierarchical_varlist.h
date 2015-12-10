@@ -15,7 +15,7 @@ struct hierarchical_varlist
 	fprintf(stderr, "ERROR in get_parent, trying to get parent of root...\n");
 	exit(1);
       }
-    else if( v < parents.size()-1 ) //bc root has no parent...
+    else if( v < parents.size() ) //bc root has no parent...
       {
 	return parents[v-1]; //pain in the butt.
       }
@@ -49,7 +49,7 @@ struct hierarchical_varlist
     size_t myindex = vl.size() - 1 ;
     children[ parent ].push_back( myindex );
     children.push_back( std::vector<size_t>(0) );
-    parents.push_back(parent);
+    parents.push_back( parent );
   }
 
   void add_root( const varlist<T>& v )
@@ -114,6 +114,7 @@ struct hierarchical_varlist
 	    v_indices.push_back(namelocs[x]);
 	  }
 	searchi = get_parent( searchi );
+	//fprintf(stdout, "Got parent of %ld: it is: %ld\n", searchi, get_parent(searchi));
       }
 
     if( searchi != 0)
@@ -186,7 +187,7 @@ struct hierarchical_varlist
   {
     std::vector< size_t > vl_indices;
     std::vector< size_t > v_indices;
-    size_t nfound = find_var_in_hierarchy( targ, startvl, vl_indices , v_indices );
+    size_t nfound = find_var_in_hierarchy( targ, startvl, vl_indices, v_indices );
 
     if( nfound > 1 )
       {
