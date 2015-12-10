@@ -1,10 +1,13 @@
 CC=g++
 INCLUDEDIR="-I./"
-CFLAGS=-std=c++11
+CFLAGS=-std=c++11 -O3
 
 
 #default: scriptparser2.exe
 default: test_cmd_script_parser.exe
+
+testvariable.exe: variable.h testvariable.cpp variable.tpp
+	$(CC) $(CFLAGS) $(INCLUDEDIR) testvariable.cpp -o testvariable.exe
 
 scriptparser2.exe: scriptparser2.cpp script_unroller.h
 	g++ -std=c++11 scriptparser2.cpp -o scriptparser2.exe

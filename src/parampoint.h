@@ -96,37 +96,48 @@ struct registered_functs
 
 //REV: Functions must have access to appropriate variable lists to do things.
 
-std::vector< std::string > vars_to_strings( std::vector< client::LEAF_STMNT > args, std::vector< hierarchical_varlist >& hvs, const std::vector< size_t >& my_hv_idxs )
+typedef (std::function< std::string(const client::STMNT&, std::vector< hierarchical_varlist >&, const std::vector< size_t >&) >) functtype;
+
+
+
+//Make a macro. Can I expand it from template.
+//E.g.
+
+std::string SETVAR( const client::STMNT& stm, std::vector<hierarchical_varlist>& hv, const std::vector<size_t>& hv_idxs )
 {
-  //find meanings of args in there. Note that for some cases (SETVAR) the args are actually ALWAYS variable references (to find or add). Depends on
-  //semantics of function. In case of SETVAR, it is different though... treat them differently if setvar is the tag.
-  //Handle those directly. All args refer directly to variables. Note that the TAG is the arg (shit)
-  //LEAF_STMNT, we are directly taking only the TAG.
-  
-  //REV: we don't know if it is an array type or a non-array type....? That will depend on user's application...need a way to hold both? No, we ALWAYS
-  //are making them into single strings? A variable could hold an array, ah, in which case we will handle it differently. So way user will access it is
-  //different. It will depend on user's functional. He will access it how he wants. So, we can'T pass string vectors, we must pass something slightly
-  //more complex, something that allows variables to still be arrays. I.e. keep the names until quite late, beacuse user needs to know how to blah it.
-  
-  
+  //stm.TAG should be setvar
+  //stm.ARGS[0] should be the VAR to write to (i.e. it's a LEAF_STMNT, and stm.ARGS[0].TAG is the variable to look up/write to. In lowest level I guess.
+  //stm.ARGS[1] defines the value to write. It may be an array, and it may be a variable. If it is an array, how can we tell? Well that type of function
+  //must somehow be a "variable" function (return an array). Is that possible? Do we know? Make two, SETARRAY and SETVAR. Fine...fuck.
 }
 
-struct functlist_item
+std::string SETARRAY( const client::STMNT& stm, std::vector<hierarchical_varlist>& hv, const std::vector<size_t>& hv_idxs )
 {
+  //stm.TAG should be setvar
+  //stm.ARGS[0] should be the VAR to write to (i.e. it's a LEAF_STMNT, and stm.ARGS[0].TAG is the variable to look up/write to. In lowest level I guess.
+  //stm.ARGS[1] defines the value to write. It may be an array, and it may be a variable. If it is an array, how can we tell? Well that type of function
+  //must somehow be a "variable" function (return an array). Is that possible? Do we know? Make two, SETARRAY and SETVAR. Fine...fuck.
+
+  //The function called must return a fucking array, not a string? The nested function. Fuck, but I thought all functions always returned std::string?
+  //Some return std::vector<std::string> I guess. That leads to a problem. We should make a tagged data type. In fact I do. All functions return fucking
+  //VARIABLES. And variables are a tagged data structure that tells if it's an array or blah. Problem is we only use the array part in very specific
+  //circumstances. We cast it as just std::string rather than std::vector<std::string>
+
+  //There is no "variable" type, which is a problem. I should make a mutating "variable". Problem is user has to parse it properly? I.e. some expect
+  //variables to be arrays, some otherwise. I could make two different functlist_items. Probably not the best. Expects a certain type? Of each? 
+}
+
+
+
+
+
+struct functlist_item {
   std::string tag; //tag (name) of this function.
   size_t nargs; //correct # of args for this function.
   std::vector< std::string > args;
-  std::function<std::string(std::vector<std::string>)> funct; //pointer to actual function to call
+  functtype funct; //pointer to actual function to call
   
-  //Constructor
-functlist_item( const std::string _tag, const std::function< std::string( std::vector< std::string > ) > _funct, const size_t _nargs )
-: tag(_tag),
-    funct(_funct),
-    nargs(_nargs)
-  {
-    //REV: do nothing
-  }
-
+  
   //Actually has a LIST of hvs? Crap...? Need access to my "target" in each hv though
   std::string execute( const client::STMNT& fs, std::vector< hierarchical_varlist >& hvs, const std::vector< size_t >& my_hv_idxs )
   {
@@ -138,11 +149,20 @@ functlist_item( const std::string _tag, const std::function< std::string( std::v
     else
       {
 	//construct strings from varlists.
-	std::vector< std::string > evaluated_arglist = vars_to_strings( fs.ARGS, std::vector< hierarchical_varlist >& hvs, const std::vector< size_t >& my_hv_idxs );
+	//std::vector< std::string > evaluated_arglist = vars_to_strings( fs.ARGS, std::vector< hierarchical_varlist >& hvs, const std::vector< size_t >& my_hv_idxs );
 	
-	return funct(  );
+	return funct( fs, hvs, my_hv_idxs );
       }
   }
+
+functlist_item( const std::string _tag, const functtype _funct, const size_t _nargs )
+: tag(_tag),
+    funct(_funct),
+    nargs(_nargs)
+  {
+    //REV: do nothing
+  }
+  
 };
 
 
