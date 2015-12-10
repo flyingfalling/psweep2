@@ -6,7 +6,7 @@ CFLAGS=-std=c++11 -O3
 #default: scriptparser2.exe
 default: test_cmd_script_parser.exe
 
-testvariable.exe: variable.h testvariable.cpp variable.tpp
+testvariable.exe: variable.h testvariable.cpp 
 	$(CC) $(CFLAGS) $(INCLUDEDIR) testvariable.cpp -o testvariable.exe
 
 scriptparser2.exe: scriptparser2.cpp script_unroller.h

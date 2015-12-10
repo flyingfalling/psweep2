@@ -1,7 +1,7 @@
 #pragma once
 
 //Crap, need to use variant after all orz
-//#include <boost/variant.hpp>
+#include <boost/variant.hpp>
 
 #include <vector>
 #include <string>
@@ -23,86 +23,50 @@ struct variable
   
   type mytype;
   std::string name;
+
+  boost::variant< T, std::vector<T> > val;
   
-  union
-  {
-    T s_val;
-    std::vector<T> v_val;
-  };
-
-
   std::vector< T >
   get_v( )
   {
-    if( mytype != ARRAY )
-      {
-	fprintf(stderr, "REV: ERROR in variable, attempting to get ARRAY, but I am not of that type!\n");
-	exit(1);
-      }
-    return v_val;
+    return boost::get<std::vector<T>>( val );
   }
-
+  
   T
   get_s( )
   {
-    if( mytype != VAR )
-      {
-	fprintf(stderr, "REV: ERROR in variable, attempting to get VAL, but I am not of that type!\n");
-	exit(1);
-      }
-    return s_val;
+    return boost::get<T>( val );
   }
 
-  variable();
-  /*
-  : s_val(), v_val()
-  {
-  }*/
-  
-  variable( const std::string _name, const T& _val);
-  /*: s_val(), v_val()
+  variable<T>( const std::string _name, const T& _val)
   {
     //it's a variable...
-    s_val = _val;
+    val = _val;
     name = _name;
     mytype = VAR;
-    }*/
+  }
 
-  variable( const std::string _name, const std::vector<T>& _val);
-  /*  :  s_val(), v_val()
+  variable<T>( const std::string _name, const std::vector<T>& _val)
   {
     //it's a variable...
-    v_val = _val;
+    val = _val;
     name = _name;
     mytype = ARRAY;
-    }*/
-
-  ~variable()
-  {
-    /*
-    if( mytype == VAR )
-      {
-	~s_val();
-      }
-    else if( mytype == ARRAY )
-      {
-	~v_val();
-      }
-    */
   }
-  
+    
   std::string asstring()
   {
     if( mytype == VAR )
       {
-	return s_val; //std::to_string( s_val );
+	return get_s(); //std::to_string( s_val );
       }
     else if (mytype == ARRAY )
       {
 	std::string toret="";
-	for(size_t a=0; a<v_val.size(); ++a)
+	std::vector<T> vval=get_v();
+	for(size_t a=0; a<vval.size(); ++a)
 	  {
-	    toret += " " + v_val[a]; //std::to_string( v_val[ a ]);
+	    toret += " " + vval[a]; //std::to_string( v_val[ a ]);
 	  }
 	return toret;
       }
@@ -241,7 +205,7 @@ struct varlist
 };
   
 
-  #include <variable.tpp>
+//#include <variable.tpp>
 
 
 /*
