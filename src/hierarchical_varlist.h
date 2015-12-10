@@ -1,6 +1,6 @@
 #include <variable.h>
 
-template typename<T>
+template <typename T>
 struct hierarchical_varlist
 {
   std::vector< varlist<T> > vl;
@@ -47,7 +47,7 @@ struct hierarchical_varlist
       }
     vl.push_back( v );
     size_t myindex = vl.size() - 1 ;
-    children[ parent ].push_back( );
+    children[ parent ].push_back( myindex );
     children.push_back( std::vector<size_t>(0) );
     parents.push_back(parent);
   }
@@ -58,10 +58,39 @@ struct hierarchical_varlist
     children.push_back( std::vector<size_t>(0) );
   }
 
+
+  //Depth can actually be inferred by checking # jumps to root.
+  void recursively_enumerate(size_t node_idx, size_t depth) //need depth? For number of tabs?
+  {
+    if(node_idx >= vl.size() )
+      {
+	fprintf(stderr, "ERROR in recursively enum: node_idx is outside of vl array size (%ld)\n", node_idx );
+	exit(1);
+      }
+    
+    vl[node_idx].enumerate( depth );
+    for(size_t c = 0; c < get_children(node_idx).size(); ++c)
+      {
+	recursively_enumerate( get_children(node_idx)[c], depth+1 );
+      }
+
+    return;
+  }
   
+  void enumerate()
+  {
+    //start with root.
+    size_t depth=0;
+
+    //Recursively enumerate children.
+    recursively_enumerate( 0, 0 ); //root, zero depth.
+  }
+
   
   hierarchical_varlist()
   {
+    fprintf(stderr, "REV: this is messed, shouldn't use empty constructor b/c we lose track of root. Exiting\n");
+    exit(1);
     //There is nothing... must use constructor with root.
   }
 
@@ -110,7 +139,7 @@ struct hierarchical_varlist
   {
     std::vector< size_t > vl_indices;
     std::vector< size_t > v_indices;
-    size_t nfound = find_var_in_hierarchy( targ, startvl, std::vector< size_t >& vl_indices, std::vector< size_t >& v_indices );
+    size_t nfound = find_var_in_hierarchy( targ, startvl, vl_indices, v_indices );
 
     if( nfound > 1 )
       {
@@ -125,7 +154,7 @@ struct hierarchical_varlist
     else
       {
 	//wasteful, this is re-searching...
-	return ( vl_indices[0].getvar( targ ) );
+	return ( vl[ vl_indices[0] ].getvar( targ ) );
       }
   }
 
@@ -133,7 +162,7 @@ struct hierarchical_varlist
   {
     std::vector< size_t > vl_indices;
     std::vector< size_t > v_indices;
-    size_t nfound = find_var_in_hierarchy( targ, startvl, std::vector< size_t >& vl_indices, std::vector< size_t >& v_indices );
+    size_t nfound = find_var_in_hierarchy( targ, startvl, vl_indices, v_indices );
 
     if( nfound > 1 )
       {
@@ -148,7 +177,7 @@ struct hierarchical_varlist
     else
       {
 	//wasteful, this is re-searching...
-	return (vl_indices[0].getArrayvar( targ ) );
+	return (vl[ vl_indices[0] ].getArrayvar( targ ) );
       }
     
   }
@@ -157,7 +186,7 @@ struct hierarchical_varlist
   {
     std::vector< size_t > vl_indices;
     std::vector< size_t > v_indices;
-    size_t nfound = find_var_in_hierarchy( targ, startvl, std::vector< size_t >& vl_indices, std::vector< size_t >& v_indices );
+    size_t nfound = find_var_in_hierarchy( targ, startvl, vl_indices , v_indices );
 
     if( nfound > 1 )
       {
@@ -172,7 +201,7 @@ struct hierarchical_varlist
     else
       {
 	//wasteful, this is re-searching...
-	return ( vl_indices[0].getTvar( targ ) );
+	return ( vl[ vl_indices[0] ].getTvar( targ ) );
       }
     
   }

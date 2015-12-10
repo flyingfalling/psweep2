@@ -53,7 +53,8 @@ struct variable
     name = _name;
     mytype = ARRAY;
   }
-    
+
+  //REV: this won't work unless T is string haha...
   std::string asstring()
   {
     if( mytype == VAR )
@@ -94,15 +95,23 @@ struct varlist
   std::vector< variable<T> > vars;
 
 
-  void enumerate()
+  void enumerate(size_t depth=0)
   {
-    fprintf(stdout, "ENUMERATING varlist [%20s]\n", mytag.c_str() );
+    std::string prefix = "";
+    for(size_t d=0; d<depth; ++d)
+      {
+	prefix += " |";
+      }
+    prefix+="|";
+    
+    fprintf(stdout, "%sENUMERATING varlist [%20s]\n", prefix.c_str(), mytag.c_str() );
     for(size_t v=0; v<vars.size(); ++v)
       {
 	std::string asstr = vars[v].asstring();
-	fprintf(stdout, "VAR [%5ld] NAME: (%20s): TYPE (%5s):  VALUE: [%s]\n", v, vars[v].name.c_str(), vars[v].gettype_asstr().c_str(), asstr.c_str());
+	fprintf(stdout, "%sVAR [%5ld] NAME: (%20s): TYPE (%5s):  VALUE: [%s]\n", prefix.c_str(), v, vars[v].name.c_str(), vars[v].gettype_asstr().c_str(), asstr.c_str());
       }
   }
+  
   
   varlist()
   : mytag( "ERROR_UNNAMED_VARLIST" )

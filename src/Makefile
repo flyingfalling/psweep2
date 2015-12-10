@@ -9,6 +9,9 @@ default: test_cmd_script_parser.exe
 testvariable.exe: variable.h testvariable.cpp 
 	$(CC) $(CFLAGS) $(INCLUDEDIR) testvariable.cpp -o testvariable.exe
 
+testhvar.exe: variable.h hierarchical_varlist.h testhvar.cpp
+	$(CC) $(CFLAGS) $(INCLUDEDIR) testhvar.cpp -o testhvar.exe
+
 scriptparser2.exe: scriptparser2.cpp script_unroller.h
 	g++ -std=c++11 scriptparser2.cpp -o scriptparser2.exe
 
