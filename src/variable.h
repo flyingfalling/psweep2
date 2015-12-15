@@ -55,6 +55,8 @@ struct variable
   }
 
   //REV: this won't work unless T is string haha...
+  //REV: THIS WILL BREAK UNLESS TYPE IS STD::STRING!!!!
+  //Note if you try to compile and get an error here!
   std::string asstring()
   {
     if( mytype == VAR )

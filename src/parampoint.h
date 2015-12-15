@@ -40,7 +40,7 @@ struct pset
   }
   
   std::vector< pitem > pitems;
-
+  
   size_t my_hierarchical_idx; //index in my parampoint hierarchical varlist array of my leaf (or middle) node.
 };
 
@@ -95,6 +95,9 @@ struct registered_functs
 //REV: basically takes a "stmnt" passed by user and applies this to it.
 
 //REV: Functions must have access to appropriate variable lists to do things.
+
+
+
 
 typedef (std::function< std::string(const client::STMNT&, std::vector< hierarchical_varlist >&, const std::vector< size_t >&) >) functtype;
 
