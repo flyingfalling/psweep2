@@ -127,6 +127,25 @@ struct varlist
   {
     //nothing
   }
+
+  //modifies it if it exists, otherwise adds it.
+  void setvar( const std::string& _varname, const variable<T>& _v )
+  {
+    std::vector<size_t> locs = getname( _varname );
+    if(locs.size() < 1)
+      {
+	addvar( _varname, _v );
+      }
+    else
+      {
+	if( locs.size() > 1)
+	  {
+	    fprintf(stderr, "ERROR: ambiguously trying to set a variable that has multiple instances! [%s] (%ld instances)\n", _varname.c_str(), locs.size());
+	    exit(1);
+	  }
+	vars[ locs[0] ] = _v; //just write over the old one. Hopefully it uses the destructor appropriately with all my weird variants etc.
+      }
+  }
   
   void addvar( const std::string& _varname, const variable<T>& _v )
   {

@@ -1,3 +1,5 @@
+//REV: 15 dec 2015, adding parsing of literals...
+
 #pragma once
 
 //#define BOOST_SPIRIT_DEBUG
@@ -245,11 +247,11 @@ namespace client
       parampoint =  +( pset )  [push_back(at_c<0>(_val), _1)];// >> qi::eps; //REV: making this %= causes it to parse it twice, what the hell.
       
       //R1 is the argument (inhereited?)
-      endpset = "!PSET"  > //*char_; //Need to make sure there is a character not used elsewhere to tel it to stop easily. Otherwise we'd read it and then
+      endpset = "!PSET"  >> //*char_; //Need to make sure there is a character not used elsewhere to tel it to stop easily. Otherwise we'd read it and then
 	//do stuff with it.
 	//string("P1;") >>
 	//qi::as_string[lexeme[+char_ - ';']]
-	string(_r1) >
+	string(_r1) >>
 	//REv: is there diff between double and single quotes?
 	';'; //How does it know when to "stop reading"?
       
@@ -263,7 +265,7 @@ namespace client
       
       //REV: this returns TWO strings! Ugh...
       //REV: Don't forget EPS if It7s a struct with just a container
-      startpset %= "PSET" >  qi::as_string[ lexeme[+(char_ - ',')] ] > "," > qi::as_string[ lexeme[+(char_ - ';')] ] > ';';
+      startpset %= "PSET" >>  qi::as_string[ lexeme[+(char_ - ',')] ] >> "," >> qi::as_string[ lexeme[+(char_ - ';')] ] >> ';';
       
       //string("PSET")  >> +(char_ - ';') >> ";"; // [ push_back(at_c(_val), _1), push_back(at_c(_val), _2) ]; // [ _val = std::vector<std::string>(_1, _2) ];
       //startpset %= "PSET" >>  sstring >> " " >> scstring >> ";"; //string("PSET")  >> +(char_ - ';') >> ";"; // [ push_back(at_c(_val), _1), push_back(at_c(_val), _2) ]; // [ _val = std::vector<std::string>(_1, _2) ];
@@ -286,14 +288,14 @@ namespace client
       //pset =  (string("PSET") >> qi::as_string[ lexeme[+(char_ - ';')] ] >> ";") [ _val = phoenix::construct<PSET>(_1, _2) ] >>
       //pset =  
       pset = ( startpset ) [ _val = phoenix::construct<PSET>( _1[0], _1[1] ) ] >
-	//pset = ( startpset ) [ _val = phoenix::construct<PSET>( _1 ) ] >> //vector as arg haha
-	//(string("PSET") >> qi::as_string[ lexeme[+(char_ - ';')] ] >> ";") [ _val = phoenix::construct<PSET>(_1, _2) ] >> 
+      //pset = ( startpset ) [ _val = phoenix::construct<PSET>( _1 ) ] >> //vector as arg haha
+      //(string("PSET") >> qi::as_string[ lexeme[+(char_ - ';')] ] >> ";") [ _val = phoenix::construct<PSET>(_1, _2) ] >> 
 	//"STMNT1;" >>
 	//*char_ [push_back(at_c<2>(phoenix::construct<STMNT>(_val)), _1)] >>  //REV* need to construct statements here ... ugh.
 	//*( ( qi::as_string[lexeme[+(char_ - ';' - '!')] ]  >>  ";")  [push_back(at_c<2>(_val), _1)]) >> //REV* need to construct statements here ... ugh.
 	//* (qi::as_string[ lexeme[+(char_ - '(' - ';' - '!')] ] [push_back(at_c<2>(_val), _1)]  >> "(" >> qi::as_string[ lexeme[ +(char_ - ')') ]][push_back(at_c<2>(_val), _1)] >> ")" >> ";" ) >>
 	//* (qi::as_string[ lexeme[+(char_ - '(' - ';' - '!')] ] [push_back(at_c<2>(_val), _1)]  >> "(" >>  lexeme[ +(char_ - ')') ] >> ")" >> ";" ) >>
-	*( stmnt  [push_back(at_c<2>(_val), _1)] ) > //REV* need to construct statements here ... ugh.
+      *( stmnt  [push_back(at_c<2>(_val), _1)] ) > //REV* need to construct statements here ... ugh.
 	//REV: PROBLEM, this is eating the end guy too...maybe that's the problem.
         //*stmnt [push_back(at_c<2>(_val), _1)]  >>  //REV: so this POS is returning some bullshit that is fucking everything up.
 	//*char_;
@@ -312,27 +314,35 @@ namespace client
 
       //Specify this does not start with a "!"
       //OK, the !lit statement handles this
-      stmnt = ( !qi::lit('!') >> fname [at_c<0>(_val) = _1]  > '(' >
+      stmnt = ( !qi::lit('!') > fname [at_c<0>(_val) = _1]  > '(' >
 		arglist [at_c<1>(_val) = _1] > ')' > ";" ) ; // [_val = phoenix::construct<STMNT>(_1, _2)]; //add fname and arglist //2 is the vector...
       
       //only diff is that leafstmnt has no ending semicolon...
       //REV: something tells me this is reading in something it shouldnt as a leaf statement, for example funct name is the close parens or comma
-      leafstmnt = ( fname [at_c<0>(_val) = _1]  > "(" >
-		    arglist [at_c<1>(_val) = _1] > ")" ) ; // [_val = phoenix::construct<STMNT>(_1, _2)]; //add fname and arglist //2 is the vector...
+      //REV: this won't work recursively...because, it will "look" for an fname in the empty space after doing the first fname...
+      //I *Can't* eat the next character because that will mess everything up (the next parsing step)...
+      leafstmnt = (fname [at_c<0>(_val) = _1] >
+		   ( "(" > arglist [at_c<1>(_val) = _1] > ")" ) ) | literal [at_c<0>(_val) = _1]; // | (literal[at_c<0>(_val) = _1]);
       
-      //stmnt = (fname >> "(" >> qi::as_string[lexeme[+(char_ - ',' - ')' )] ] >> ")" >> ";") [_val = phoenix::construct<STMNT>(_1, _2)]; //add fname and arglist //2 is the vector...
-      //stmnt =  qi::as_string[ lexeme[+(char_ - '(')] ]  >> "(" >> +(char_ - '(') >>")" >> ";";
-      //( qi::as_string[ lexeme[+(char_ - ',' - ')' )] ] >> ")" ) [ push_back(at_c<1>(_val), _1)]  >>
-      
-      // [ _val = phoenix::construct<STMNT>(_1) ] 
-      
-      //		;      //add fname and arglist //2 is the vector...
-
-
+      literal %= qi::as_string[ lexeme[+(char_ - ')' - ',')] ] ;
+    //stmnt = (fname >> "(" >> qi::as_string[lexeme[+(char_ - ',' - ')' )] ] >> ")" >> ";") [_val = phoenix::construct<STMNT>(_1, _2)]; //add fname and arglist //2 is the vector...
+    //stmnt =  qi::as_string[ lexeme[+(char_ - '(')] ]  >> "(" >> +(char_ - '(') >>")" >> ";";
+    //( qi::as_string[ lexeme[+(char_ - ',' - ')' )] ] >> ")" ) [ push_back(at_c<1>(_val), _1)]  >>
+    
+    // [ _val = phoenix::construct<STMNT>(_1) ] 
+    
+    //		;      //add fname and arglist //2 is the vector...
+    
+  
       //Need to do either "none followed by one or more with commas"
+
+
+      //REV: THIS IS THE PROBLEM, if I want to search for literals I need a different way to stop the search.
+      //I dont want all literals to have to be post-ceded by ??? Ah, how about removing commas from there? OK
+      //And, that way, that will be parsed as the "fname"?
       
       //REV: adding end parens here to deal with "close paren) being an fname
-      fname %= qi::as_string[ lexeme[+(char_ - '(' - ')')] ] ; //will not get rid of spaces...hm.
+      fname %= qi::as_string[ lexeme[+(char_ - '(' - ';' - ')')] ] ; //will not get rid of spaces...hm.
       
       //cfname %= "," >> qi::as_string[ lexeme[+(char_ - '(' - ')')] ] ; //will not get rid of spaces...hm.
       
@@ -347,7 +357,8 @@ namespace client
       //The comma is falling under this leaf statement...
       //arglist %=  *( leafstmnt | ("," >> leafstmnt) ); // [ push_back(at_c<0>(_val), _1) ]; //a list of strings or of other things? For now just a list of strings?
       
-      //Will this work? Recursive kleene stars? Ah, yes it will!
+      //Will this work? Recursive kleene stars? Ah, yes it will!]
+      //REV: adding 
       arglist %=  *( (leafstmnt) > *("," >> leafstmnt) )
 	; //It is nothing.
       // [ push_back(at_c<0>(_val), _1) ]; //a list of strings or of other things? For now just a list of strings?
@@ -384,6 +395,18 @@ namespace client
 	 << phoenix::val(" here: \"")
 	 << phoenix::construct<std::string>(_3, _2)   // iterators to error-pos, end
 	 << phoenix::val("\"")
+	 << std::endl
+        );
+      qi::on_error<qi::fail>
+        (
+	 literal,
+	 //pset,
+	 std::cout
+	 << phoenix::val("Error (fail literal)! Expecting ")
+	 << _4                               // what failed?
+	 << phoenix::val(" here: [[")
+	 << phoenix::construct<std::string>(_3, _2)   // iterators to error-pos, end
+	 << phoenix::val("]]")
 	 << std::endl
         );
       qi::on_error<qi::fail>
@@ -458,7 +481,7 @@ namespace client
 	 << phoenix::val("\"")
 	 << std::endl
         );
-      BOOST_SPIRIT_DEBUG_NODES((pset)(stmnt)(startpset)(fname)(arglist)(endpset)(leafstmnt))
+      BOOST_SPIRIT_DEBUG_NODES((pset)(literal)(stmnt)(startpset)(fname)(arglist)(endpset)(leafstmnt))
     }
   
     qi::rule< It, PARAMPOINT(), qi::space_type > parampoint;
@@ -468,6 +491,7 @@ namespace client
     qi::rule< It, LEAF_STMNT(), qi::space_type> leafstmnt;
     qi::rule< It, std::vector<std::string>(), qi::space_type> startpset; //REV: this needs to be a tuple of strings or something? Waht...?
     qi::rule< It, std::string(), qi::space_type> fname; //REV: this needs to be a tuple of strings or something? Waht...?
+    qi::rule< It, std::string(), qi::space_type> literal; //REV: this needs to be a tuple of strings or something? Waht...?
     qi::rule< It, std::string(), qi::space_type> sstring; //REV: this needs to be a tuple of strings or something? Waht...?
     qi::rule< It, std::string(), qi::space_type> scstring; //REV: this needs to be a tuple of strings or something? Waht...?
     //qi::rule< It, std::string(), qi::space_type> farg; //REV: this needs to be a tuple of strings or something? Waht...?

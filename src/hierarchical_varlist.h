@@ -136,6 +136,34 @@ struct hierarchical_varlist
   } //end getvar
 
 
+  void setvar( const std::string& targ, variable& _v, const size_t startvl )
+  {
+    std::vector< size_t > vl_indices;
+    std::vector< size_t > v_indices;
+    size_t nfound = find_var_in_hierarchy( targ, startvl, vl_indices, v_indices );
+    
+    if( nfound > 1 )
+      {
+	fprintf(stderr, "REV: ERROR: get_array_var in hierarchical (while trying to set var): more than one instance found! (Var=[%s])\n", targ.c_str());
+	exit(1);
+      }
+    else if( nfound == 0 )
+      {
+	//just do an "addvar"
+	addvar( targ, _v, startvl );
+      }
+    else
+      {
+	vl[ vl_indicies[0] ].setvar( targ, _v );
+      }
+  }
+  
+  void addvar( const std::string& targ, variable& _v, const size_t startvl )
+  {
+    vl[ startvl ].addvar( targ, _v );
+    return;
+  }
+  
   variable<T> getvar( const std::string& targ, const size_t startvl )
   {
     std::vector< size_t > vl_indices;

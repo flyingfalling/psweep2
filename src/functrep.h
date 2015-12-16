@@ -36,6 +36,8 @@ myvar_t XXX;
 //Remember eventual goal is to "run" this script for each time/each pitem, but variables may be changed. And, this may do things like set
 //some variables (locally), read other variables, etc.
 //In the end, we set CMD? Or do we set a variable that appends many guys together.
+//Crap, LEAF_STMNT can have zero arguments. In which case, it's either a variable read (function), OR it's a literal. We could differentiate based
+//on a starter special character (e.g. $).
 
 struct functsig
 {
@@ -56,13 +58,55 @@ functsig( const std::string& _tag, const size_t& argsize, const functtype& f )
 
 //User defines functs here, and "builds" functsigs...
 
+#define FUNCTDEF( fname ) myvar_t #fname( const std::vector< myvar_t >& args, std::vector< hierarchical_varlist >& hvl, const std::vector< size_t >& hvi )
+
+//Crap, this should only setvar in the PSET varlist!
+FUNCTDEF( SETVAR )
+{
+  //better have args length == 2, otherwise we would throw this away with an error already
+  //name, contents
+  //Which hvl do I set? Are there multiple that I have access to? Make sure some are "named" and others "pset". Give user way to specify which tag to set
+  //it to.
+  //Set the specified varlist in the 0th hierarchical varlist passed to the value specified.
+  hvl[0].setvar( args[0].get_s(), args[1], hvi[0] );
+
+  //modifies state, no return...!
+}
+
+FUNCTDEF( READVAR )
+{
+  return ( hvl[0].getvar( args[0].get_s(), hvi[0]) );
+}
+
+FUNCDEF( CAT )
+{
+  //Takes N args? Or, takes just 2? Takes a list? Of variable names (wow?)
+  //How do I add strings??? Shit...at some point I have to add strings! Or literals. Crap...
+  //Crap, fuck, shit. It means that LEAF_STMNT can be literals. Which means I need to parse them. They don't have the () ending.
+  //And I need to deal with closing parens etc. Always enclose literals in quotes or something? Or make "read" variables use $() or something?
+  //Ghetto shell script language like thing haha.
+  std::string c = ;
+}
+
+
 
 struct functlist
 {
   std::vector< functsig > sigs;
   
-  functtype findfunct( client::STMNT& s )
+  functtype findfunct( const client::STMNT& s )
   {
+    //artificially convert to a READVAR. Ghetto, I know ;)
+    if( s.ARGS.size() == 0 )
+      {
+	std::vector< client::LEAF_STMNT > tmplist;
+	client::LEAF_STMNT tmp( s.TAG );
+	tmplist.push_back( tmp );
+	//it must be a variable read.
+	client::STMNT s2( "READVAR", tmplist );
+	return ( findfunct( s2 ) );
+      }
+    
     for(size_t x=0; x<sigs.size(); ++x)
       {
 	//Match tag to sigs[x]
@@ -84,13 +128,16 @@ struct functlist
     
   }
 
-  functtype findfunct( client::LEAF_STMNT& s )
+  functtype findfunct( const client::LEAF_STMNT& s )
   {
+    //REV: can I do this or will it complain because I'm constructing it temporarily here?
+    return findfunct( client::STMNT( s.TAG, s.ARGS ) );
     //as above...
   }
   
   functlist()
   {
+    //starts empty?
     //add sigs from user?
   }
   
@@ -110,6 +157,7 @@ struct functrep
   {
     //Functs to not have types, arguments do not have types. Only # of arguments orz.
     //REV: this will check # of arguments etc. It will use s.TAG to get function, and all that.
+        
     ft = fl.findfunct( s );
     for( size_t nesti=0; nesti<s.ARGS.size(); ++nesti )
       {
