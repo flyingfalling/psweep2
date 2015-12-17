@@ -321,10 +321,13 @@ namespace client
       //REV: something tells me this is reading in something it shouldnt as a leaf statement, for example funct name is the close parens or comma
       //REV: this won't work recursively...because, it will "look" for an fname in the empty space after doing the first fname...
       //I *Can't* eat the next character because that will mess everything up (the next parsing step)...
-      leafstmnt = (fname [at_c<0>(_val) = _1] >
-		   ( "(" > arglist [at_c<1>(_val) = _1] > ")" ) ) | literal [at_c<0>(_val) = _1]; // | (literal[at_c<0>(_val) = _1]);
-      
-      literal %= qi::as_string[ lexeme[+(char_ - ')' - ',')] ] ;
+      leafstmnt = ( fname [at_c<0>(_val) = _1] >
+		    "(" > arglist [at_c<1>(_val) = _1] > ")"  ) | literal [at_c<0>(_val) = _1]; // | (literal[at_c<0>(_val) = _1]);
+
+      //"Stop" when I encounter my end marker quote...lol
+      //literal = qi::as_string[ qi::lit('"') >  lexeme[+(char_ - '(' - ')' - ',' - '"')]  > qi::lit('"') ];
+      // literal %= qi::as_string[ qi::lit('"') >  lexeme[+(char_ - '(' - ')' - ',' - '"')]  > qi::lit('"') ];
+      literal = '"' >  lexeme[+(char_ - '(' - ')' - ',' - '"')]  > '"' ;
     //stmnt = (fname >> "(" >> qi::as_string[lexeme[+(char_ - ',' - ')' )] ] >> ")" >> ";") [_val = phoenix::construct<STMNT>(_1, _2)]; //add fname and arglist //2 is the vector...
     //stmnt =  qi::as_string[ lexeme[+(char_ - '(')] ]  >> "(" >> +(char_ - '(') >>")" >> ";";
     //( qi::as_string[ lexeme[+(char_ - ',' - ')' )] ] >> ")" ) [ push_back(at_c<1>(_val), _1)]  >>
@@ -342,7 +345,12 @@ namespace client
       //And, that way, that will be parsed as the "fname"?
       
       //REV: adding end parens here to deal with "close paren) being an fname
-      fname %= qi::as_string[ lexeme[+(char_ - '(' - ';' - ')')] ] ; //will not get rid of spaces...hm.
+      //fname %= !qi::lit('"') > qi::as_string[ lexeme[+(char_ - '"' - '(' - ';' - ')')] ] ; //will not get rid of spaces...hm.
+      //Need a way to specify that the quote is optional, i.e. if it exists, yay, otherwise, no.
+      //This is needed to deal with "empty" lists?
+      //fname %=  lexeme[-(lit('"') | lit('(')) >> +(char_ - '(' - ';' - ')')]  ; //will not get rid of spaces...hm.
+      //fname %=  !qi::lit('"') > lexeme[-(lit('"') | lit('(') | lit(')')) > +(char_ - '(' - ';' - ')')]  ; //will not get rid of spaces...hm.
+      fname %=  !qi::lit('"') >> lexeme[ +(char_ - '(' - ';' - ')')]  ; //will not get rid of spaces...hm.
       
       //cfname %= "," >> qi::as_string[ lexeme[+(char_ - '(' - ')')] ] ; //will not get rid of spaces...hm.
       
@@ -359,7 +367,7 @@ namespace client
       
       //Will this work? Recursive kleene stars? Ah, yes it will!]
       //REV: adding 
-      arglist %=  *( (leafstmnt) > *("," >> leafstmnt) )
+      arglist %=  qi::repeat(0, 1)[ ((leafstmnt) > *("," > leafstmnt) ) ];
 	; //It is nothing.
       // [ push_back(at_c<0>(_val), _1) ]; //a list of strings or of other things? For now just a list of strings?
       //Ugh, need to make this either an empty vector, or what?
