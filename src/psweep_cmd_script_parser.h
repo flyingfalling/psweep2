@@ -66,6 +66,7 @@ namespace client
     //std::vector< LEAF_STMNT > ARGS;
     //std::vector< std::string > ARGS;
     std::vector< LEAF_STMNT > ARGS;
+    
 
     STMNT()
       : TAG("ERROR_NO_TAG")
@@ -79,8 +80,8 @@ namespace client
     }
 
     //STMNT( std::string t, std::vector<std::string>& s )
-    STMNT( std::string t, std::vector<LEAF_STMNT>& s )
-      : TAG(t), ARGS(s)
+  STMNT( std::string t, std::vector<LEAF_STMNT>& s)
+  : TAG(t), ARGS(s)
     {
       //nothing to do.
       }
@@ -101,6 +102,7 @@ namespace client
     //std::vector< LEAF_STMNT > ARGS;
     //std::vector< std::string > ARGS;
     std::vector< LEAF_STMNT > ARGS;
+    bool ISLIT;
 
     LEAF_STMNT()
       : TAG("ERROR_NO_TAG")
@@ -114,8 +116,8 @@ namespace client
     }
 
     //STMNT( std::string t, std::vector<std::string>& s )
-    LEAF_STMNT( std::string t, std::vector<LEAF_STMNT>& s )
-      : TAG(t), ARGS(s)
+    LEAF_STMNT( std::string t, std::vector<LEAF_STMNT>& s , bool _lit )
+      : TAG(t), ARGS(s), ISLIT(_lit)
     {
       //nothing to do.
       }
@@ -201,6 +203,7 @@ BOOST_FUSION_ADAPT_STRUCT(
 			  client::LEAF_STMNT,
 			  (std::string, TAG)
 			  (std::vector<client::LEAF_STMNT>, ARGS)
+			  (bool, ISLIT)
 )
 
 
@@ -322,7 +325,7 @@ namespace client
       //REV: this won't work recursively...because, it will "look" for an fname in the empty space after doing the first fname...
       //I *Can't* eat the next character because that will mess everything up (the next parsing step)...
       leafstmnt = ( fname [at_c<0>(_val) = _1] >
-		    "(" > arglist [at_c<1>(_val) = _1] > ")"  ) | literal [at_c<0>(_val) = _1]; // | (literal[at_c<0>(_val) = _1]);
+		    "(" > arglist [at_c<1>(_val) = _1, at_c<2>(_val)=false] > ")"  ) | literal [at_c<0>(_val) = _1, at_c<2>(_val)=true]; // | (literal[at_c<0>(_val) = _1]);
 
       //"Stop" when I encounter my end marker quote...lol
       //literal = qi::as_string[ qi::lit('"') >  lexeme[+(char_ - '(' - ')' - ',' - '"')]  > qi::lit('"') ];
@@ -559,8 +562,15 @@ void enum_leaf_stmnt( const client::LEAF_STMNT& s, const size_t& depth )
 	{
 	  fprintf(stdout, " |");
 	}
-      
-      fprintf( stdout, "LEAF: (%s)\n", s.TAG.c_str());
+
+      if( s.ISLIT )
+	{
+	  fprintf( stdout, "*** LITERAL LEAF: (%s)\n", s.TAG.c_str());
+	}
+      else
+	{
+	  fprintf( stdout, "NON-LITERAL LEAF: (%s)\n", s.TAG.c_str());
+	}
       return;
     }
   

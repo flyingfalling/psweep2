@@ -58,7 +58,7 @@ std::deque< client::STMNT > check_atomic( const client::STMNT& ss, size_t& varid
       if( ts.ARGS.size() != 0 )
 	{
 	  //it's not atomic. Thus, we must make a new tmpvar, set it to this guy as an argument, push it to beginning...
-	  client::LEAF_STMNT nguy( ts.TAG, ts.ARGS ); //make a new (leaf) statement that is the guy, because it will be an argument to a SETVAR
+	  client::LEAF_STMNT nguy( ts.TAG, ts.ARGS, ts.ISLIT ); //make a new (leaf) statement that is the guy, because it will be an argument to a SETVAR
 	  std::string tmpvarname = make_tmpvar( varidx );
 	  client::LEAF_STMNT varn( tmpvarname ); //empty one, i.e. read var
 	  std::vector< client::LEAF_STMNT > topush;
@@ -105,7 +105,7 @@ std::deque< client::STMNT > check_atomic_setvar( const client::STMNT& ss, size_t
     {
       //fprintf(stdout, "Pushing back new SETVAR arg1\n");
       //it's not atomic. Thus, we must make a new tmpvar, set it to this guy as an argument, push it to beginning...
-      client::LEAF_STMNT nguy( ts.TAG, ts.ARGS ); //make a new (leaf) statement that is the guy, because it will be an argument to a SETVAR
+      client::LEAF_STMNT nguy( ts.TAG, ts.ARGS, ts.ISLIT ); //make a new (leaf) statement that is the guy, because it will be an argument to a SETVAR
       std::string tmpvarname = make_tmpvar( varidx );
       client::LEAF_STMNT varn( tmpvarname ); //empty one, i.e. read var
       std::vector< client::LEAF_STMNT > topush;
@@ -147,7 +147,9 @@ std::deque< client::STMNT > check_atomic_setvar( const client::STMNT& ss, size_t
       toadd.pop_back( ); //delete the last guy? Last ADDED, or last in order?
       
       //reconstruct a leaf stmnt from the updated guy. Actually just set the ts2 index guy to that.
-      oldguy.ARGS[1] = client::LEAF_STMNT( orig.TAG, orig.ARGS );
+      //REV: this is converting from STMNT to?
+      //I'm never going to unroll I guess.
+      oldguy.ARGS[1] = client::LEAF_STMNT( orig.TAG, orig.ARGS, false );
 
       //fprintf(stdout, "Concating NEWLIST with toadd (newlist: %ld   toadd: %ld)\n", newlist.size(), toadd.size());
       //Add the returned dequeued guys to beginning of our dequeu. Go backwards

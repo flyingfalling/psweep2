@@ -85,6 +85,8 @@ FUNCDEF( CAT )
   //Crap, fuck, shit. It means that LEAF_STMNT can be literals. Which means I need to parse them. They don't have the () ending.
   //And I need to deal with closing parens etc. Always enclose literals in quotes or something? Or make "read" variables use $() or something?
   //Ghetto shell script language like thing haha.
+  //REV: OK, so do "X" is literal, "$X" is variable read, etc.
+  //Add a literal tag for it?
   std::string c = ;
 }
 
