@@ -18,5 +18,10 @@ scriptparser2.exe: scriptparser2.cpp script_unroller.h
 test_cmd_script_parser.exe: test_cmd_script_parser.cpp psweep_cmd_script_parser.h script_unroller.h
 	$(CC) $(CFLAGS) $(INCLUDEDIR) test_cmd_script_parser.cpp -o test_cmd_script_parser.exe
 
+testfunctrep2.exe: psweep_cmd_script_parser.h script_unroller.h variable.h hierarchical_varlist.h functrep.h   testfunctrep2.cpp
+	$(CC) $(CFLAGS) $(INCLUDEDIR) testfunctrep2.cpp -o testfunctrep2.exe
+
+testfunctrep.exe: psweep_cmd_script_parser.h script_unroller.h variable.h hierarchical_varlist.h functrep.h   testfunctrep.cpp
+	$(CC) $(CFLAGS) $(INCLUDEDIR) testfunctrep.cpp -o testfunctrep.exe
 clean:
 	rm *.exe *.o

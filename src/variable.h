@@ -8,7 +8,7 @@
 #include <iostream>
 #include <cstdlib>
 
-#include <new>
+#include <new> //need this for variant in construcor type things? Maybe not, was doing it for unions with non-POD
 
 //REV: includes...
 
@@ -54,6 +54,14 @@ struct variable
     mytype = ARRAY;
   }
 
+  variable<T>( const std::string& n, const variable<T>& _v)
+  {
+    val = _v.val;
+    name = n;
+    mytype = _v.mytype;
+  }
+
+  
   //REV: this won't work unless T is string haha...
   //REV: THIS WILL BREAK UNLESS TYPE IS STD::STRING!!!!
   //Note if you try to compile and get an error here!
@@ -144,12 +152,24 @@ struct varlist
 	    exit(1);
 	  }
 	vars[ locs[0] ] = _v; //just write over the old one. Hopefully it uses the destructor appropriately with all my weird variants etc.
+	vars[ locs[0] ].name = _varname;
+	//Name should already be == _varname???!!! Ah, but if we set to _v, we will overwrite it! So OK.
+	/*if(vars[locs[0]].name != _varname)
+	  {
+	    fprintf(stderr, "REV: super what the heck? Varname != found var\n"); exit(1);
+	    }*/
       }
   }
-  
+
+    
   void addvar( const std::string& _varname, const variable<T>& _v )
   {
-    vars.push_back (_v);
+    //REV: this won't work...need to make sure it doesn't exist?
+    
+    //REV: this is weird, variables have their own names automatically...i.e. TAG
+    variable<T> tmp(_varname, _v);   // = _v;
+      //tmp.name = _varname;
+    vars.push_back (tmp);
     return;
   }
 

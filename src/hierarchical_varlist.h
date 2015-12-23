@@ -1,3 +1,5 @@
+#pragma once
+
 #include <variable.h>
 
 template <typename T>
@@ -136,7 +138,7 @@ struct hierarchical_varlist
   } //end getvar
 
 
-  void setvar( const std::string& targ, variable& _v, const size_t startvl )
+  void setvar( const std::string& targ, variable<T>& _v, const size_t startvl )
   {
     std::vector< size_t > vl_indices;
     std::vector< size_t > v_indices;
@@ -145,21 +147,25 @@ struct hierarchical_varlist
     if( nfound > 1 )
       {
 	fprintf(stderr, "REV: ERROR: get_array_var in hierarchical (while trying to set var): more than one instance found! (Var=[%s])\n", targ.c_str());
+	enumerate();
 	exit(1);
       }
     else if( nfound == 0 )
       {
+	fprintf(stdout, "Adding new variable [%s] [(name=%s) (val=%s)]\n", targ.c_str(), _v.name.c_str(), _v.get_s().c_str());
 	//just do an "addvar"
 	addvar( targ, _v, startvl );
       }
     else
       {
-	vl[ vl_indicies[0] ].setvar( targ, _v );
+	fprintf(stdout, "Setting existing variable [%s] [(name=%s) (val=%s)]\n", targ.c_str(), _v.name.c_str(), _v.get_s().c_str());
+	vl[ vl_indices[0] ].setvar( targ, _v );
       }
   }
   
-  void addvar( const std::string& targ, variable& _v, const size_t startvl )
+  void addvar( const std::string& targ, variable<T>& _v, const size_t startvl )
   {
+    //REV: this IGNORES any existing guy!
     vl[ startvl ].addvar( targ, _v );
     return;
   }
@@ -173,11 +179,13 @@ struct hierarchical_varlist
     if( nfound > 1 )
       {
 	fprintf(stderr, "REV: ERROR: get_array_var in hierarchical: more than one instance found! (Var=[%s])\n", targ.c_str());
+	enumerate();
 	exit(1);
       }
     else if( nfound == 0 )
       {
 	fprintf(stderr, "REV: ERROR: get_array_var in hierarchical: no instances of target var found! (Var=[%s])\n", targ.c_str() );
+	enumerate();
 	exit(1);
       }
     else
@@ -196,11 +204,13 @@ struct hierarchical_varlist
     if( nfound > 1 )
       {
 	fprintf(stderr, "REV: ERROR: get_array_var in hierarchical: more than one instance found! (Var=[%s])\n", targ.c_str());
+	enumerate();
 	exit(1);
       }
     else if( nfound == 0 )
       {
 	fprintf(stderr, "REV: ERROR: get_array_var in hierarchical: no instances of target var found! (Var=[%s])\n", targ.c_str() );
+	enumerate();
 	exit(1);
       }
     else
@@ -220,11 +230,13 @@ struct hierarchical_varlist
     if( nfound > 1 )
       {
 	fprintf(stderr, "REV: ERROR: get_val_var in hierarchical: more than one instance found! (Var=[%s])\n", targ.c_str());
+	enumerate();
 	exit(1);
       }
     else if( nfound == 0 )
       {
 	fprintf(stderr, "REV: ERROR: get_val_var in hierarchical: no instances of target var found! (Var=[%s])\n", targ.c_str() );
+	enumerate();
 	exit(1);
       }
     else
