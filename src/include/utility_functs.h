@@ -30,7 +30,7 @@
 
 bool check_file_existence( const std::string& fname )
 {
-  if( access( fname, F_OK ) != -1 )
+  if( access( fname.c_str(), F_OK ) != -1 )
     {
       return true;
     }
