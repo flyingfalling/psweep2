@@ -1,3 +1,8 @@
+//WRITE FUNCTS:
+// varlist.inputfromfile( filename ) //adds vars in that file to this varlist.
+// bool check_file_existence( fname )
+
+
 //TODO: make special functs to add file to REQUIRED/SUCCESS/etc.
 //TODO: Make it so that we can also pass along/check "named" varlist
 //TODO: make special functs to access previous psets/pitems (directories) so we can do that.
@@ -10,10 +15,12 @@
 //TODO: special variables to generate guys from array with other string, with certain sep. E.g. to access "all" the other worker guys. Need a way to
 //      access programmatically how many PARALLEL guys there are? Yappa over PSET we want to have many. Have a special function to access #P or something.
 
+//REV: names...um, need to have way to deal with different models names/specific variables. That is what the named variables are.
 
 #pragma once
 
 #include <functrep.h>
+#include <utility_functs.h>
 
 //REV: this is a parampoint. It has a command thing that is what to run
 //each time point. Note, we only actually want one of those representations,
@@ -86,11 +93,33 @@ struct pitem
 
   bool checkready()
   {
+    bool ready=true;
+    //Strings must be FULL filename? Or are they relative? Assume full...
+    for(size_t f=0; f<required_files.size(); ++f)
+      {
+	if( check_file_existence( required_files[f] ) == false )
+	  {
+	    ready = false;
+	  }
+      }
+    return ready;
+    
     //checks if all required files are present?? etc.
   }
   
   bool checkdone()
   {
+    bool ready=true;
+    //Strings must be FULL filename? Or are they relative? Assume full...
+    for(size_t f=0; f<success_files.size(); ++f)
+      {
+	if( check_file_existence( success_files[f] ) == false )
+	  {
+	    ready = false;
+	  }
+      }
+    return ready;
+    
     //checks if I'm done. Specifically by seeing if all required guys are
     //finished. I need multiple "variable lists" of guys, some that
     //set required guys for starting, some that check required files for
@@ -100,12 +129,19 @@ struct pitem
   varlist get_output()
   {
     varlist retvarlist;
+    
+    //REV: I could read this some other way? Some number of (named) varlists? A list of them? OK.
     for(size_t f=0; f<output_files.size(); ++f)
       {
 	retvarlist.inputfromfile( output_files[f] );
       }
-
+    
     return retvarlist;
+  }
+
+  std::string get_cmd()
+  {
+    return mycmd;
   }
   
   size_t my_hierarchical_idx; //index in my parampoint hierarchical varlist array of my leaf node.

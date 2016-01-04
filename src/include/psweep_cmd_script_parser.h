@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <utility_functs.h>
+
 //#define BOOST_SPIRIT_DEBUG
 #define BOOST_SPIRIT_USE_PHOENIX_V3
 #include <boost/config/warning_disable.hpp>
@@ -30,22 +32,6 @@
 
 
 
-//REV: ghetto function to read a whole file into a single std::string
-std::string get_file_contents(const std::string filename)
-{
-  std::ifstream in(filename.c_str(), std::ios::in | std::ios::binary);
-  if (in)
-    {
-      std::string contents;
-      in.seekg(0, std::ios::end);
-      contents.resize(in.tellg());
-      in.seekg(0, std::ios::beg);
-      in.read(&contents[0], contents.size());
-      in.close();
-      return(contents);
-    }
-  throw(errno);
-}
 
 
 namespace client

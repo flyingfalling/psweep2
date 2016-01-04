@@ -1,27 +1,28 @@
 CC=g++
-INCLUDEDIR="-I./"
+INCLUDEFLAG=-I./ -I./include
 CFLAGS=-std=c++11 -O3
-
+INCLUDEDIR=./include
+UNITTESTDIR=./unit_tests
 
 #default: scriptparser2.exe
 default: test_cmd_script_parser.exe
 
-testvariable.exe: variable.h testvariable.cpp 
-	$(CC) $(CFLAGS) $(INCLUDEDIR) testvariable.cpp -o testvariable.exe
+testvariable.exe: $(INCLUDEDIR)/variable.h $(UNITTESTDIR)/testvariable.cpp 
+	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/testvariable.cpp -o testvariable.exe
 
-testhvar.exe: variable.h hierarchical_varlist.h testhvar.cpp
-	$(CC) $(CFLAGS) $(INCLUDEDIR) testhvar.cpp -o testhvar.exe
+testhvar.exe: $(INCLUDEDIR)/variable.h $(INCLUDEDIR)/hierarchical_varlist.h $(UNITTESTDIR)/testhvar.cpp
+	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/testhvar.cpp -o testhvar.exe
 
-scriptparser2.exe: scriptparser2.cpp script_unroller.h
-	g++ -std=c++11 scriptparser2.cpp -o scriptparser2.exe
+scriptparser2.exe: $(UNITTESTDIR)/scriptparser2.cpp $(INCLUDEDIR)/script_unroller.h $(INCLUDEDIR)/utility_functs.h
+	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/scriptparser2.cpp -o scriptparser2.exe
 
-test_cmd_script_parser.exe: test_cmd_script_parser.cpp psweep_cmd_script_parser.h script_unroller.h
-	$(CC) $(CFLAGS) $(INCLUDEDIR) test_cmd_script_parser.cpp -o test_cmd_script_parser.exe
+test_cmd_script_parser.exe: $(UNITTESTDIR)/test_cmd_script_parser.cpp $(INCLUDEDIR)/psweep_cmd_script_parser.h $(INCLUDEDIR)/script_unroller.h
+	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_cmd_script_parser.cpp -o test_cmd_script_parser.exe
 
-testfunctrep2.exe: psweep_cmd_script_parser.h script_unroller.h variable.h hierarchical_varlist.h functrep.h   testfunctrep2.cpp
-	$(CC) $(CFLAGS) $(INCLUDEDIR) testfunctrep2.cpp -o testfunctrep2.exe
+testfunctrep2.exe: $(INCLUDEDIR)/psweep_cmd_script_parser.h $(INCLUDEDIR)/script_unroller.h $(INCLUDEDIR)/variable.h $(INCLUDEDIR)/hierarchical_varlist.h $(INCLUDEDIR)/functrep.h   $(UNITTESTDIR)/testfunctrep2.cpp $(INCLUDEDIR)/utility_functs.h
+	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/testfunctrep2.cpp -o testfunctrep2.exe
 
-testfunctrep.exe: psweep_cmd_script_parser.h script_unroller.h variable.h hierarchical_varlist.h functrep.h   testfunctrep.cpp
-	$(CC) $(CFLAGS) $(INCLUDEDIR) testfunctrep.cpp -o testfunctrep.exe
+testfunctrep.exe: $(INCLUDEDIR)/psweep_cmd_script_parser.h $(INCLUDEDIR)/script_unroller.h $(INCLUDEDIR)/variable.h $(INCLUDEDIR)/hierarchical_varlist.h $(INCLUDEDIR)/functrep.h   $(UNITTESTDIR)/testfunctrep.cpp
+	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/testfunctrep.cpp -o testfunctrep.exe
 clean:
 	rm *.exe *.o

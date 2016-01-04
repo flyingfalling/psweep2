@@ -141,6 +141,16 @@ struct hierarchical_varlist
   } //end getvar
 
 
+  //Only works if var is ARRAY type.
+  void add_to_var( const std::string& targ, T _v, const size_t startvl )
+  {
+    std::vector<T> r = get_array_var( targ, startvl );
+    r.push_back( _v );
+    variable<T> tmp( targ, r ); //"name" is targ, note that setvar will automatically set that anyways...
+    setvar( targ, tmp, startvl );
+    return;
+  }
+  
   void setvar( const std::string& targ, variable<T>& _v, const size_t startvl )
   {
     std::vector< size_t > vl_indices;

@@ -80,6 +80,46 @@ functsig( const std::string& _tag, const size_t& argsize, const functtype& f )
 
 #define FUNCTDEF( fname ) myvar_t fname( std::vector< myvar_t >& args, std::vector< hierarchical_varlist<std::string> >& hvl, const std::vector< size_t >& hvi )
 
+FUNCTDEF( ADD_SUCCESS_FILE )
+{
+  hvl[0].add_to_var( "SUCCESS_FILES", args[0].get_s(), hvi[0] );
+  return variable<std::string>("ADDEDTOSUCCESSNAME", "ADDEDTOSUCCESSVAL"); 
+}
+
+FUNCTDEF( ADD_REQUIRED_FILE )
+{
+  hvl[0].add_to_var( "REQUIRED_FILES", args[0].get_s(), hvi[0] );
+  return variable<std::string>("ADDEDTOREQUIREDNAME", "ADDEDTOREQUIREDVAL"); 
+  
+}
+
+FUNCTDEF( ADD_CMD_ITEM )
+{
+  //REV: adds one at a time?
+  hvl[0].add_to_var( "CMD", args[0].get_s(), hvi[0] );
+  return variable<std::string>("ADDEDTOCMDNAME", "ADDEDTOCMDVAL"); 
+  
+}
+
+FUNCTDEF( CAT_ARRAY_TO_STR )
+{
+  //std::string
+
+  //arg 0 is array var (unknown length, we will iter through)
+  //arg 1 is SEPERATOR (sep), which is char/str that will separate everything together (?).
+}
+
+FUNCTDEF( ADD_OUTPUT_FILE )
+{
+  hvl[0].add_to_var( "OUTPUT_FILES", args[0].get_s(), hvi[0] );
+  return variable<std::string>("ADDEDTOOUTPUTNAME", "ADDEDTOOUTPUTVAL"); 
+  
+}
+
+//ARRAY_TO_STRING_WITH_SEP
+//FORLOOPNTIMES
+//Super nice to have a way to check file fullness/length/conformity etc.. haha. Instead of just existence?
+
 //Crap, this should only setvar in the PSET varlist!
 FUNCTDEF( SETVAR )
 {

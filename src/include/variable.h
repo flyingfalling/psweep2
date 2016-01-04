@@ -105,6 +105,42 @@ struct varlist
   std::vector< variable<T> > vars;
 
 
+  void inputfromfile( const std::string& fname )
+  {
+    //CAN I READ IN AND THEN PARSE?
+    //Or just read in line by line.
+    //Wait, shouldn't user-specific program do this reading? I.e.
+    //I just pass the filenames or something, and it handles them on
+    //a per-algo basis? Or we read everything into a varlist and pass that
+    //back?
+    
+    //Some function that parses into "spaces" or something? Does reading
+    //into a string maintain newlines? (Bytes?) I assume it must
+    //Just read one at a time.
+    std::ifstream f;
+    open_ifstream( fname, f );
+    std::string n, v;
+    while( !f.eof() )
+      {
+	//will fail if file ends after n? Crap.
+	f >> n >> v;
+	variable<std::string> var( n, v );
+	addvar( var );
+      }
+
+    return;
+  }
+
+  void mergevarlist( const varlist& v )
+  {
+    //for each var in other varlist, add to me. If clashes, fuck it?
+    for( size_t var=0; var<v.vl.size(); ++var)
+      {
+	addvar( v.vl[var] ); //varname is same...
+      }
+    return;
+  }
+
   void enumerate(size_t depth=0)
   {
     std::string prefix = "";
@@ -161,7 +197,13 @@ struct varlist
       }
   }
 
-    
+  void addvar( const variable<T>& _v )
+  {
+    vars.push_back( _v );
+    return;
+      
+  }
+  
   void addvar( const std::string& _varname, const variable<T>& _v )
   {
     //REV: this won't work...need to make sure it doesn't exist?
