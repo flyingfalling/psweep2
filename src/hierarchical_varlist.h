@@ -28,6 +28,8 @@ struct hierarchical_varlist
       }
   }
 
+  
+  
   const std::vector<size_t> get_children( const size_t v )
   {
     if( v < children.size() )
@@ -41,7 +43,7 @@ struct hierarchical_varlist
       }
   }
   
-  void add_child( size_t parent, const varlist<T>& v )
+  size_t add_child( size_t parent, const varlist<T>& v )
   {
     if( parent >= vl.size() )
       {
@@ -52,6 +54,7 @@ struct hierarchical_varlist
     children[ parent ].push_back( myindex );
     children.push_back( std::vector<size_t>(0) );
     parents.push_back( parent );
+    return (vl.size()-1); //returns index of it.
   }
 
   void add_root( const varlist<T>& v )
