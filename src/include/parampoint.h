@@ -1,11 +1,15 @@
+
+//REV: set everything up to set up directories now. In other words, order them appropriately and name them in that way.
+//And automatically add the correct "existing" guys to the variable list etc.
+
 //WRITE FUNCTS:
 // varlist.inputfromfile( filename ) //adds vars in that file to this varlist.
 // bool check_file_existence( fname )
 
 
-//TODO: make special functs to add file to REQUIRED/SUCCESS/etc.
+//## TODO: make special functs to add file to REQUIRED/SUCCESS/etc.
 //TODO: Make it so that we can also pass along/check "named" varlist
-//TODO: make special functs to access previous psets/pitems (directories) so we can do that.
+//TODO: make special functs to access previous psets/pitems (directories) so we can do that. It will get like "dir" of that one? Or something?
 //TODO: Figure out how to organize directories/access them? Workers/etc.
 
 //Questions: how to deal with variables over different PSETS in PARAMPOINT
@@ -38,6 +42,8 @@ struct pitem
   std::vector< std::string > success_files;
 
   std::vector< std::string > output_files;
+
+  std::string mydir;
   
   pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist& hv)
   {
@@ -47,6 +53,27 @@ struct pitem
     size_t myidx = hv.add_child( rootchildren[npsets-1] ); //add child to the last one.
     my_hierarchical_idx = myidx;
 
+    //Set up the required variables. Automatically name the things here (like choose dir based on sub of parent), much easier ;)
+
+    std::string parentdir = hv.vl[ rootchildren[npsets-1] ].getvar( "MY_DIR" ).get_s();
+    mydir = parentdir + "/pitem_" + std::to_string( idx ); //REV: whatever, to_string shouldn't cause a problem here, other than not padding zeroes.
+
+    std::vector<std::string> emptyvect;
+    variable<std::string> var1( "__MY_DIR", mydir );
+    variable<std::string> var2( "__MY_REQUIRED_FILES", emptyvect );
+    variable<std::string> var3( "__MY_SUCCESS_FILES", emptyvect );
+    variable<std::string> var4( "__MY_OUTPUT_FILES", emptyvect );
+    variable<std::string> var5( "__MY_CMD", emptyvect );
+    hv.vl[myidx].addvar( var1 );
+    hv.vl[myidx].addvar( var2 );
+    hv.vl[myidx].addvar( var3 );
+    hv.vl[myidx].addvar( var4 );
+    hv.vl[myidx].addvar( var5 );
+
+    //Reserve __ vars internally or something? I'm not doing unrolling so whatever I guess.
+    
+    
+    
     std::vector<hierarchical_varlist> hvl;
     hvl.push_back( hv ); //will it modify it? I'm not sure! Crap.
     //This is a copy operator, so it will not bubble up the copy operator
@@ -69,6 +96,8 @@ struct pitem
 
     output_files = hv.get_val_var( "OUTPUT_FILES", my_hierarchical_idx );
 
+    //mydir = hv.vl[my_hierarchical_idx].getvar("MY_DIR").get_s();
+    
         
     //Finished constructing pitem, i.e. setting all variables.
     //Now we go through and use those to set REQUIRED and SUCCESS files
@@ -86,11 +115,7 @@ struct pitem
     //We need ways of finding inside GLOBAL vars named var etc.
   }
   
-  std::string get_mydir()
-  {
-    //Return variable from my varlist? Or store a local (relative) path?
-  }
-
+ 
   bool checkready()
   {
     bool ready=true;
@@ -151,10 +176,8 @@ struct pitem
 //REV:
 struct pset
 {
-  std::string get_mydir()
-  {
-  }
-
+  std::string mydir;
+  
   bool checkdone()
   {
     bool done=true;
@@ -175,6 +198,7 @@ struct pset
     //std::vector<size_t> rootchildren = hv.get_children(0);
     size_t myidx = hv.add_child( 0 ); //add child to root;
     my_hierarchical_idx = myidx;
+    mydir = hv.vl[my_hierarchical_idx].getvar("MY_DIR").get_s();
   }
   
   std::vector< pitem > pitems;
@@ -190,12 +214,18 @@ struct pset
 
 struct parampoint
 {
-  std::string get_mydir()
-  {
-  }
+  std::string mydir;
 
   std::vector< pset > psets;
-  
+
+  parampoint(hierarchical_varlist& hv)
+  {
+    mydir = hv.vl[my_hierarchical_idx].getvar("MY_DIR").get_s();
+     
+  }
+
+
+  static const size_t my_hierarchical_idx = 0;
   //REV: this will always be the root node in the parampoint hierarchical varlist array...
   
 };

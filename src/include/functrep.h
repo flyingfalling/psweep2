@@ -80,15 +80,52 @@ functsig( const std::string& _tag, const size_t& argsize, const functtype& f )
 
 #define FUNCTDEF( fname ) myvar_t fname( std::vector< myvar_t >& args, std::vector< hierarchical_varlist<std::string> >& hvl, const std::vector< size_t >& hvi )
 
+
+
+//OK this might include its directory. Yea, we need to add DIR as specific var ;)
+FUNCTDEF( GET_PREV_VAR )
+{
+  //NOTE root down 1 is pset #
+  size_t targpset = std::stoul(args[0].get_s());
+  std::vector<size_t> c = hvl[0].get_children( 0 );
+  if( targpset >= c.size() )
+    {
+      fprintf(stderr, "ERROR trying to access PSET that doesn't exist (yet?) in GET_PREV_FILE. Requested [%ld] but only have #children psets [%ld]\n", targpset, c.size() );
+      exit(1);
+    }
+  size_t psetidx = c[targpset];
+  std::vector<size_t> c2 = hvl[0].get_children( psetidx );
+  size_t targpitem = std::stoul(args[1].get_s());
+  size_t pitemidx = c2[targpitem];
+
+  variable<std::string> newvar( hvl[0].getvar( args[2].get_s(), pitemidx ) );
+  return newvar;
+
+  //Arg1 is PSET #
+  //Arg2 is WORKER #
+  //Arg3 is FILENAME (?) (i.e. variable name IN THAT DIR we want to get?)
+  //What if we don't care about looking in HIERARCH index, but want to access a file in its DIRECTORY. I.e. we need a way to tell it to prepend
+  //   that PSET/PITEM directory to the string/filename I give. Ah.
+  //Do all contain a "dir" name that tells dir they are in?
+  //Special function to return MYDIR.
+}
+
+FUNCTDEF( GET_PREV_DIR )
+{
+  std::vector<variable<std::string> > args2 = args;
+  args.push_back( std::variable<std::string>("__MY_DIR") );
+  return GET_PREV_VAR(args, hvl, hvi );
+}
+
 FUNCTDEF( ADD_SUCCESS_FILE )
 {
-  hvl[0].add_to_var( "SUCCESS_FILES", args[0].get_s(), hvi[0] );
+  hvl[0].add_to_var( "__MY_SUCCESS_FILES", args[0].get_s(), hvi[0] );
   return variable<std::string>("ADDEDTOSUCCESSNAME", "ADDEDTOSUCCESSVAL"); 
 }
 
 FUNCTDEF( ADD_REQUIRED_FILE )
 {
-  hvl[0].add_to_var( "REQUIRED_FILES", args[0].get_s(), hvi[0] );
+  hvl[0].add_to_var( "__MY_REQUIRED_FILES", args[0].get_s(), hvi[0] );
   return variable<std::string>("ADDEDTOREQUIREDNAME", "ADDEDTOREQUIREDVAL"); 
   
 }
@@ -96,7 +133,7 @@ FUNCTDEF( ADD_REQUIRED_FILE )
 FUNCTDEF( ADD_CMD_ITEM )
 {
   //REV: adds one at a time?
-  hvl[0].add_to_var( "CMD", args[0].get_s(), hvi[0] );
+  hvl[0].add_to_var( "__MY_CMD", args[0].get_s(), hvi[0] );
   return variable<std::string>("ADDEDTOCMDNAME", "ADDEDTOCMDVAL"); 
   
 }
@@ -111,7 +148,7 @@ FUNCTDEF( CAT_ARRAY_TO_STR )
 
 FUNCTDEF( ADD_OUTPUT_FILE )
 {
-  hvl[0].add_to_var( "OUTPUT_FILES", args[0].get_s(), hvi[0] );
+  hvl[0].add_to_var( "__MY_OUTPUT_FILES", args[0].get_s(), hvi[0] );
   return variable<std::string>("ADDEDTOOUTPUTNAME", "ADDEDTOOUTPUTVAL"); 
   
 }
