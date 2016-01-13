@@ -117,16 +117,60 @@ FUNCTDEF( GET_PREV_DIR )
   return GET_PREV_VAR(args, hvl, hvi );
 }
 
+//Need a way to specify where to write out stuff.
+//Need a way to specify every variable as applying to model or what?
+//Just write the whole thing out there? I.e. some list of variables to write out automatically.
+//User variable __INPUT_FILE is the file where everything is printed to. Note we should automatically put it somewhwere? This is
+//different than __REQUIRED_FILES which might not be stored in memory (e.g. sound file, data file input from experimental data, etc.).
+//But in files that are specified. They are immutable. We store them once per worker thread and give those access.
+
+//So, START TIME data file. We specify those "per worker" things at beginning not of PSET, but of the whole program.
+//E.g. "use TMP" or something. And specify location of TMP on each system. Do we really need to copy it N times? Only copy it once in the
+//HDF5? No, input data might be too large...but better to have a record of it. So TAR it up or something and put it in a place? Meh too big. Just
+//leave it out... It will still take HASH of each and compare it at the beginning of each, or regularly?
+//Yea, system CMD takes too long, definitely set it up so that I can specify the MODEL TO CALL or something. Specify dynamic name of function to call?
+//Figure that out later. I can't do it as a script in that case I assume, because I'd have to read out a string. But user could specify line of
+//function arguments? But type would have to be specified too in that case (haha.), and so user would have to write C++ to handle it...i.e. his
+//specific model. Whereas now I don't need it.
+
+//I would really like to "keep" all memory/model stuff around so I don't have to re-allocate it every time... Generating stuff on the GPU is
+//probably most efficient. And reading out (every N time steps or something). Storing data on GPU in buffer. Do asynchronous.
+//Go through each compute e.g. synapse model "group" separately? If we can't fill up the CPUs, run multiple at a time.
+
+
+FUNDTDEF( SET_INPUT_FILE )
+{
+  hvl[0].setvar( "__MY_INPUT_FILE", args[0].get_s(), hvi[0]);
+  return variable<std::string>("__SETINPUTSUCCESSNAME", "__SETINPUTSUCCESSVAL"); 
+}
+
+FUNDTDEF( GET_INPUT_FILE )
+{
+  return hvl[0].getvar( "__MY_INPUT_FILE", hvi[0]);
+}
+
+
+FUNCTDEF( VARLIST_TO_FILE )
+{
+  //REV: print current (my?) varlist to a target file?
+  //Or is it the root or something? This is super ugly. Is that the only way to transfer my varlist to them?
+  //Or, automatically print it in PARAMPOINT? And reference that? Might have separate guys trying to access it
+  //individually though...
+  
+  //Remember, in extreme cases we will have everything written to TMP locally, then copied (mv?) to appropriate position.
+  //Then it will be written to HDF5?
+}
+
 FUNCTDEF( ADD_SUCCESS_FILE )
 {
   hvl[0].add_to_var( "__MY_SUCCESS_FILES", args[0].get_s(), hvi[0] );
-  return variable<std::string>("ADDEDTOSUCCESSNAME", "ADDEDTOSUCCESSVAL"); 
+  return variable<std::string>("__ADDEDTOSUCCESSNAME", "__ADDEDTOSUCCESSVAL"); 
 }
 
 FUNCTDEF( ADD_REQUIRED_FILE )
 {
   hvl[0].add_to_var( "__MY_REQUIRED_FILES", args[0].get_s(), hvi[0] );
-  return variable<std::string>("ADDEDTOREQUIREDNAME", "ADDEDTOREQUIREDVAL"); 
+  return variable<std::string>("__ADDEDTOREQUIREDNAME", "__ADDEDTOREQUIREDVAL"); 
   
 }
 
@@ -134,7 +178,7 @@ FUNCTDEF( ADD_CMD_ITEM )
 {
   //REV: adds one at a time?
   hvl[0].add_to_var( "__MY_CMD", args[0].get_s(), hvi[0] );
-  return variable<std::string>("ADDEDTOCMDNAME", "ADDEDTOCMDVAL"); 
+  return variable<std::string>("__ADDEDTOCMDNAME", "__ADDEDTOCMDVAL"); 
   
 }
 
@@ -149,7 +193,7 @@ FUNCTDEF( CAT_ARRAY_TO_STR )
 FUNCTDEF( ADD_OUTPUT_FILE )
 {
   hvl[0].add_to_var( "__MY_OUTPUT_FILES", args[0].get_s(), hvi[0] );
-  return variable<std::string>("ADDEDTOOUTPUTNAME", "ADDEDTOOUTPUTVAL"); 
+  return variable<std::string>("__ADDEDTOOUTPUTNAME", "__ADDEDTOOUTPUTVAL"); 
   
 }
 
@@ -166,7 +210,7 @@ FUNCTDEF( SETVAR )
   //it to.
   //Set the specified varlist in the 0th hierarchical varlist passed to the value specified.
   hvl[0].setvar( args[0].get_s(), args[1], hvi[0] );
-  return variable<std::string>("SETVARNAME", "SETVARVAL");
+  return variable<std::string>("__SETVARNAME", "__SETVARVAL");
 
   //modifies state, no return...!
 }
@@ -178,7 +222,7 @@ FUNCTDEF( IDENTITY )
   //fprintf(stdout, "INSIDE IDENT FUNCT. Size of args is [%ld]\n", args.size() );
   //myvar_t test("TMPVAR", "YOLO");
   //return test;
-  return (variable<std::string>("TMPVARNAME(IDENT)", args[0].get_s() ) );
+  return (variable<std::string>("__TMPVARNAME(IDENT)", args[0].get_s() ) );
 }
 
 FUNCTDEF( READVAR )

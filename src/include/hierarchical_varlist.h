@@ -28,7 +28,32 @@ struct hierarchical_varlist
       }
   }
 
-  
+
+  void tofile( const std::string& fname, const size_t starti )
+  {
+    if(starti==0)
+      {
+	//it is root.
+	vl[starti].tofile( fname );
+      }
+    else
+      {
+	size_t idx=starti;
+	while( idx > 0 )
+	  {
+	    vl[idx].tofile( fname ); //wow this will open and close it again, definitely not worth it. It's appending recall. OK.
+	    idx = get_parent( idx );
+	  }
+	if( idx != 0)
+	  {
+	    fprintf(stderr, "BIG ERROR, failed to end up at root while walking through hierarchical varlist\n");
+	    exit(1);
+	  }
+	vl[idx].tofile( fname ); //finally, this should be root.
+	
+      }
+    
+  } //end tofile.
   
   const std::vector<size_t> get_children( const size_t v )
   {

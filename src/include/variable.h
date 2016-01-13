@@ -105,6 +105,24 @@ struct varlist
   std::vector< variable<T> > vars;
 
 
+  //append? or overwrite? Default is APPEND to end.
+  void tofile( const std::string& fname )
+  {
+    std::ofstream f;
+    open_ofstream( fname, f );
+    //Only prints out vars if they are strings, not if they are arrays.
+    //Should allow to print out arrays too? What types of things might
+    //be arrays?
+    for(size_t v=0; v<vars.size(); ++v)
+      {
+	f << vars[v].name << vars[v].get_s() << std::endl
+      }
+
+    close_ofstream( f );
+
+    return;
+  }
+  
   void inputfromfile( const std::string& fname )
   {
     //CAN I READ IN AND THEN PARSE?

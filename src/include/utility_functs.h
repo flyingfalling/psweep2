@@ -28,9 +28,32 @@
 #include <errno.h>
 #include <unistd.h> 
 
+
+
+bool make_directory( const std::string& s )
+{
+  if( check_file_existence( s ) == false )
+    {
+      int res = mkdir( s.c_str() );
+      if(res != 0)
+	{
+	  //REV: might want to try a few times or something? Or sleep or something? Ugh...
+	  fprintf(stderr, "ERROR: make_directory: failed to make directory [%s]\n", s.c_str());
+	  return false; //failed to make dir..?
+	}
+    }
+  else
+    {
+      fprintf(stderr, "WARNING in make_directory: trying to create already existing directory [%s]\n", s.c_str() );
+    }
+  return true; //no point in returning at all -_-;
+}
+
 bool check_file_existence( const std::string& fname )
 {
-  if( access( fname.c_str(), F_OK ) != -1 )
+  //if( access( fname.c_str(), F_OK ) != -1 )
+  struct stat buffer;   
+  if(stat (fname.c_str(), &buffer) == 0)
     {
       return true;
     }
