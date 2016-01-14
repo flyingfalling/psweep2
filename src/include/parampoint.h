@@ -763,8 +763,18 @@ struct executable_representation
 //Another performs the actual farming out and sets to "being processed". Furthermore we mark which worker it is that is doing the processing?
 //Have a list of currently processing. PARAMPOINT/PSET/PITEM. Linked list or something... deque.
 
+
+//REV: this is the structure that operates almost entirely on param point space
+//It also knows what needs to be done to detect convergence etc.?
+//User passes a function pointer or something? Or there are several "algorithms" that are selected.
+struct search_function
+{
+  
+};
+
 struct parampoint_generator
 {
+  //This needs to have the ability to take current list and generate new ones?
   
   std::vector< hierarchical_varlist > named_vars;
 
@@ -788,8 +798,10 @@ struct parampoint_generator
     //do nothing, dummy constructor
   }
   
-  parampoint_generator( const std::string& bdir )
+  parampoint_generator( const std::string& scriptfname, const std::string& bdir )
   {
+    exec_rep = exec_rep( scriptfname );
+    
     basedir = bdir;
     make_directory( basedir ); //better already exist...
   }
@@ -797,11 +809,18 @@ struct parampoint_generator
   
   //takes an argument which is just a (new?) variable list of the parameters to test, and does stuff. Note some (other fixed parameters) might be global.
   //This ONLY generates, it is totally independent to sending stuff to be executed.
+
+  //I would like to totally dissociate the farming out (of work) from the search function.
+  //To make new param points, we do that by calling for new points. No, something is on top of that I guess. I.e. something calls the VL thing.
+  //And then farms out the work (inside this structure?) until it is done
+  //I.e. control passes to that to farm out that "set" of paramthings at a time? May be a generation, may not be?
+  //We pass a set of varlists to execute, and it does everything for me.
+  
   void generate( const varlist& vl )
   {
     //Takes the varlist...
     hierarchical_varlist hv( vl );
-
+    
     parampoint_vars.push_back( hv );
     
     std::string dirname = basedir + "/" + std::to_string( parampoints.size() );
@@ -811,12 +830,206 @@ struct parampoint_generator
     
   }
 
-  void
+
   
 }; //end struct parampoint_gen
 
 
+//If I set up a "farmer" device, it will contain a parampoint_gen,
+//but I'll need internal access to which ones are active etc.
+//And a way to signal when a specific worker is finished.
+//Need to know parampoint # and worker number in it. It will "wait" to
+//check it, write back the files (if neccessary), and mark it done (check
+//files locally too). Make MD5 or something?
 
+//I can spin through all of them, checking. Or just wait to receive
+//ANY message, I think that is possible.
+
+
+//What is executed in main thread? There is some main search algo, that we call, i.e. we construct a search funct. And we simply iterate
+//it until it is "done" But the search function also constructs (by itself) a parampoint_generator for handling vls at a time. The user
+//passes that separately. I.e. he makes a parampoint_generator by himself
+
+
+
+
+//Parampoint generator -- generates an actual parampoint (psets etc.) based on originally passed SCRIPT, and also varlist containing PARAMPOINT
+//to evaluate.
+//Only generates when called. Keeps track of parampoints as well, i.e. history. Keeps track of which have been "farmed", which are "ready", and
+//which are "done". Note each parampoint struct keeps track of this in addition to other information. That is bad, should separate that out? Meh.
+
+//Furthermore, there is a search function that gets outputs from finished parampoints, generates new ones, etc.. I.e. that is the controlling runner.
+//It gets a pointer to parampoint_gen and passes guys to it to get out things to run. Finally, when it is finished, it somehow gets out the
+//results and does something with them.
+
+//Is the search function at all related to how I actually farm out the guys? No, has to do with workers. Set a "max farmed at a time" type variable,
+//so it writes that many parampoints to file as it goes. Much easier that way no obvious "generations" or something.
+
+//Every generation could be a file (?). Easier to have one large file... in which case we need to handle errorful writing? We can correct it...erase
+//most recent generation? Or do checking of success.
+
+//What does the SEARCH function do? It has state I assume, may require responses before continuing, or not?
+//It generates a bunch of guys at the same time, computes them, gets results, writes to disk, etc., until we decide it's done.
+
+//OK, this is "at a time" value that was selected. However there may be "stops" e.g. if not enough to get a generation. So we don't know what
+//it uses to generate the next set of guys. But we know it must be passed a VL as a result. It has its own unknown method for generating.
+//Base class, and make it a higher level class. I really don't want to use a pointer or some shit like that?
+
+//Takes generic hierarch varlist that handles things?
+
+struct search_funct
+{
+  search_funct( hierarchical_varlist& hv )
+  {
+    
+  }
+
+
+  std::vector< varlist > gen_next_parampoints()
+  {
+    //All different search functs must do this. It calls this, and it gets the next N param points, which are then farmed off.
+    //Note this includes "getting the output". May contain current state? Note, every pitem returns OUTPUT.
+  }
+  
+  //So any derived classes might override this.
+  //It generates (possibly from previous or from nothing),
+  //executes, and then generates based on results? Generates 2x? Nah.
+  
+};
+
+
+
+//Passes these off to the "worker distributor" and does the farming etc.
+struct master
+{
+  //Easiet way is to carry around a "full" one, and only push/pass a few to it as we go. I guess.
+  //Or, specify ones to execute?
+
+  parampoint_generator maingen;
+
+  master( scriptfname, bdir, )
+  {
+    
+  }
+  
+  
+  std::vector< varlist > process_param_points( const std::vector< varlist >& pp_toproc )
+  {
+
+    //what calls this? We call this each time? NO THIS IS PART OF THE "PROCESS" FARMER-OUTER.
+    //Assume we do everything AFTER having passed the varlists etc. to the target? We just pass parampoints I guess?
+    //What about vars etc.? At any rate, once it gets the parampoints etc., it goes off. So we need to pass the whole struct including
+    //the lists it has. Pass both the things I guess haha.
+    
+  }
+
+};
+
+struct farmer
+{
+  //Pass back/copy back the whole thing? Ugly...vicious!
+  //But we're writing out to HDF5 or something somewhere along the way,...
+  //I.e. as its going its writing it out? Only after "completion" of a given parampoint. But dirs are already made when farmed out? Only made as
+  //sent to workers?
+
+  //Make user bundle all his own functions (in the same language?) or possibly glue it all together, but with main as C++?. Or give it as a lib...heh.).
+  //If that's the case, no need to specify all the files and shit though ;). But if each one is running as "system" that's fine. But if user has spawned
+  //so many guys, hm. We can't run multiple kernels on same guy.
+  void comp_pp_list( parampoint_generator& pg, std::vector<varlist>& newlist )
+  {
+    //Passes as memory, so much easier... I.e. it modifies it in line...
+    //OK, and I do everything. This is all on the master rank.
+    //Keeping stuff here allows me to not mess around with internals of parampoint_generator other than to get the guys from it?
+    
+    //Do all "in processing", "output to archive", "done" checking, and "send to workers" here.
+  }
+};
+
+
+//REV: HOW TO DO THIS.
+
+
+//User builds the search function (specifies params, which function to use etc. In some main proram).
+//User also specifies the method for building the param points by giving the script. Specifies #workers etc.
+//The search function generates varlists for parampoints, and gets results back. That is all it cares about.
+//It knows nothing else.
+
+//Separate than that, we have something that executes parameter points. It goes through a list of parameter points to execute, and does them.
+//The list is a LOCAL list (not the full list) of only "this turns" param points.
+//So, we build a mini param point generator, and pass that as a chunk, get the results all back.
+//Inside this mini list, we will be distributing to workers.
+
+//I guess this is the point at which we write out to HDF5 or at least write out regularly, because e.g. if it is a SWEEP then there will be no
+//"generations", and thus no stopping points (because it might be inefficient).
+
+//This works best. Then, we might have a global list of all the param points after.
+
+
+
+
+
+
+
+
+struct master
+{
+  //REV: this has a specific algorithm in it for generating the param points?
+  parampoint_generator pg;
+  
+  
+  bool spin=true;
+  void run()
+  {
+    while( spin )
+      {
+	//1 Attempt to generate new param points.
+	
+	//2 Spin until they're all done? Need a place to cut/push HDF5.
+	
+	//Best to do them as they are done? In "generations"? Nah...
+	//Just one PP at a time.
+
+	//This will be determined by the parampoint generation algorithm. It may generate them in a chunk though. E.g. as generations.
+	
+      }
+  }
+  
+  
+}; //end struct master
+
+
+
+
+
+
+
+
+
+
+
+  //Get parampoint of next unfinished guy, and set to being marked.
+  bool is_work( )
+  {
+    //check if any parampoints that have been generated have any work to be done (that is do-able, i.e. all required psets have been finished)
+  }
+
+  //Next one will guarantee to give me it when returned. At the same time
+  //we mark as farmed the guy here.
+  //Main problem is when it comes "back", we need to mark it done. I.e. it has to collaborate with the scheduler to know which "worker" it went to
+  //and to triger checking of success and re-copying back after it is done?
+  //So we need to do the spinning/checking as some easy wrapper functions.
+  //This stuff really does not belong in here...
+  parampoint get_work( )
+  {
+    for(size_t a=first_active; a<parampoints.size(); ++a)
+      {
+	if( parampoints[a].to_farm() )
+	  {
+	  }
+      }
+    
+    //gets next pitem, note we also get a REFERENCE to parampoint
+  }
 
     //REV: we now have the actual parampoint, we need to/want to execute it now.
     //Also, parampoint_vars has the hierarchical varlist pushed back.
