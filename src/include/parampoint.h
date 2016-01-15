@@ -794,7 +794,7 @@ struct parampoint_generator
   //I.e. control passes to that to farm out that "set" of paramthings at a time? May be a generation, may not be?
   //We pass a set of varlists to execute, and it does everything for me.
   
-  void generate( const varlist& vl )
+  size_t generate( const varlist& vl )
   {
     //Takes the varlist...
     hierarchical_varlist hv( vl );
@@ -805,7 +805,8 @@ struct parampoint_generator
     parampoint retp = exec_rep.build_parampoint( hv, dirname );
     
     parampoints.push_back ( retp );
-    
+
+    return (parampoints.size() - 1);
   }
 
 
@@ -916,8 +917,72 @@ struct farmer
   //Make user bundle all his own functions (in the same language?) or possibly glue it all together, but with main as C++?. Or give it as a lib...heh.).
   //If that's the case, no need to specify all the files and shit though ;). But if each one is running as "system" that's fine. But if user has spawned
   //so many guys, hm. We can't run multiple kernels on same guy.
+
+  //For example, if we exit by accident partway through a whole chunk of "SWEEP" guys, we'll still have the guys that were done. I.e. we want to be able to re-start
+  //part way through? But, that is difficult if they are all done at once. Need a way to save "processing" state if its a really big guy. Whatever, figure it out later.
   void comp_pp_list( parampoint_generator& pg, std::vector<varlist>& newlist )
   {
+    //Only compute newlist. Make a "completed" thing for each one...
+    std::deque< completion_struct > progress;
+    for( size_t n=0; n<newlist.size(); ++n )
+      {
+	//make the parampoint.
+
+	size_t idx = pg.generate( newlist[n] );
+
+	//This constructs a thing matching the specific parampoint shape. 
+	completion_struct cs( pg, idx );
+
+	progress.push_back( cs );
+      }
+
+    //I will delete them as they are completed from deque?
+    //Or I need them for re-writing info back? To pg.
+    //I need to have some list of "workers" or something to look through to
+    //check everything.
+
+    while( false == checkalldone( progress ) )
+      {
+	//block, waiting for a worker to tell that it is ready (or to finish?)
+
+	
+	
+	
+	//wait for a worker to be open (or to get it back)
+	//This will both "handle" a successful return data (if that is what happened)
+	//and/or it will also.
+	//This will impl with MPI, or maybe HADOOP etc.
+	//Why do we need to know what worker it is? We know at least ONE is open.
+	//Does only one worker (?). We could do this on multiple threads if
+	//we really wanted to be cool ;)
+	//This copies all stuff back to this side, but to where? To PG? I guess.
+	//Copying back just the varlist, or all the filesystem that was possibly
+	//created at /TMP???
+	//It will update progress. Will it also do something fancy, writing back
+	//to correct location in filesystem? It must ;) We must have our "local"
+	//guy here, OK. So, it writes to PG locations the corresponding stuff
+	//from the other side fS? How does it know? We had to have built
+	//a correspondence on this side/that side somewhere. In the PG?
+	size_t openw = wait_for_worker( progress, pg );
+	
+	//wait for work to be available (or, check if it is?)
+	//If not, loop back to top.
+
+	
+	
+	//Checks if work is available
+	bool iswork = check_work_avail( progress );
+
+	if( iswork )
+	  {
+	    farmwork( progress, openw );
+	  }
+	//Else, loop back to top, to check and wait for a worker to be open...
+
+      } //end while we're not all done
+    
+    
+    
     //Passes as memory, so much easier... I.e. it modifies it in line...
     //OK, and I do everything. This is all on the master rank.
     //Keeping stuff here allows me to not mess around with internals of parampoint_generator other than to get the guys from it?
@@ -938,6 +1003,7 @@ struct farmer
     //But we "know" what format of parampoint etc is, i.e. list of psets, and each pset is a list of pitems. OK. 
     struct parampoint_rep
     {
+      size_t myidx;
       size_t current_pset=0;
       bool done=false;
       std::vector< pset_rep > psets;
