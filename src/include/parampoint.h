@@ -102,18 +102,19 @@ std::string CONCATENATE_STR_ARRAY(const std::vector<std::string>& arr, const std
 struct pitem
 {
   std::string mycmd; //the main thing, this is the cmd I am running via system()?
-
+  
   std::vector< std::string > required_files;
   std::vector< std::string > success_files;
 
   std::vector< std::string > output_files;
 
   std::string input_file;
-
+  
   std::string mydir;
-
+  
   size_t my_hierarchical_idx; //index in my parampoint hierarchical varlist array of my leaf node.
 
+  //In new version, this may call from memory to speed things up.
   bool execute_cmd( )
   {
     std::vector< std::string > notready = check_ready();
@@ -129,14 +130,14 @@ struct pitem
       }
     
     system( mycmd );
-    std::vector<std::string> notdone = check_done();
+    std::vector<std::string> notdone = checkdone();
 
     size_t tries=0;
     size_t NTRIES=10;
     while( notdone.size() > 0 && tries < NTRIES)
       {
 	system( mycmd ); //Delete/reset this pitem?
-	notdone = check_done();
+	notdone = checkdone();
       }
 
     if(notdone.size() > 0)
@@ -304,25 +305,6 @@ struct pitem
     //ending. Don't check file contents though.
   }
 
-  bool isfarmed=false;
-
-  bool checkfarmed()
-  {
-    return isfarmed;
-  }
-
-  bool markfarmed()
-  {
-    if( isfarmed )
-      {
-	fprintf(stderr, "REV: markefarmed, but it is already farmed, wtf?\n");
-	exit(1);
-      }
-    isfarmed=true;
-  }
-		
- 
-  
   varlist get_output()
   {
     varlist retvarlist;
@@ -332,7 +314,6 @@ struct pitem
       {
 	retvarlist.inputfromfile( output_files[f] );
       }
-    
     return retvarlist;
   }
 
@@ -352,10 +333,7 @@ struct pset
   std::vector< pitem > pitems;
   size_t my_hierarchical_idx; //index in my parampoint hierarchical varlist array of my leaf (or middle) node.
 
-  bool done=false;
-
-
-  //Checkdone is different than "farmed out", ugh.
+  
   pitem farm_next_pitem()
   {
     for(size_t p=0; p<pitems.size(); ++p)
@@ -894,6 +872,7 @@ struct search_funct
   //So any derived classes might override this.
   //It generates (possibly from previous or from nothing),
   //executes, and then generates based on results? Generates 2x? Nah.
+
   
 };
 
@@ -905,8 +884,10 @@ struct master
   //Easiet way is to carry around a "full" one, and only push/pass a few to it as we go. I guess.
   //Or, specify ones to execute?
 
+  farmer thefarmer; //keeps track of the system, i.e. where GPUs, etc. are located, IP to connect to build MPI thing, etc.
+  
   parampoint_generator maingen;
-
+  
   master( scriptfname, bdir, )
   {
     
@@ -943,7 +924,77 @@ struct farmer
     
     //Do all "in processing", "output to archive", "done" checking, and "send to workers" here.
   }
+
+
+  //local struct that keeps track of which:
+  //PARAMPOINT, PSET, and PITEM have been farmed out, to where/which worker (will depend on implementation?), which are done, etc.
+
+  //keep an index for each of the PARAMPOINTS in pg, that tells stuff for each.
+  struct completion_struct
+  {
+    std::deque<> active_pps; //contains um, list of pps, as well as each "index" of each, i.e. where it is in the pg struct?
+    //Fuck, so much better to just include this in the parampoint_gen thing. But then we don't know what format workers are etc. So better to
+    //separate it out.
+    //But we "know" what format of parampoint etc is, i.e. list of psets, and each pset is a list of pitems. OK. 
+    struct parampoint_rep
+    {
+      size_t current_pset=0;
+      bool done=false;
+      std::vector< pset_rep > psets;
+    };
+    
+    struct pset_rep
+    {
+      size_t current_pitem=0;
+      bool done=false;
+      std::vector< pitem_rep > pitems;
+
+      bool checkdone()
+      {
+	if(done)
+	  {
+	    return done;
+	  }
+	else
+	  {
+	    done=true;
+	    for(size_t p=0; p<pitems.size(); ++p )
+	      {
+		if( pitems[p].checkdone() == false )
+		  {
+		    return false;
+		  }
+	      }
+	  }
+	return done;
+      }
+    };
+    
+    struct pitem_rep
+    {
+      bool farmed=false;
+      bool done=false;
+      size_t farmed_worker=0;
+    };
+    
+  };
+  
+  
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 //REV: HOW TO DO THIS.
@@ -963,9 +1014,6 @@ struct farmer
 //"generations", and thus no stopping points (because it might be inefficient).
 
 //This works best. Then, we might have a global list of all the param points after.
-
-
-
 
 
 
@@ -1004,32 +1052,6 @@ struct master
 
 
 
-
-
-
-  //Get parampoint of next unfinished guy, and set to being marked.
-  bool is_work( )
-  {
-    //check if any parampoints that have been generated have any work to be done (that is do-able, i.e. all required psets have been finished)
-  }
-
-  //Next one will guarantee to give me it when returned. At the same time
-  //we mark as farmed the guy here.
-  //Main problem is when it comes "back", we need to mark it done. I.e. it has to collaborate with the scheduler to know which "worker" it went to
-  //and to triger checking of success and re-copying back after it is done?
-  //So we need to do the spinning/checking as some easy wrapper functions.
-  //This stuff really does not belong in here...
-  parampoint get_work( )
-  {
-    for(size_t a=first_active; a<parampoints.size(); ++a)
-      {
-	if( parampoints[a].to_farm() )
-	  {
-	  }
-      }
-    
-    //gets next pitem, note we also get a REFERENCE to parampoint
-  }
 
     //REV: we now have the actual parampoint, we need to/want to execute it now.
     //Also, parampoint_vars has the hierarchical varlist pushed back.
@@ -1189,63 +1211,3 @@ struct master
 
 //At any rate, need to figure out how to communicate required files or whatever to target, as correct variable names (filenames)
 
-
-struct master
-{
-  bool spin = true;
-  void run()
-  {
-    while( spin )
-      {
-      }
-  }
-  
-  parampoint_generator pg;
-
-  master( const std::string& bd )
-  {
-    pg = parampoint_generator( bdir );
-  }
-
-  //Add named vars or something?
-  gen_parampt( const varlist& vl )
-  {
-    pg.generate( vl );
-
-    //I now know all stuff I need to know, file locs etc.
-    //Now I will go through for each one of those in pg, and
-    //distribute them to workers etc.
-    //go through for each parampoint thing.
-    //Note need to pass it to ???
-    //Check readiness here? Then copy files and do it again on other side.
-
-    //This is the farm funct? At any rate this thing needs a way to
-    //schedule everything. Check "done" ness.
-  }
-};
-
-struct worker
-{
-  bool spin = true;
-  void run()
-  {
-    //Runs waiting.
-    while( spin )
-      {
-	
-      }
-  }
-  
-  //Receives as arg the parampoint, but with all filenames replaced with local guys.
-  //Do I do it on this side? Or on sending side?
-  //Sending side must send and do lock-step. Assume some max buffer size.
-  void get_param_point_from_root()
-  {
-    
-  }
-  
-};
-
-void send_file( const std::string& filename )
-{
-}
