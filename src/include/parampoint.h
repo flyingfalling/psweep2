@@ -941,11 +941,60 @@ struct farmer
     //I need to have some list of "workers" or something to look through to
     //check everything.
 
+
+    //Have a list of workers, and some way to initialize them all? They are all initialized themselves somehow? I need to somehow get info about them?
+    //Allow other guys to register online with me? Or have it all start at beginning with MPI?
+    //Keep track of WHICH worker I sent WHICH info to?
+    //Yea, otherwise I need to look for which completion struct has this worker as the farmed worker...
+    //Just get a pointer to it easier..ugh.
+
+    std::vector<parampoint_coord> currentworking;
+    
+    size_t wait_for_worker( std::deque< completion_struct >& prog )
+    {
+      //Note iprobe is NON BLOCKING, probe is blocking?
+      //use MPI...easier?
+      //http://mpitutorial.com/tutorials/dynamic-receiving-with-mpi-probe-and-mpi-status/
+      MPI_Status s;
+      MPI_probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+      int mesgsize;
+      int sourcerank = s.MPI_SOURCE;
+      //This is assuming its int?
+      MPI_Get_count(&s, MPI_INT, &mesgsize);
+      int number_buf[mesgsize];
+
+      MPI_Recv(number_buf, mesgsize, MPI_INT, 0, 0,
+	       MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+
+      //OK, got it, now I need to get more JUST FROM THAT TARGET, until it is done. E.g. finish up stuff. I get some "chunk" of results, which is what, a structure?
+      //Need to use serialization after all ugh...
+      
+      //Literally spins waiting for a signal from any of the workers.
+      //Two conditions
+      //1) it has finished some work I gave it and now everything must be copied back and checked.
+      //2) it didn't have any work, so just farm out (i.e. first spin through).
+    }
+
+    bool checkalldone( std::deque< completion_struct > & prog )
+    {
+      
+    }
+
+    bool check_work_avail( std::deque< completion_struct >& prog  )
+    {
+    }
+
+    void farmwork( std::deque< completion_struct> & prog, const size_t& workernum )
+    {
+      
+    }
+    
+    //this will contain somem implementation of a communicator method? 
+    
     while( false == checkalldone( progress ) )
       {
 	//block, waiting for a worker to tell that it is ready (or to finish?)
-
-	
 	
 	
 	//wait for a worker to be open (or to get it back)
@@ -994,6 +1043,20 @@ struct farmer
   //local struct that keeps track of which:
   //PARAMPOINT, PSET, and PITEM have been farmed out, to where/which worker (will depend on implementation?), which are done, etc.
 
+  struct parampoint_coord
+  {
+    bool working;
+    size_t parampointn;
+    size_t psetn;
+    size_t pitemn;
+
+    parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi )
+    : parampointn(pp), psetn(ps), pitemn(pi), working(true)
+    {
+      //REV: nothing to do.
+    }
+  };
+  
   //keep an index for each of the PARAMPOINTS in pg, that tells stuff for each.
   struct completion_struct
   {
