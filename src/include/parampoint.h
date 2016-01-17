@@ -935,9 +935,40 @@ struct farmer
     std::deque<> active_pps; //contains um, list of pps, as well as each "index" of each, i.e. where it is in the pg struct?
     //Fuck, so much better to just include this in the parampoint_gen thing. But then we don't know what format workers are etc. So better to
     //separate it out.
-    //But we "know" what format of parampoint etc is, i.e. list of psets, and each pset is a list of pitems. OK. 
+    //But we "know" what format of parampoint etc is, i.e. list of psets, and each pset is a list of pitems. OK.
+
+    struct pprep
+    {
+      size_t pset_idx;
+      size_t pitem_idx;
+      //a pointer or marker?
+    };
+    
     struct parampoint_rep
     {
+      bool checkdone()
+      {
+	if(done)
+	  {
+	    return done;
+	  }
+	else
+	  {
+	    done=true;
+	    for(size_t p=0; p<psets.size(); ++p)
+	      {
+		if( psets[p].checkdone() == false )
+		  {
+		    done=false;
+		    return done;
+		  }
+	      }
+	  }
+	return done;
+      }
+
+      
+      
       size_t current_pset=0;
       bool done=false;
       std::vector< pset_rep > psets;
@@ -962,7 +993,8 @@ struct farmer
 	      {
 		if( pitems[p].checkdone() == false )
 		  {
-		    return false;
+		    done=false;
+		    return done;
 		  }
 	      }
 	  }
@@ -972,6 +1004,11 @@ struct farmer
     
     struct pitem_rep
     {
+      bool checkdone()
+      {
+	return done; //actually check it?
+      }
+      
       bool farmed=false;
       bool done=false;
       size_t farmed_worker=0;
