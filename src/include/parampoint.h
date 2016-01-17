@@ -960,12 +960,32 @@ struct farmer
       int mesgsize;
       int sourcerank = s.MPI_SOURCE;
       //This is assuming its int?
-      MPI_Get_count(&s, MPI_INT, &mesgsize);
-      int number_buf[mesgsize];
-
-      MPI_Recv(number_buf, mesgsize, MPI_INT, 0, 0,
+      MPI_Get_count(&s, MPI_CHAR, &mesgsize);
+      char mesg_buf[mesgsize];
+      
+      MPI_Recv(mesg_buf, mesgsize, MPI_INT, 0, 0,
 	       MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
+      if( strcmp(mesg_buf, "DONE") == 0 )
+	{
+	  //This is from a finished guy. Just set it to waiting and loop back.
+	  //We need to "read in" and handle all the stuff sent by the worker.
+	  //This includes copying over the filesystem,
+	  //This may include LOTS of data
+	  transfer_data td = get_data_from_worker( sourcerank );
+	  //Handle it, i.e. write to filesystem etc.
+	  //This writes all "files" to "name" and "file" in memory. We need to know corresponding place to write here as well though.
+	  //And, we need to appropriately modify parampoint that finished, etc., with the results?
+	  
+	}
+      else if( strcmp(mesg_buf, "WAITING") == 0 )
+	{
+	  //this is first time, no need to get result from target. 
+	}
+      else
+	{
+	  fprintf(stderr, "Huh, returned mesg from rank [%d] containing [%s] is not expected content\n", sourcerank, mesg_buf );
+	  exit(1);
+	}
 
       //OK, got it, now I need to get more JUST FROM THAT TARGET, until it is done. E.g. finish up stuff. I get some "chunk" of results, which is what, a structure?
       //Need to use serialization after all ugh...
