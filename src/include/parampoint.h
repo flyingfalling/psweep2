@@ -794,7 +794,7 @@ struct parampoint_generator
   //I.e. control passes to that to farm out that "set" of paramthings at a time? May be a generation, may not be?
   //We pass a set of varlists to execute, and it does everything for me.
   
-  void generate( const varlist& vl )
+  size_t generate( const varlist& vl )
   {
     //Takes the varlist...
     hierarchical_varlist hv( vl );
@@ -805,7 +805,8 @@ struct parampoint_generator
     parampoint retp = exec_rep.build_parampoint( hv, dirname );
     
     parampoints.push_back ( retp );
-    
+
+    return (parampoints.size() - 1);
   }
 
 
@@ -916,8 +917,121 @@ struct farmer
   //Make user bundle all his own functions (in the same language?) or possibly glue it all together, but with main as C++?. Or give it as a lib...heh.).
   //If that's the case, no need to specify all the files and shit though ;). But if each one is running as "system" that's fine. But if user has spawned
   //so many guys, hm. We can't run multiple kernels on same guy.
+
+  //For example, if we exit by accident partway through a whole chunk of "SWEEP" guys, we'll still have the guys that were done. I.e. we want to be able to re-start
+  //part way through? But, that is difficult if they are all done at once. Need a way to save "processing" state if its a really big guy. Whatever, figure it out later.
   void comp_pp_list( parampoint_generator& pg, std::vector<varlist>& newlist )
   {
+    //Only compute newlist. Make a "completed" thing for each one...
+    std::deque< completion_struct > progress;
+    for( size_t n=0; n<newlist.size(); ++n )
+      {
+	//make the parampoint.
+
+	size_t idx = pg.generate( newlist[n] );
+
+	//This constructs a thing matching the specific parampoint shape. 
+	completion_struct cs( pg, idx );
+
+	progress.push_back( cs );
+      }
+
+    //I will delete them as they are completed from deque?
+    //Or I need them for re-writing info back? To pg.
+    //I need to have some list of "workers" or something to look through to
+    //check everything.
+
+
+    //Have a list of workers, and some way to initialize them all? They are all initialized themselves somehow? I need to somehow get info about them?
+    //Allow other guys to register online with me? Or have it all start at beginning with MPI?
+    //Keep track of WHICH worker I sent WHICH info to?
+    //Yea, otherwise I need to look for which completion struct has this worker as the farmed worker...
+    //Just get a pointer to it easier..ugh.
+
+    std::vector<parampoint_coord> currentworking;
+    
+    size_t wait_for_worker( std::deque< completion_struct >& prog )
+    {
+      //Note iprobe is NON BLOCKING, probe is blocking?
+      //use MPI...easier?
+      //http://mpitutorial.com/tutorials/dynamic-receiving-with-mpi-probe-and-mpi-status/
+      MPI_Status s;
+      MPI_probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+      int mesgsize;
+      int sourcerank = s.MPI_SOURCE;
+      //This is assuming its int?
+      MPI_Get_count(&s, MPI_INT, &mesgsize);
+      int number_buf[mesgsize];
+
+      MPI_Recv(number_buf, mesgsize, MPI_INT, 0, 0,
+	       MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+
+      //OK, got it, now I need to get more JUST FROM THAT TARGET, until it is done. E.g. finish up stuff. I get some "chunk" of results, which is what, a structure?
+      //Need to use serialization after all ugh...
+      
+      //Literally spins waiting for a signal from any of the workers.
+      //Two conditions
+      //1) it has finished some work I gave it and now everything must be copied back and checked.
+      //2) it didn't have any work, so just farm out (i.e. first spin through).
+    }
+
+    bool checkalldone( std::deque< completion_struct > & prog )
+    {
+      
+    }
+
+    bool check_work_avail( std::deque< completion_struct >& prog  )
+    {
+    }
+
+    void farmwork( std::deque< completion_struct> & prog, const size_t& workernum )
+    {
+      
+    }
+    
+    //this will contain somem implementation of a communicator method? 
+    
+    while( false == checkalldone( progress ) )
+      {
+	//block, waiting for a worker to tell that it is ready (or to finish?)
+	
+	
+	//wait for a worker to be open (or to get it back)
+	//This will both "handle" a successful return data (if that is what happened)
+	//and/or it will also.
+	//This will impl with MPI, or maybe HADOOP etc.
+	//Why do we need to know what worker it is? We know at least ONE is open.
+	//Does only one worker (?). We could do this on multiple threads if
+	//we really wanted to be cool ;)
+	//This copies all stuff back to this side, but to where? To PG? I guess.
+	//Copying back just the varlist, or all the filesystem that was possibly
+	//created at /TMP???
+	//It will update progress. Will it also do something fancy, writing back
+	//to correct location in filesystem? It must ;) We must have our "local"
+	//guy here, OK. So, it writes to PG locations the corresponding stuff
+	//from the other side fS? How does it know? We had to have built
+	//a correspondence on this side/that side somewhere. In the PG?
+	size_t openw = wait_for_worker( progress, pg );
+	
+	//wait for work to be available (or, check if it is?)
+	//If not, loop back to top.
+
+	
+	
+	//Checks if work is available
+	bool iswork = check_work_avail( progress );
+
+	if( iswork )
+	  {
+	    farmwork( progress, openw );
+	  }
+	//Else, loop back to top, to check and wait for a worker to be open...
+
+      } //end while we're not all done
+    
+    
+    
     //Passes as memory, so much easier... I.e. it modifies it in line...
     //OK, and I do everything. This is all on the master rank.
     //Keeping stuff here allows me to not mess around with internals of parampoint_generator other than to get the guys from it?
@@ -929,6 +1043,20 @@ struct farmer
   //local struct that keeps track of which:
   //PARAMPOINT, PSET, and PITEM have been farmed out, to where/which worker (will depend on implementation?), which are done, etc.
 
+  struct parampoint_coord
+  {
+    bool working;
+    size_t parampointn;
+    size_t psetn;
+    size_t pitemn;
+
+    parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi )
+    : parampointn(pp), psetn(ps), pitemn(pi), working(true)
+    {
+      //REV: nothing to do.
+    }
+  };
+  
   //keep an index for each of the PARAMPOINTS in pg, that tells stuff for each.
   struct completion_struct
   {
@@ -946,6 +1074,7 @@ struct farmer
     
     struct parampoint_rep
     {
+
       bool checkdone()
       {
 	if(done)
@@ -969,6 +1098,7 @@ struct farmer
 
       
       
+      size_t myidx;
       size_t current_pset=0;
       bool done=false;
       std::vector< pset_rep > psets;
