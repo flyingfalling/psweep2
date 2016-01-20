@@ -165,7 +165,7 @@ struct pitem
     //Rebuild CMD array list, but replace all instances of ORIG with NEW.
     //Note if it was a DATA file, it will already exist with same name in data folder.
     
-    
+     
   }
   
   pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist& hv)
@@ -178,7 +178,7 @@ struct pitem
 
     //Set up the required variables. Automatically name the things here (like choose dir based on sub of parent), much easier ;)
 
-    std::string parentdir = hv.vl[ rootchildren[npsets-1] ].getvar( "MY_DIR" ).get_s();
+    std::string parentdir = hv.vl[ rootchildren[npsets-1] ].getvar( "__MY_DIR" ).get_s();
     mydir = parentdir + "/" + std::to_string( idx ); //REV: whatever, to_string shouldn't cause a problem here, other than not padding zeroes.
     
     

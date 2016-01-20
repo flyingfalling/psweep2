@@ -1,15 +1,59 @@
 TODO:
 
-1) Force user to specify "data" files at beginning. They will be copied to workers.
-2) Go through and swap data file names in the CMD first. Keep a marker noting which have swapped so we don't accidentally re-do same by accident.
-3) Go through and swap out actual swaps.
-4) (In future -- figure out how to make canonical filename forms)
+## DO LATER 1) Force user to specify "data" files at beginning. They will be copied to workers. Do this later, just do everything sending now. Easier.
+
+## DO LATER 2) Go through and swap data file names in the CMD first. Keep a marker noting which have swapped so we don't accidentally re-do same by accident.
+
+3) Go through and swap out actual swaps
+
+## 4) (In future -- figure out how to make canonical filename forms)
+
 5) Make it so that I send files to the target worker along with "relocated" filenames. Only send those which are specified as "required" but not data files
 (REV: fuck they might overlap)
-6) Where do I print out parampoint etc.? It's an automatic required guy. Meh it's sent with the varset anyway. Just print it out on other side?
+
+## (REV ITS INPUT FILE )6) Where do I print out parampoint etc.? It's an automatic required guy. Meh it's sent with the varset anyway. Just print it out on other side?
+
 7) OK, so I literally send the whole PARAMPOINT to the target. All REQUIRED files are also sent as it is expecting to receive them. It then prints
 and renames them appropriately, one by one, remembering how it renamed them. This is the NEW/OLD list.
 This list is then used to modify the PARAMPOINT locally on the client side.
+
+How to deal with "success" files? They will be specified in MASTER space, need it in WORKER space. Make it so that they are always referenced in some
+kind of reference to local TMP location? Assume they are ALWAYS produced in PITEM directory? And re-build the PARAMPOINT there I guess? OK. I may have
+even passed it the names of the success files (ugh), i.e. told CMD where to write the success files... in which case...? That's shitty, I need to
+rebuild the whole parampoint after all with the different guy. And the variables will be set properly with the new basis, but only if they refer to
+SUCCESS or REQUIRED files? No, only if they build on the MYDIR etc.
+
+Ugh, 2 types, 1 where I specify what the SUCCESS file is (i.e. tell user program where to print it), another where user program outputs to some FNAME,
+e.g. I gave it dir, and I have to tell MY guy what that thing's name will be. Need to handle BOTH cases?! Ugly as shit. I should swap them both. I.e.
+rebuild it with different basis, but only use um, new user base. Make sure (force?) all success files to be in PITEM dir? Input files may not be though.
+Fine, I rebuild everything, and only regenerate SUCCESS file names. Then, I replace old ones with new ones in CMD (if they occur).
+That seems only way to do it. Again, am I forcing user to "build" his SUCCESS filenames or something from the base dir of this PITEM thing?
+But, some SUCCESS filenames would not have been regenerated. I can detect those, and appropriately replace those. Even better option  is to have
+everything set as a "relative" filename to something, i.e. they are not strings, but strings inside something.
+
+In which case adding a "success" file will specify INSIDE MYDIR FILE. OK. (usually)
+Similarly, required files will do that too? Nah, but then what if it is in previous guy? Or in data guy? OK.
+
+So, do success files. And then, I need to somehow copy it back appropriately...? I.e. to correct locations? Well I just literally copy them to the
+corresponding point (filename) in that PITEM dir in MASTER. I.e. I just transfer between the locations in MASTER and SLAVE. Not full file shit.
+For required though, I do copy and rename to solve problems with renaming/clashes.
+
+In some
+crazy case, it is just some arbitrary filename. Nah, don't allow that to happen? We just change base dir? Nah. Fuck it, we need to in some sense always
+have the filename in terms of some BASE, i.e. never allow it to be a global thing. But user might want to do that? If he's a little cocksucker. OK.
+So, force all SUCCESS files to be in terms of some BASE of this parampoint (or of this SWEEP). And always print out a correspondence file for hell of it.
+Always interpret success files in that sense. I.e. build the checks at SUCCESS check time? No, they must also be built for possibly passing into CMD!!!
+So, yes we must rebuild the whole thing... If the rebuild doesn't appropriately rebuild the SUCCESS files, we have a problem (?).
+
+
+
+
+
+
+
+## 8) Final question is how to deal with namespace stuff, i.e. global variables? Whatever, just pass CMD to SYSTEM().
+
+## 9) need to write to HDF5. At any way start it running using old script, while writing new guy, which will pass it as memory. Also write GPU stuff.
 
 
 REV: Ideas for final update of PSWEEP2, which allows hybrid calls to SYSTEM() as well as calls to existing (C) functions provided by user program.
