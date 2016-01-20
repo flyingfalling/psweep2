@@ -22,6 +22,8 @@
 
 #include <cerrno>
 
+#include <sys/stat.h>
+
 
 //check file existence?
 #include <fcntl.h> //for the open stuff. Another option is to use stat

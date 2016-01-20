@@ -55,3 +55,46 @@
 //After completion I have "success" files (output files?) in the TMP dir. Mostly (probably) in the current PITEM guy.
 
 //These need to be copied appropriately back to MASTER
+
+
+
+
+//So, I literally send the CONSTRUCTION method? And re-construct the required guys with a different file base I guess...
+
+
+
+//So, some guys will have references there, but most guys won't. We only make the dir. User might specify success files manually
+//in global filesystems etc. Best case is to simply ignore all of that, rename them etc., and put them in a normal way. Problem is that
+//all references to them must also be changed. I.e. user added file /BLAH/BLEEP/BLOO to REQUIRED_FILES, but he also has in CMD,
+//something like --INPUT /BLAH/BLEEP/BLOOP. Since he's not using SUCCESS_FILES array to refer to it, it won't be picked up, and it's
+//just a string anyways. So, best to copy to same place in FS.
+
+//Problem is same place might not exist here. Problem is replacing references to the files in other places than REQUIRED_FILES etc..
+//E.g. if they are coded as tokens that is a massive problem...
+//I could literally string search for it, or for user to specify that it is a FILE string via some wrapper function (that will mark it some how?)?
+
+//That could end up being nasty, but seems like the best way to do things...
+//If it's memory, of course we'll just send it straight I guess...ugh. Worry about that later...
+//Make all "input" files references? Nice...i.e. whenever we reference a file, we have to tell that is an expected file...
+//but what if we build it/construct it? Add a vartype that is FILE?
+//I.e. we CAN add a file to SUCCESS files inside it. I like that. I.e. we have to tell it when we are constructing a file. Great ;)
+//I.e. instead of ADD_SUCCESS_FILE, we always just refer to it? We can use it and it returns the string name (as a variable) but it also pushes it back.
+//Note success files might then have duplicates if it is done many times?
+
+//How do we remove duplicates? Allow user to "name" the files as variables? File variables?
+
+
+//This ensures that if we hit all the guys, we can move them all appropriately. But it also means that we need to rename all guys from that
+//file location to the new file location when we re-build the parameter point. Pain in the butt... I.e. we just replace the user's stuff inside that
+//function with a literal? That is a problem... because we have to totally resolve the string before we replace it. Not tenable...let's forget this.
+
+//literally replace all "file like" references? I.e. if we find "success_file" string anywhere, we replace it. Problem is if e.g. user program has
+//an option that happens to be named same as a required file haha. Like --recfile ./recfile (worst case). Forget that?? Only do it if separated by
+//a sep? Seems excessive. Ah, search inside individual variables as we go, seems the most realistic? But what if a var is the subset? So, wait until
+//each STMNT is finished, then replace inside it I guess? Yea, seems best way to do it. As each statement is re-realized. We give it correspondence
+//list of original file and target file. But as we reconstruct the PITEM, we have a major problem as it will try to create the directory? I.e. we
+//have to have it build the original guy in real time? Giving it a false basedir. That seems not-good haha.
+
+//Oh shit, I go up to the pset above me and get the dir...? This is a major problem. So, I can't just re-produce. I need to literally just swap out
+//individual references in the completed pset without re-executing. In other words, in the final CMD? Remember, CMD is a list of the guys, so I just need
+//to check individual variables?

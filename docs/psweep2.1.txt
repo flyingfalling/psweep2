@@ -1,0 +1,139 @@
+TODO:
+
+1) Force user to specify "data" files at beginning. They will be copied to workers.
+2) Go through and swap data file names in the CMD first. Keep a marker noting which have swapped so we don't accidentally re-do same by accident.
+3) Go through and swap out actual swaps.
+4) (In future -- figure out how to make canonical filename forms)
+5) Make it so that I send files to the target worker along with "relocated" filenames. Only send those which are specified as "required" but not data files
+(REV: fuck they might overlap)
+6) Where do I print out parampoint etc.? It's an automatic required guy. Meh it's sent with the varset anyway. Just print it out on other side?
+7) OK, so I literally send the whole PARAMPOINT to the target. All REQUIRED files are also sent as it is expecting to receive them. It then prints
+and renames them appropriately, one by one, remembering how it renamed them. This is the NEW/OLD list.
+This list is then used to modify the PARAMPOINT locally on the client side.
+
+
+REV: Ideas for final update of PSWEEP2, which allows hybrid calls to SYSTEM() as well as calls to existing (C) functions provided by user program.
+
+
+For example, user writes a program MYPROG.cpp, which includes the PSWEEP headers. PSWEEP simply provides an interface so that user can run his functions.
+Unfortunately, this requires user to also help at CMD time, by parsing/passing PSWEEP specific variables/settings. Which messes some things up. Oh well.
+
+At any rate, idea is that files can be loaded into variables as "binary" format, and saved as variables named by strings. So, we can specify to pass
+these variables' content to the user specified functions.
+
+The only difference now is that CMD may not be a CMD, but rather may specify a function name (string?) that the user has to register? Nah, that is
+unrealistic. User function may be of arbitrary signature, but assume we force it to take void* or list of void* containing the input data? Pain
+in the ass, but so much faster... OK. Solves some problems with GPU as well?
+
+We still need to tell the "worker" what to call. I.e. we pass to it the command. And we need to also pass other important variables such as,
+which GPU to use etc.? Distribute those first, i.e. they are set at initialization... Fine.
+
+Still doesn't solve the problem of how to specify actual function to call via the text script that user passes.
+Easiest way is to force user to make specifically named "structs" that contain the function calls. And add them to some "caller" struct. And
+then the user will just say "call caller thing #2" or "call caller thing #1", and I know what to do with it then. I.e. since user is writing some
+stuff in the C side, I let them do that. Fine. I.e. instead of setting CMD, I set nothing.
+
+I can force other "input", other than input files, but require "input memory" too? I really don't want to go through NFS if possible...
+
+OK, that works out. Man unfortunately matlab etc. will be PAINFUL. All files etc.? With new PASCAL GPU, we can do multi-GPU etc. easier?
+
+
+Whatever, so I need a regime that lets me do this stuff easier. Need a way to read in arbitrary info from files to variables. I can do that. Then pass
+those variables as memory. I like that idea? Heck, I can do that, but can't pass with SYSTEM(). Whatever.
+
+Make sure I leave a way to do everything either way.
+
+How to pass params? Well, it doesn't know anything about params. Just variables? OK. At any rate we need ways to set model parameters as well? For
+different models. So we need ways to pass NAMED (i.e. global) variables conditional on being of correct model.
+
+
+At any rate, right now we need to handle /TMP stuff properly. Best way is to go through CMD and replace. But, that is not a solution. We really need
+to do it for everything? CMD or other guy e.g. if it is some other command for calling e.g. C++ program directly, but requires files (that is only
+case where it would matter, if passing memory we would do it differently I assume).
+
+
+
+
+
+
+    //I.e. ADD_REQ_DAT_FILE( fname ), i.e. it will find that filename in data folder in current guy. But that doesn't exist...
+
+    //But that will not be re-run at CMD time on worker, i.e. without reconstructing it. That's a problem. So, I still need to trade out
+    //all data file names with new corresponding location...pain in the butt. I.e. I don't want to copy those over they should already be there.
+    //So I need to know that somehow? I.e. have a separate "required data files" and "required non-data files". Again, impossible/pain in the butt.
+    //Furthermore, success checks need to all be changed.
+
+    //Still I don't want to send the stuff across again if I don't have to (for DAT files)
+    //In which case, I have to have a specification if which ones are DAT files? So for those one's I have a separate "required" list? but if it's a
+    //separate required list, user needs to specify separately which are "data" etc. How about, add separate DATA files, make new guy, and make sure
+    //those are not sent across the network. Just search for that filename in the DATA file of the new guy. I.e. actually modify the data name. Assume
+    //he doesn't have weird shit like ../blah/../blah/.. etc. I.e. going back and forth in dirs. up/down in dirs
+
+    //REV: whatever, just do it. Specifically:
+    //at runtime, have a "dat" file list (of required dat files that I check anyway), those are specified at beginning. If user messes up and
+    //sets dat file as required file, whatever, it will be copied anyway and wasteful.
+    //Have one thing at beginning to "send" (broadcast) dat files to all guys simultaneously and save to specific folder. Great. Then user
+    //specifies required dat files, but "correspondences" that I set are included in the ORIG and NEW (if it is in data folder (?), I set it to
+    //worker's data folder.) I.e. I'm iterating through the command, first swapping out all "data" guys, then all "required" guys. Hopefully they're
+    //not going back and forth or shit. I could make a correspondence, like an isomorphism of graph so that a/../a/../a is same as just ./a or something.
+    //I.e. canonical form.
+
+    //We need a global "data" file thing that I check. Note it is all copied at "beginning" somehow, i.e. user sets that up in some (other) script I
+    //guess. Only purpose is to build the "DATA" file list.
+    //Do something similar for the program code, i.e. compile it on each worker and check? For MPI that works, but we need to do it on each machine
+    //at beginning. Hope it works. I.e. need some script...this is important if each one uses a different processor thing? But MPIC++ should do that
+    //for me I guess. But for each WORKER program, it does need to be recompield because its not the MPI code that's the model. Fine.
+    //set that stuff up?
+
+    //So, actually how to impl?
+
+    //Just set up DATA. And then we build the correspondence, we do a "send" of the non-data guys. ANd we find them all. We likewise search and
+    //find all files in "DATA" there. Problem is how to send the "data" file (array) i.e. specification to target. Needs to be something shared
+    //by all PARAMPOINTS, thus, it is like a "named" type guy. It could be stored in VARs but it could also not...? Need a simple function to "canonicalize"
+    //all file names/file paths. This stuff is all for files. Doesn't matter if we're dealing with non-files.
+
+    //What is everything sent as? What if there is "data" files that are e.g. in some format other than "variables". We don't want to convert to
+    //string, just send as a bit chunk? Is that necessary? I.e. representation of a network in binary format (wow might be different between
+    //machines though). Fine. So what TYPE to send it as? I don't want to convert it to a variable. Need some "struct" that I will always expect to
+    //receive from the "communicating" MPI program thing. That I'm calling.
+
+    //No idea what the actual format of that struct would be though? Contain arbitrary data that I have no idea of, that is communicated to it. That must
+    //work as blobs, i.e. void*. Just bytes. And user program will cast it to their appropriate type I guess...ugh.
+
+
+    //REV: OK DO IT. We have at beginning the DAT stuff, the INIT script for compilation, checking of MD5 etc.
+    //And finally the method for switching between workers.
+
+    //Furthermore, we must have a (global) DAT type thing which is always passed, that we use to search for DAT?
+    //User must explicitly reference cetain files as DAT? Or just required files? I like the required files Idea. And when we do a "transform"
+    //of the required files, some of them are DAT, so we check those first of course. Nono, we just transform DAT first.
+    //There is also "source" files, which are transferred at the VERY beginning, and compiled etc. We need to keep track of stuff like
+    //the MD5 of thesource so we know when we have changed? Better to do stuff like diffs so that we literally know the functional changes, i.e.
+    //line numbers etc.?
+
+    //I also want to have a way so that (eventually) I can specify filenames of "chunks" that can be passed just that way (as memory) to the target.
+    //I.e. these "variables" are stored as literal void pointers of a certain length, and it is up to the child program to parse them. We can keep
+    //MD5 sums etc. around to make sure they are sane. This way we only have to keep track of one? We could keep them "local" after broadcasting them
+    //to each worker though (so that we don't have to do MPI distribute each time).
+
+    //That's fine figure it out after. At any rate, give it access to files too.
+
+    //Have STRING-STRING but also STRING-ARRAY of arbitrary CHAR, i.e. arbitrary data haha. Why not just stransfer a "filesystem in memory"
+    //That's fine. Could do it with HDF5 struct to make it so that it doesn't matter what client CPU is?
+
+    //What is the point of the scripts I write? It's to get correct file names/variables etc. for the client user program without having to pass it
+    //directly to it. Is there any point of having the scripts if I literally am just running models?
+
+    //For example if I want it to tell certain functions to run. Well I have to write C++ or whatever to use the program itself so at that point
+    //I might as well just tell it. Easier to set some variables etc.? Man pain in the butt to specify which guys to use to load in to memory
+    //though?
+
+    //Remember we might want a hybrid approach...although forcing user to make his e.g. R programs run with my input might be an even "better" way
+    //to speed stuff up. But it will require (dynamic?) linking at runtime I assume.
+
+    //User might use any arbitrary language though...python, etc. So, let them do that, but best to not...
+
+    //Also for stuff like, running on GPUs, it might be a pain in the ass. If we want to run multiple kernels in same GPU, we need to use the same
+    //"rank" to spin them off. Pain in the ass haha.
+
+    //At any rate

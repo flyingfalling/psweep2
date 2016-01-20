@@ -130,6 +130,7 @@ struct pitem
       }
     
     system( mycmd );
+    
     std::vector<std::string> notdone = checkdone();
 
     size_t tries=0;
@@ -158,6 +159,14 @@ struct pitem
     //we can automatically restart it...?
   }
     
+
+  void reconstruct_cmd_with_file_corresp( const std::vector< std::string >& orig, const std::vector< std::string >& new)
+  {
+    //Rebuild CMD array list, but replace all instances of ORIG with NEW.
+    //Note if it was a DATA file, it will already exist with same name in data folder.
+    
+    
+  }
   
   pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist& hv)
   {
@@ -210,16 +219,16 @@ struct pitem
 
     //ghetto hack. GLOBAL namespace doesn't exist.
     hv = hvl[0];
-
+    
     required_files = hv.get_array_var( "__MY_REQUIRED_FILES", my_hierarchical_idx );
     success_files = hv.get_array_var( "__MY_SUCCESS_FILES", my_hierarchical_idx );
-
+    
     std::vector<std::string> cmdarray = hv.get_array_var( "__MY_CMD", my_hierarchical_idx );
-
+    
     //Add output to correct file.
     std::string stderrfile = mydir+"/stderr";
     std::string stdoutfile = mydir+"/stdout";
-
+    
     mycmd.push_back( "1>"+stdoutfile );
     mycmd.push_back( "2>"+stderrfile );
     
@@ -233,11 +242,11 @@ struct pitem
     //Will it do all of them, or only the first one?
     //We need a "setup" way or something. Note this is for every PITEM. I.e. it will re-write it each time, which is not good
     //Maybe only the FIRST one needs it. OK.
-
+    
     input_file = hv.get_val_var( "__MY_INPUT_FILE", my_hierarchical_idx );
     
     hv.tofile( input_file, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
-
+    
     //Input files are REQUIRED files (by default, might be checked twice oh well).
     //Furthermore, output files are SUCCESS files (fails and tries to re-run without their creation of course).
     required_files.push_back( input_file );
@@ -492,7 +501,8 @@ struct parampoint
     fprintf(stderr, "REV: get_next_pitem: ERROR, we are trying to get next pitem despite PSET being ostensibly finished! Error!\n");
     exit(1);
   }
-  
+
+  //Makes the dir at the location "inside", but success and required files are still treated as if they are purely global names.
   parampoint( hierarchical_varlist& hv, std::string dirname )
   {
     mydir = dirname;
