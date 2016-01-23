@@ -101,11 +101,12 @@ std::string CONCATENATE_STR_ARRAY(const std::vector<std::string>& arr, const std
 //REV: this is a worker item. I.e. a single parameterized worker thing.
 struct pitem
 {
-  std::string mycmd; //the main thing, this is the cmd I am running via system()?
+  //std::string mycmd; //the main thing, this is the cmd I am running via system()?
+  std::vector< std::string > mycmd; //Needs to be catted.
   
   std::vector< std::string > required_files;
   std::vector< std::string > success_files;
-
+  
   std::vector< std::string > output_files;
 
   std::string input_file;
@@ -118,9 +119,13 @@ struct pitem
   bool execute_cmd( )
   {
     std::vector< std::string > notready = check_ready();
+
+    std::string sep = " ";
+    std::execute_string = mycmd.CONCATENATE_STR_ARRAY( cmdarray, sep );
+    
     if( !notready.size() > 0 )
       {
-	fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", mycmd.c_str());
+	fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", execute_string.c_str());
 	fprintf(stderr, "found [%ld] NON-EXISTENT REQUIRED FILES: ", notready.size() );
 	for(size_t f=0; f<notready.size(); ++f)
 	  {
@@ -129,7 +134,7 @@ struct pitem
 	exit(1);
       }
     
-    system( mycmd );
+    system( execute_string );
     
     std::vector<std::string> notdone = checkdone();
 
@@ -143,7 +148,7 @@ struct pitem
 
     if(notdone.size() > 0)
       {
-	fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", mycmd.c_str());
+	fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", execute_string.c_str());
 	fprintf(stderr, "found [%ld] NON-EXISTENT SUCCESS FILES: ", notdone.size() );
 	for(size_t f=0; f<notdone.size(); ++f)
 	  {
@@ -158,8 +163,20 @@ struct pitem
     //this only tells if it was SUCCESSFUL or not (?). For example we had problems before due to something failing for one reason or another. In this way
     //we can automatically restart it...?
   }
-    
+  
 
+  //Basically, OLD MYDIR is X, NEW MYDIR is Y
+  //I will now rewrite all of:
+  //REQUIRED file list (these will all be copied from source location to MYDIR/required_files and renamed)
+  //SUCCESS file list (these will all be transferred to MYCMD, no renaming as some might be hardcoded in user program? In which case if DIR doesn't exist
+  // and we can't specify it, it will error out -- so we will check to make sure it is forced to be in user dir)
+  //OUTPUT file list (these must be inside MYDIR or else error, so I will rename them)
+  //INPUT file (name) just a single one (rename this and specify, inside MYDIR).
+  //MYDIR string (just a single one) -- will modify to user.
+  //MYCMD, a vector of strings, will be concat with some "SEP" at the end. Find all of the above changed guys, stringmatch, and change to new updated
+  //      guys. Note, change to some canonical form first, to handle stuff like ../blah versus /local/blah, etc. I.e. use PWD, etc. Do that later.
+  // OK DO THIS STUFF ;)
+  
   void reconstruct_cmd_with_file_corresp( const std::vector< std::string >& orig, const std::vector< std::string >& new)
   {
     //Rebuild CMD array list, but replace all instances of ORIG with NEW.
@@ -173,7 +190,7 @@ struct pitem
     //Need to add to the most recent pset a child...
     std::vector<size_t> rootchildren = hv.get_children( 0 );
     size_t npsets = rootchildren.size();
-    size_t myidx = hv.add_child( rootchildren[npsets-1] ); //add child to the last one.
+    size_t myidx = hv.add_child( rootchildren[npsets-1] ); //add child to the last PSET (!!)
     my_hierarchical_idx = myidx;
 
     //Set up the required variables. Automatically name the things here (like choose dir based on sub of parent), much easier ;)
@@ -223,17 +240,21 @@ struct pitem
     required_files = hv.get_array_var( "__MY_REQUIRED_FILES", my_hierarchical_idx );
     success_files = hv.get_array_var( "__MY_SUCCESS_FILES", my_hierarchical_idx );
     
-    std::vector<std::string> cmdarray = hv.get_array_var( "__MY_CMD", my_hierarchical_idx );
+    //std::vector<std::string> cmdarray = hv.get_array_var( "__MY_CMD", my_hierarchical_idx );
+    mycmd = hv.get_array_var( "__MY_CMD", my_hierarchical_idx );
     
     //Add output to correct file.
     std::string stderrfile = mydir+"/stderr";
     std::string stdoutfile = mydir+"/stdout";
-    
+
+
+    //REV: this was error, this should have been cmdarray before changing mycmd to be vector of strings.
     mycmd.push_back( "1>"+stdoutfile );
     mycmd.push_back( "2>"+stderrfile );
     
-    std::string sep = " "; //spaces. Make user specify "cmd sep" if it exists or something?
-    mycmd = CONCATENATE_STR_ARRAY( cmdarray, sep ); //hv.get_val_var( "__MY_CMD", my_hierarchical_idx );
+    //std::string sep = " "; //spaces. Make user specify "cmd sep" if it exists or something?
+
+    //mycmd = CONCATENATE_STR_ARRAY( cmdarray, sep ); //hv.get_val_var( "__MY_CMD", my_hierarchical_idx );
     
     output_files = hv.get_array_var( "__MY_OUTPUT_FILES", my_hierarchical_idx );
     
@@ -508,6 +529,7 @@ struct parampoint
     mydir = dirname;
     variable<std::string> var1( "__MY_DIR", mydir );
     hv.vl[ my_hierarchical_idx ].addvar( var1 );
+    //REV: OK, __MY_DIR is set after all!
 
     bool succ = make_directory( mydir );
   }

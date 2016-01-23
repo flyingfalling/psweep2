@@ -47,6 +47,49 @@ So, yes we must rebuild the whole thing... If the rebuild doesn't appropriately 
 
 
 
+What was I doing? What do I need to do? At any rate, I need to figure out how to move SUCCESS and REQUIRED files. REQUIRED I have it figured out,
+SUCCESS just assume it is always in the target.
+
+I.e. I pass the PARAMPOINT. OK. I reconstruct the parampoint with __MY_DIR somehow reset?
+
+Need to automatically set commands like __MY_DIR? Shit, each one needs to have it set along the way.
+
+OK, If I reconstruct it we'll assume all sorts of shit? Haha Richard, just forget it. Assume user ALWAYS adds SUCCESS files inside __MY_DIR. So,
+I can expect everything in there. We need to reconstruct everything. Furthermore, we can pass it through, and then reconstruct it, and swap out
+the first part of the filename for the proper one in the SLAVE, and build the correspondences that way. That's the "easiest" way to do it.
+But, what if it like, builds some sub-folders in there? Or some shit? Meh.
+
+
+
+
+
+So MAIN IDEA (TODO)
+
+1) transfer the PARAMPOINT. Re-generate the parameter point INSIDE the new location (i.e. just feed it the new base dir). This will construct the
+   whole directory structure, which is actually unnecessary lol. So, don't do this actually...just make a new dir arbitrarily. But, if we don't
+   reconstruct it we will have some problems (?). Just construct the last level, the last DIR? Note it is just this PITEM. Can I just construct a
+   PITEM? Sure, but it requests the PARENT guy I think. Best to just modify the existing PARAMPOINT (PITEM) (specifically CMD and SUCCESS/REQUIRED list)
+   and run it that way. Specifically we know the new guys, as we use same FILENAME, but change BASE FILE for SUCCESS. For REQUIRED list, we simply
+   rename them. Then we go through and replace all instances of these files in CMD and SUCCESS/REQUIRED file array.
+
+1) Transfer the whole parampoint struct. Set (temporarily?) the MYDIR of the desired PITEM to a temporarily created filename. I then execute (on
+   this side) a "receive" for the desired files, which are pushed one by one? No, they are already remade on opposite (MASTER?) side? Waste...do it as
+   slave. Send them and have slave name them as I go. I don't want to make a bunch of dires. Anyway, just get PITEM, and set its MYDIR to that? Need
+   to keep hierarch varlist. PITEM will have the SUCCESS and REQUIRED files etc. I pretty much just need to rename those, no need to get into
+   the VARLIST at all!!! *SO* much nicer to have some function to reliably convert everything from source MASTER to slave SLAVE.
+
+   Specifically, for a given PITEM, if source has 3 things to change:
+   //REQUIRED file list
+   //SUCCESS file list
+   //OUTPUT file list (or do it on other side)
+   //INPUT file (name) just a single one.
+   //MYDIR string (just a single one)
+   //MYCMD, a vector of strings, will be concat with some "SEP" at the end.
+   
+2) For each file [Z] in REQUIRED, a) generate a new arbitrary filename __MY_DIR/required_files/fileZ, and set the correspondence OLDFNAME, NEWFNAME
+3) For each file [Z] in SUCCESS, a) check if it is outside the legal __MY_DIR location (error if so), b) 
+4) 
+
 
 
 
