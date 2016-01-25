@@ -1,3 +1,128 @@
+
+
+//So, depending on the RANK, this will SEND or RECEIVE.
+//All SLAVES enter a LOOP of waiting for a MESG.
+
+
+struct psweep_cmd
+{
+  int SRC;
+  std::string CMD;
+
+  psweep_cmd( const int srcr, const std::string& cm )
+  : SRC( srcr ), CMD( cm )
+  {
+    //NOTHING
+  }
+
+  
+};
+
+struct mem_file
+{
+  std::string fname;
+  std::vector<char> contents;
+
+  mem_file( const std::string& fn, const std::vector<char> cont )
+  : fname( fn ), contents (cont )
+  {
+    //REV: NOTHING
+  }
+};
+
+mem_file receive_file( const int& targrank )
+{
+  std::vector<char> fname = receive_memory( targrank );
+  std::string fn = std::string( fname.data() );
+
+  std::vector<char> fcontents = receive_memory( targrank );
+
+  mem_file mf(  fn, fcontents );
+
+  return mf;
+}
+
+
+//arbitrary byte array as VECTOR, and we can cast it to a target TYPE in some way? Like...static_cast? whoa...blowin my mind haha.
+std::vector< char > receive_memory( const int& targrank )
+{
+
+  std::vector< char > mem;
+  
+  MPI_Status s;
+  MPI_probe(targrank, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+  
+  //first, get the size.. Note, we will execute this as a SINGLE send, in future we might want to do another if there is a max MPI buffer?
+  int mesgsize;
+  int sourcerank = s.MPI_SOURCE;
+  
+  MPI_Get_count(&s, MPI_CHAR, &mesgsize);
+  
+  mem.resize( mesgsize );
+
+  //REV: thsould this be MPI_INT? Or char? for 3rd arg?
+  MPI_Recv(mem.data(), mesgsize, MPI_INT, 0, 0,
+	   MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+  return mem;
+}
+
+template <typename T>
+T cast_to_type( std::vector< char > membuff )
+{
+  //Note, I am COPYING it in this case? meh.
+  T tmpitem = (T)membuff.data();
+  return tmpitem;
+}
+
+
+psweep_cmd wait_for_cmd()
+{
+  //Only receive mesgs from ROOT. Blocking.
+  MPI_Status s;
+  MPI_probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+  int mesgsize;
+  int sourcerank = s.MPI_SOURCE;
+  MPI_Get_count(&s, MPI_CHAR, &mesgsize);
+  char mesg_buf[mesgsize];
+  MPI_Recv(mesg_buf, mesgsize, MPI_INT, 0, 0,
+	   MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  std::string mystr( mesg_buf ); //make an std string out of char array
+
+  psweep_cmd mypcmd( sourcerank, mystr );
+
+  return mypcmd;
+  
+}
+
+void execute_slave_loop()
+{
+  //WAIT for mesg from MASTER
+  psweep_cmd cmd = wait_for_cmd();
+  
+  pitem myitem = handle_cmd( psweep_cmd ); //REV: may EXIT, or contain a PITEM (to execute).
+
+  std::string LOCALDIR = "/TMP/scratch"; //will execute in local scratch. Note, might need to check we have enough memory etc.
+  
+  pitem updated_mypitem = handle_pitem( mypitem, LOCALDIR ); // This will do the receiving of all files and writing to LOCALDIR, it will also rename them and keep track
+  //of the correspondence. Note the SENDING side will do the error out if it is no in the __MY_DIR. Do that on PARENT side I guess. OK.
+
+  //We now have PITEM updated, we will now EXECUTE it (until it fails, keep checking success).
+
+  execute_work( updated_mypitem );
+  
+  notify_finished(); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
+  
+  
+}
+
+void execute_master_loop()
+{
+  //
+}
+
+
+
 //REV: 17 Jan 2016. Header/functions to handle
 //sending of file via MPI. We can separate MPI vs Hadoop etc.
 //

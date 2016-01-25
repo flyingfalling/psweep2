@@ -166,16 +166,44 @@ struct pitem
   
 
   //Basically, OLD MYDIR is X, NEW MYDIR is Y
-  //I will now rewrite all of:
-  //REQUIRED file list (these will all be copied from source location to MYDIR/required_files and renamed)
-  //SUCCESS file list (these will all be transferred to MYCMD, no renaming as some might be hardcoded in user program? In which case if DIR doesn't exist
-  // and we can't specify it, it will error out -- so we will check to make sure it is forced to be in user dir)
-  //OUTPUT file list (these must be inside MYDIR or else error, so I will rename them)
-  //INPUT file (name) just a single one (rename this and specify, inside MYDIR).
-  //MYDIR string (just a single one) -- will modify to user.
-  //MYCMD, a vector of strings, will be concat with some "SEP" at the end. Find all of the above changed guys, stringmatch, and change to new updated
+  //**** I will now rewrite all of:
+  //1) REQUIRED file list (these will all be copied from source location to MYDIR/required_files and renamed as well). We keep that "renamer" around.
+  //2) SUCCESS file list (these will all be transferred to MYCMD, no renaming as some might be hardcoded in user program? In which case if DIR doesn't exist
+  // and we can't specify it, it will error out -- so we will check to make sure it is forced to be in user dir). We copy these back.
+  //3) OUTPUT file list (these must be inside MYDIR or else error, so I will rename them). We copy these back (and read out?)
+  //4) INPUT file (name) just a single one (rename this and specify, inside MYDIR).
+  //5) MYDIR string (just a single one) -- will modify to user.
+  //6) MYCMD, a vector of strings, will be concat with some "SEP" at the end. Find all of the above changed guys, stringmatch, and change to new updated
   //      guys. Note, change to some canonical form first, to handle stuff like ../blah versus /local/blah, etc. I.e. use PWD, etc. Do that later.
-  // OK DO THIS STUFF ;)
+
+  //####  OK DO THIS STUFF ;)
+
+
+  //SLAVE waits for MESG. Until it has WORK.
+  
+  //First thing is from MASTER to SLAVE, I call a function that sends PITEM.
+  //SLAVE receives PITEM. Makes dir locally (same dir?)
+  //MASTER sends REQ files (#FILES, followed by FILENAME, FILELENGTH (BYTES), FILE CONTENTS).
+  //SLAVE receives REQ files one at a time, and writes to arbitrary filename (MASTER side does the PRE/POST conversion? No, do it on SLAVE side and store
+  //  remember the PRE/POST names)
+  //NOW MASTER is done (just waits for finished)
+  //Now on SLAVE side:
+  //check/rewrite SUCCESS files from SOURCE mydir to NEW mydir
+  //check/rewrite OUTPUT file list from SOURCE mydir to NEW mydir
+  //check/rewrite INPUT file (name) from SOURCE mydir to NEW mydir
+  //check/rewrite MYDIR from SOURCE to NEW
+  //for all MYCMD, match SOURCE of any of the above, and switch to NEW.
+
+  //Execute the CMD. REDO, until it is done. If error, return some MESG that indicates what happend (i.e. failed to run, didn't have success files,
+  //etc. These return to MASTER and cause error at MASTER
+
+  //Check SUCCESS files existence.
+  //Read out OUTPUT files (don't bother copying back?)
+  //I could copy back SUCCESS files if I want to (do it later?)
+  //SLAVE says "we're done!", MASTER receives.
+  //SLAVE sends OUTPUT. Master recieves OUTPUT varlist.
+  //SLAVE sends # FILES (and correspondences?), then sends one file at a time.
+  //SLAVE is DONE.
   
   void reconstruct_cmd_with_file_corresp( const std::vector< std::string >& orig, const std::vector< std::string >& new)
   {
