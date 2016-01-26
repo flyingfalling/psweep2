@@ -1,8 +1,41 @@
 
 
+int MYRANK;
+
+
 //So, depending on the RANK, this will SEND or RECEIVE.
 //All SLAVES enter a LOOP of waiting for a MESG.
 
+
+pitem handle_pitem( const pitem& mypitem, const std::string& dir )
+{
+  //First, get an INT, number of files.
+  int numfiles = get_int( ROOT_RANK );
+  std::vector< mem_file > mfs;
+  std::vector< std::string > newfnames;
+  
+  std::string fnamebase= "reqfile";
+  for(size_t f=0; f<numfiles; ++f)
+    {
+      mem_file mf = receive_file( ROOT_RANK );
+      mfs.push_back( mf );
+      std::string myfname = fnamebase + std::to_string( f );
+      newfnames.push_back( myfname );
+
+      //now mfs and newfnames contain orig and new fnames.
+      //REV: make something to check base of file and make sure that it
+      //is same file?
+
+      //write to file OK.
+      mf.tofile( dir, myfname );
+
+      //REV: so I now need to MODIFY mypitem for the required files,
+      //and I also need to MODIFY for success, output, etc.
+      //Do this all in its own function to make it easier?
+      
+    }
+  
+}
 
 struct psweep_cmd
 {
@@ -28,10 +61,25 @@ struct mem_file
   {
     //REV: NOTHING
   }
+
+  void tofile(const std::string& dir, const std::string& fname )
+  {
+    std::string fullfname = dir + "/" + fname;
+
+    ofstream ofs;
+
+    open_ofstream( fullfname, ofs, );
+    
+    ofs.write( contents.data(), contents.size() );
+
+    //REV: does it work? Need to check sanity before I go?
+  }
 };
+
 
 mem_file receive_file( const int& targrank )
 {
+  //REV: crap I can't just cast to a string, I need to CONSTRUCT it.
   std::vector<char> fname = receive_memory( targrank );
   std::string fn = std::string( fname.data() );
 
@@ -42,6 +90,15 @@ mem_file receive_file( const int& targrank )
   return mf;
 }
 
+
+pitem get_pitem_from_targ_rank( const int& targrank )
+{
+  std::vector< char > tmpmem = receive_memory( targrank );
+  
+  pitem tmppitem = cast_to_type< pitem >( tmpmem );
+
+  return tmpitem;
+}
 
 //arbitrary byte array as VECTOR, and we can cast it to a target TYPE in some way? Like...static_cast? whoa...blowin my mind haha.
 std::vector< char > receive_memory( const int& targrank )
@@ -75,6 +132,17 @@ T cast_to_type( std::vector< char > membuff )
   return tmpitem;
 }
 
+int get_int( const int& targrank )
+{
+  std::vector<char> mem = receive_memory( targrank );
+
+  int myint = cast_to_type< int >( mem ); //int POINTER?? wtf? Ugh.
+
+  return myint;
+
+  
+}
+
 
 psweep_cmd wait_for_cmd()
 {
@@ -92,7 +160,37 @@ psweep_cmd wait_for_cmd()
   psweep_cmd mypcmd( sourcerank, mystr );
 
   return mypcmd;
-  
+}
+
+
+
+pitem handle_cmd( psweep_cmd pcmd )
+{
+  //get the CMD from it, return...
+  if( pcmd.SRC != ROOT_RANK )
+    {
+      fprintf(stderr, "ERROR worker [%d] got cmd from non-root rank...[%d]\n", MYRANK,  pcmd.SRC);
+      exit(1); //EXIT more gracefully?
+    }
+
+  if( strcmp( pcmd.CMD, "EXIT") == 0 )
+    {
+      //exit
+      fprintf(stderr, "Worker [%d] received EXIT command from root rank\n", MYRANK);
+      exit(1);
+    }
+  else if( strcmd( pcmd.CMD, "PITEM") == 0 )
+    {
+      //will process this pitem.
+      pitem mypitem = get_pitem_from_targ_rank( ROOT_RANK );
+
+      return mypitem;
+    }
+  else
+    {
+      fprintf(stderr, "ERROR, rank [%d] received unknown command [%s]\n", MYRANK, pcmd.CMD );
+      exit(1);
+    }
 }
 
 void execute_slave_loop()
@@ -100,7 +198,7 @@ void execute_slave_loop()
   //WAIT for mesg from MASTER
   psweep_cmd cmd = wait_for_cmd();
   
-  pitem myitem = handle_cmd( psweep_cmd ); //REV: may EXIT, or contain a PITEM (to execute).
+  pitem myitem = handle_cmd( cmd ); //REV: may EXIT, or contain a PITEM (to execute).
 
   std::string LOCALDIR = "/TMP/scratch"; //will execute in local scratch. Note, might need to check we have enough memory etc.
   

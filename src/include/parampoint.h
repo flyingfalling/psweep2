@@ -1031,8 +1031,8 @@ struct farmer
 	  //We need to "read in" and handle all the stuff sent by the worker.
 	  //This includes copying over the filesystem,
 	  //This may include LOTS of data
-	  transfer_data td = get_data_from_worker( sourcerank );
-	  //Handle it, i.e. write to filesystem etc.
+	  transfer_data td = get_data_from_worker( Handle );
+	  //sourcerank it, i.e. write to filesystem etc.
 	  //This writes all "files" to "name" and "file" in memory. We need to know corresponding place to write here as well though.
 	  //And, we need to appropriately modify parampoint that finished, etc., with the results?
 	  
