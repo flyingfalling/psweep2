@@ -204,6 +204,48 @@ struct pitem
   //SLAVE sends OUTPUT. Master recieves OUTPUT varlist.
   //SLAVE sends # FILES (and correspondences?), then sends one file at a time.
   //SLAVE is DONE.
+
+
+  //REV: For success etc. check existence AND THAT IT IS A FILE!!!! I.e. we don't do DIRS (for now)
+  void re_base_directory( const std::string& olddir, const std::string& newdir, const std::vector<string>& oldfnames, const std::vector<string>& newfnames )
+  {
+    std::vector<bool> marked(mycmd.size(), false);
+
+    
+    //FOR all files in SUCCESS, OUTPUT, INPUT, change to new fname. If they match (canonically) we will go.
+    for(size_t x=0; x<success_files.size(); ++x)
+      {
+	std::string fnametail;
+	
+	//REV: oops I fucked up, I need to only change the DIR for these!
+	std::string dirname = get_canonical_dir_of_fname( success_files[x], fnametail );
+
+	if( dirname.compare( canonicalize_fname( olddir ) ) != 0 )
+	  {
+	    fprintf(stderr, "in REBASE DIRECTORY: ERROR: olddir and found dir in SUCCESS file are not the same!!! WTF\n");
+	    exit(1);
+	  }
+	
+	
+	std::string fname = canonicalize_fname(success_files[x]);
+	//locate it in cmd...if it exists...
+	
+	std::vector<size_t> matched=find_matching_files(fname, mycmd, marked);
+
+	std::string newfname = newdir + "/" + fnametail;
+	replace_old_fnames_with_new( mycmd, newfname, matched ); //replaces mycmd inline.
+
+	//Now replace SUCCESS itself.
+	success_files[x] = newfname;
+      }
+
+    //Same for others...
+
+    
+    
+    //This will rebase all in SUCCESS, OUTPUT, INPUT, and it will replace all instances of those in CMD with new file (names)
+    //Furthermore, it will (only for REQUIRED) files, replace all instances of OLD with NEW
+  }
   
   void reconstruct_cmd_with_file_corresp( const std::vector< std::string >& orig, const std::vector< std::string >& new)
   {
