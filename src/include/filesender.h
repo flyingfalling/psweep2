@@ -283,12 +283,13 @@ pitem modify_pitem( const pitem& mypitem, const std::vector<mem_file>& mf,
   
 }
 
-pitem handle_pitem( const pitem& mypitem, const std::string& dir )
+void handle_pitem( pitem& mypitem, const std::string& dir )
 {
   //First, get an INT, number of files.
   int numfiles = get_int( ROOT_RANK );
   std::vector< mem_file > mfs;
   std::vector< std::string > newfnames;
+  std::vector< std::string > oldfnames;
   
   std::string fnamebase= "reqfile";
   for(size_t f=0; f<numfiles; ++f)
@@ -297,6 +298,7 @@ pitem handle_pitem( const pitem& mypitem, const std::string& dir )
       mfs.push_back( mf );
       std::string myfname = fnamebase + std::to_string( f );
       newfnames.push_back( myfname );
+      oldfnames.push_back( mf.fname ); //this is old fname, I guess I could get it elsewhere... myfname is the NEW one...
 
       //now mfs and newfnames contain orig and new fnames.
       //REV: make something to check base of file and make sure that it
@@ -310,6 +312,11 @@ pitem handle_pitem( const pitem& mypitem, const std::string& dir )
       //Do this all in its own function to make it easier?
       
     }
+
+  mypitem.re_base_directory( mypitem.mydir, dir, oldfnames, newfnames);
+  //mypitem will now be rebased appropriately, although hierarchical varlists etc. are not carried with it of course.
+
+  
   
 }
 
@@ -478,12 +485,12 @@ void execute_slave_loop()
 
   std::string LOCALDIR = "/TMP/scratch"; //will execute in local scratch. Note, might need to check we have enough memory etc.
   
-  pitem updated_mypitem = handle_pitem( mypitem, LOCALDIR ); // This will do the receiving of all files and writing to LOCALDIR, it will also rename them and keep track
+  handle_pitem( mypitem, LOCALDIR ); // This will do the receiving of all files and writing to LOCALDIR, it will also rename them and keep track
   //of the correspondence. Note the SENDING side will do the error out if it is no in the __MY_DIR. Do that on PARENT side I guess. OK.
 
   //We now have PITEM updated, we will now EXECUTE it (until it fails, keep checking success).
 
-  execute_work( updated_mypitem );
+  execute_work( mypitem );
   
   notify_finished(); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
   

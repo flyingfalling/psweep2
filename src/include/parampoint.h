@@ -205,20 +205,61 @@ struct pitem
   //SLAVE sends # FILES (and correspondences?), then sends one file at a time.
   //SLAVE is DONE.
 
-
-  //REV: For success etc. check existence AND THAT IT IS A FILE!!!! I.e. we don't do DIRS (for now)
-  void re_base_directory( const std::string& olddir, const std::string& newdir, const std::vector<string>& oldfnames, const std::vector<string>& newfnames )
+  void rename_to_targ( std::vector<std::string>& targvect, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir,
+		       const std::vector<string>& oldfnames, const std::vector<string>& newfnames )
   {
-    std::vector<bool> marked(mycmd.size(), false);
+    if( newfnames.size() != targvect.size() || newfnames.size() != oldfnames.size() )
+      {
+	fprintf(stderr, "ERROR newfnames or oldfnames != targvect.size\n");
+	exit(1);
+      }
 
+    //Note, NEWFNAMES will be the list we pushed back to of new fnames. They will be not set in NEWDIR, we need to add the NEWDIR to them? NO, THEY ARE
+    //SET IN THE NEWDIR!!!
+
+    std::vector<bool> reqmarked( targvect.size(), false );
     
+    for(size_t x=0; x<oldfnames.size(); ++x)
+      {
+	//For all guys, I already know the ORIGINAL and NEW fnames. Specifically ORIGINAL should still be in TARGVECT (?) We'll replace them one by one.
+	std::string fname = canonicalize_fname(oldfnames[x]);
+
+	//locate it in cmd...if it exists...
+	std::vector<size_t> reqmatched=find_matching_files(fname, targvect, reqmarked); //will canonicalize fnames in MYCMD as they go.
+	std::vector<size_t> cmdmatched=find_matching_files(fname, cmd, marked); //will canonicalize fnames in MYCMD as they go.
+
+	std::string newfname = canonicalize_fname( newfnames[x] );
+
+	replace_old_fnames_with_new( targvect, newfname, reqmatched ); //replaces mycmd inline.
+	replace_old_fnames_with_new( mycmd, newfname, cmdmatched ); //replaces mycmd inline.
+	
+      }
+
+    bool alldone=true;
+    for(size_t x=0; x<reqmarked.size(); ++x)
+      {
+	if( reqmarked[x] == false )
+	  {
+	    alldone = false;
+	  }
+      }
+    if( alldone == false )
+      {
+	fprintf(stderr, "ERROR, not ALLDONE after doing RENAMING OF FILES, not all (REQUIRED FILES) were renamed, some are missing from newfnames/oldfnames?\n");
+	exit(1);
+      }
+
+  }
+  
+  void rename_to_targ_dir( std::vector<std::string>& targvect, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir )
+  {
     //FOR all files in SUCCESS, OUTPUT, INPUT, change to new fname. If they match (canonically) we will go.
-    for(size_t x=0; x<success_files.size(); ++x)
+    for(size_t x=0; x<targvect.size(); ++x)
       {
 	std::string fnametail;
 	
 	//REV: oops I fucked up, I need to only change the DIR for these!
-	std::string dirname = get_canonical_dir_of_fname( success_files[x], fnametail );
+	std::string dirname = get_canonical_dir_of_fname( targvect[x], fnametail );
 
 	if( dirname.compare( canonicalize_fname( olddir ) ) != 0 )
 	  {
@@ -227,7 +268,7 @@ struct pitem
 	  }
 	
 	
-	std::string fname = canonicalize_fname(success_files[x]);
+	std::string fname = canonicalize_fname(targvect[x]);
 	//locate it in cmd...if it exists...
 	
 	std::vector<size_t> matched=find_matching_files(fname, mycmd, marked);
@@ -236,15 +277,23 @@ struct pitem
 	replace_old_fnames_with_new( mycmd, newfname, matched ); //replaces mycmd inline.
 
 	//Now replace SUCCESS itself.
-	success_files[x] = newfname;
+	targvect[x] = newfname;
       }
 
-    //Same for others...
+  }
+  
+  //REV: For success etc. check existence AND THAT IT IS A FILE!!!! I.e. we don't do DIRS (for now)
+  void re_base_directory( const std::string& olddir, const std::string& newdir, const std::vector<string>& oldfnames, const std::vector<string>& newfnames )
+  {
+    std::vector<bool> marked(mycmd.size(), false);
+    
+    rename_to_targ_dir(success_files, marked, olddir, newdir, oldfnames);
+    rename_to_targ_dir(output_files, marked, olddir, newdir, oldfnames);
+    rename_to_targ_dir(input_files, marked, olddir, newdir, oldfnames);
+    rename_to_targ(required_files, marked, olddir, newdir, oldfnames, newfnames);
 
+    //All MARKED not necessarily, because it might contain non-files in the string vector representing the command.
     
-    
-    //This will rebase all in SUCCESS, OUTPUT, INPUT, and it will replace all instances of those in CMD with new file (names)
-    //Furthermore, it will (only for REQUIRED) files, replace all instances of OLD with NEW
   }
   
   void reconstruct_cmd_with_file_corresp( const std::vector< std::string >& orig, const std::vector< std::string >& new)
