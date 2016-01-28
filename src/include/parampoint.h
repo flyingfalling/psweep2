@@ -81,6 +81,10 @@
 #include <functrep.h>
 #include <utility_functs.h>
 
+#include <boost/mpi.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
+
 //REV: this is a parampoint. It has a command thing that is what to run
 //each time point. Note, we only actually want one of those representations,
 //that is run each time I guess, applied to the specific parampoint.
@@ -101,6 +105,8 @@ std::string CONCATENATE_STR_ARRAY(const std::vector<std::string>& arr, const std
 //REV: this is a worker item. I.e. a single parameterized worker thing.
 struct pitem
 {
+
+ 
   //std::string mycmd; //the main thing, this is the cmd I am running via system()?
   std::vector< std::string > mycmd; //Needs to be catted.
   
@@ -115,6 +121,19 @@ struct pitem
   
   size_t my_hierarchical_idx; //index in my parampoint hierarchical varlist array of my leaf node.
 
+  //REV: REQUIRED for boost serialization (to send over MPI)
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive & ar, const unsigned int version)
+  {
+    ar & mycmd;
+    ar & required_files;
+    ar & success_files;
+    ar & output_files;
+    ar & input file;
+    ar & mydir;
+  }
+  
   //In new version, this may call from memory to speed things up.
   bool execute_cmd( )
   {
@@ -390,6 +409,7 @@ struct pitem
     //Input files are REQUIRED files (by default, might be checked twice oh well).
     //Furthermore, output files are SUCCESS files (fails and tries to re-run without their creation of course).
     required_files.push_back( input_file );
+
     for(size_t o=0; o<output_files.size(); ++o)
       {
 	success_files.push_back( output_files[o] );
@@ -419,7 +439,7 @@ struct pitem
   }
   
  
-  bool checkready()
+  bool check_ready()
   {
     bool ready=true;
     //Strings must be FULL filename? Or are they relative? Assume full...

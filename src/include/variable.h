@@ -25,6 +25,16 @@ struct variable
   std::string name;
 
   boost::variant< T, std::vector<T> > val;
+
+  //REV: REQUIRED for boost serialization (to send over MPI)
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive & ar, const unsigned int version)
+  {
+    ar & mytype;
+    ar & name;
+    ar & val;
+  }
   
   std::vector< T >
   get_v( )
@@ -98,12 +108,27 @@ struct variable
     
 };
 
+
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
+
 template <typename T>
 struct varlist
 {
   std::string mytag;
   std::vector< variable<T> > vars;
 
+
+  //REV: REQUIRED for boost serialization (to send over MPI)
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive & ar, const unsigned int version)
+  {
+    ar & mytag;
+    ar & vars;
+  }
+  
+  
 
   //append? or overwrite? Default is APPEND to end.
   void tofile( const std::string& fname )

@@ -1,7 +1,63 @@
 
+#include <iostream>
+#include <string>
+
+#include <boost/mpi.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 
 int MYRANK;
 
+mpi::environment env;
+mpi::communicator world;
+
+//REV: Just realied I have a problem, when I send the PITEM struct, it contains std::vectors, which have VARIABLE SIZE. I.e. it won't appropriately
+//serialize them orz.
+
+
+void send_cmd( const std::string& cmd, const int& targrank )
+{
+  world.send( targrank, any_tag, cmd );
+}
+
+void send_pitem( const pitem& mypitem, const int& targrank )
+{
+  world.send( targrank, any_tag, mypitem ); //will serialize it for me.
+}
+
+//I want to block but I want to get message from target before handling others.
+psweep_cmd receive_cmd_from_any( )
+{
+  mpi::status msg = world.probe();
+  
+  std::string data;
+  world.recv(msg.source(), any_tag, data);
+
+  psweep_cmd pc( msg.source(), data );
+
+  return pc;
+}
+
+pitem receive_pitem( const int& targrank )
+{
+  pitem newpitem;
+  world.recv( targrank, any_tag, newpitem );
+  return newpitem;
+}
+
+int receive_int( const int& targrank )
+{
+  int newint;
+  world.recv( targrank, any_tag, newint );
+  return newint;
+}
+
+void send_int( const int& targrank, const int& tosend )
+{
+  int newint;
+  world.send( targrank, any_tag, tosend );
+  
+}
 
 //So, depending on the RANK, this will SEND or RECEIVE.
 //All SLAVES enter a LOOP of waiting for a MESG.
@@ -476,6 +532,82 @@ pitem handle_cmd( psweep_cmd pcmd )
     }
 }
 
+
+//REV* this is on ROOT side, it executes this when finished. It is
+//corresponding to notify_finished
+handle_finished( )
+{
+  
+}
+
+void notify_finished( const pitem& mypitem )
+{
+  //REV: this needs to notify master, wait for it, then send back
+  //any results. Master needs to wait for this too (i.e. handle a "finished"
+  //state, which will require what, rebasing the files over there too?)
+
+  send_cmd( "DONE", ROOT_RANK );
+
+  //Then send what? A "finished" struct? No, just send the "results"
+  //I guess...
+  //Files are: Number of SUCCESS and OUTPUT files? Note INPUT is also
+  //in REQUIRED by default, so OK.
+  //Note, there may be DOUBLES between OUTPUT and SUCCESS files, in fact
+  //I know there are? Only send OUTPUT files then, much easier ;) Even
+  //better just send a varlist...containing the output.
+  //Check OUTPUT and SUCCESS separately.
+  //Check also INPUT and REQUIRED separately. Make sure there are no
+  //doubles...
+
+  //Note, all OUTPUT are automatically appended to SUCCESS, so just
+  //return all SUCCESS files.
+  int nsuccess = mypitem.success_files.size();
+  send_int( ROOT_RANK, nsuccess );
+}
+
+void block_and_wait_for_notify()
+{
+  psweep_cmd pc = get_cmd_from_any();
+  int targrank = pc.SRC;
+  std::string cmd = pc.CMD;
+  if( cmd.compare("DONE") != 0 )
+    {
+      fprintf(stderr, "WHOA, got a non-DONE cmd?!! From rank [%d]. CMD: [%s]\n", targrank, cmd.c_str() );
+      exit(1);
+    }
+  //else, do all receiving for that CMD blocking all others for now.
+  //I.e. only receive messages from others... Assume it will leave
+  //(received) buffers from other guys in place while I'm doing this?
+  //Or, allow it to do non-blocking, i.e. spin off threads? That
+  //seems best.
+
+  size_t nfiles = recieve_int( targrank );
+
+  std::vector<mem_file> mfs;
+  for(size_t x=0; x<nfiles; ++x)
+    {
+      mem_file mf = receive_file( targrank );
+      mfs.push_back( mf );
+    }
+
+
+  //Will write these out to appropriate location (what is it?)
+
+  //Also receive "OUTPUT" as varlist I guess.
+
+  varlist outputvlist = receive_varlist( targrank );
+
+  
+    
+}
+
+bool execute_work( const pitem& mypitem )
+{
+  //This should do all checks (locally?) and check satisfactory output too.
+  bool success = mypitem.execute_cmd();
+  return success;
+}
+
 void execute_slave_loop()
 {
   //WAIT for mesg from MASTER
@@ -491,7 +623,8 @@ void execute_slave_loop()
   //We now have PITEM updated, we will now EXECUTE it (until it fails, keep checking success).
 
   execute_work( mypitem );
-  
+
+  //NEED TO SEND RESULTS
   notify_finished(); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
   
   
