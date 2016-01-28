@@ -1,3 +1,7 @@
+#pragma once
+
+#include <parampoint.h>
+#include <variable.h> //this is recursively from parampoint.h I think...
 
 #include <iostream>
 #include <string>
@@ -5,6 +9,8 @@
 #include <boost/mpi.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/vector.hpp>
+
+#include <boost/filesystem.hpp>
 
 int MYRANK;
 
@@ -15,6 +21,12 @@ mpi::communicator world;
 //serialize them orz.
 
 
+void send_varlist( const varlist& v, const int& targrank )
+{
+  world.send( targrank, any_tag, v );
+}
+
+
 void send_cmd( const std::string& cmd, const int& targrank )
 {
   world.send( targrank, any_tag, cmd );
@@ -23,6 +35,13 @@ void send_cmd( const std::string& cmd, const int& targrank )
 void send_pitem( const pitem& mypitem, const int& targrank )
 {
   world.send( targrank, any_tag, mypitem ); //will serialize it for me.
+}
+
+varlist receive_varlist( const int& targrank )
+{
+  varlist tmpv;
+  world.receive( targrank, any_tag, tmpv );
+  return tmpv;
 }
 
 //I want to block but I want to get message from target before handling others.
@@ -401,9 +420,10 @@ struct mem_file
     //REV: NOTHING
   }
 
-  void tofile(const std::string& dir, const std::string& fname )
+  void tofile(const std::string& dir, const std::string& myfname )
   {
-    std::string fullfname = dir + "/" + fname;
+    //REV: this does not use the FNAME of this mem_file...? Ugh.
+    std::string fullfname = dir + "/" + myfname;
 
     ofstream ofs;
 
@@ -533,12 +553,8 @@ pitem handle_cmd( psweep_cmd pcmd )
 }
 
 
-//REV* this is on ROOT side, it executes this when finished. It is
-//corresponding to notify_finished
-handle_finished( )
-{
-  
-}
+
+
 
 void notify_finished( const pitem& mypitem )
 {
@@ -561,13 +577,34 @@ void notify_finished( const pitem& mypitem )
 
   //Note, all OUTPUT are automatically appended to SUCCESS, so just
   //return all SUCCESS files.
-  int nsuccess = mypitem.success_files.size();
+  size_t nsuccess = mypitem.success_files.size();
   send_int( ROOT_RANK, nsuccess );
+
+  for(size_t x=0; x<nsuccess; ++x)
+    {
+      send_file( targrank, mypitem.success_files[x] );
+    }
+
+  varlist resvar = mypitem.get_output();
+
+  send_varlist( targrank, resvar );
+
+
+  
+  return;
+    
 }
 
-void block_and_wait_for_notify()
+psweep_cmd block_and_wait_for_notify()
 {
   psweep_cmd pc = get_cmd_from_any();
+  return pc;
+}
+
+
+//REV: this needs to "find" which PITEM was allocated to that worker/ thread.
+varlist handle_finished_work( const psweep_cmd& pc, const pitem& corresp_pitem )
+{
   int targrank = pc.SRC;
   std::string cmd = pc.CMD;
   if( cmd.compare("DONE") != 0 )
@@ -583,22 +620,46 @@ void block_and_wait_for_notify()
 
   size_t nfiles = recieve_int( targrank );
 
-  std::vector<mem_file> mfs;
+  //std::vector<mem_file> mfs;
   for(size_t x=0; x<nfiles; ++x)
     {
       mem_file mf = receive_file( targrank );
-      mfs.push_back( mf );
+      //mfs.push_back( mf );
+      //REV: need to figure out how to output these
+      //I need to rebase them
+      //Then, mf.tofile( DIR, FNAME );
+      //Need to know what was the original PITEM????!!
+      //Anyway, keep a PITEM around so we know MYDIR for that
+      //executed worker, and just use that.
+
+      std::string origdir = corresp_pitem.mydir;
+
+      std::string fname="ERRORFNAME";
+      std::string dirofreceived = get_canonical_dir_of_fname( mf.fname, fname );
+      std::string newlocal = origdir + "/" + fname;
+      //This had sure has hell better exist in original SUCCESS too haha.
+      //Check for sanity.
+
+      std::vector<bool> tmpmarked
+      std::vector<size_t> matched = find_matching_files( newlocal, corresp_pitem.success_files, tmpmarked);
+
+      //We expect it to find AT LEAST one.
+      if( matched.size() == 0 )
+	{
+	  fprintf(stderr, "ERROR, in receive_files from notify of success, did not find corresponding file in original PITEM SUCCESS array (fname: [%s])\n", newlocal.c_str() );
+	  exit(1);
+	}
+      else if( matched.size() > 1 )
+	{
+	  fprintf(stderr, "WARNING! In receive files from notify, got MORE than one match in SUCCESS array to file [%s]\n", newlocal.c_str() );
+	}
+
+      mf.tofile( origdir, fname );
     }
-
-
-  //Will write these out to appropriate location (what is it?)
-
-  //Also receive "OUTPUT" as varlist I guess.
-
-  varlist outputvlist = receive_varlist( targrank );
-
   
+  varlist outputvlist = receive_varlist( targrank );
     
+  return outputvlist;
 }
 
 bool execute_work( const pitem& mypitem )
@@ -625,14 +686,27 @@ void execute_slave_loop()
   execute_work( mypitem );
 
   //NEED TO SEND RESULTS
-  notify_finished(); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
+  notify_finished( mypitem ); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
   
+  cleanup_workspace( mypitem );
+}
+
+void cleanup_workspace( const pitem& mypitem )
+{
+  //FINISHED? Destruct everything locally in TMP? I.e. remove PITEM's DIR?
+  //Is there a better way to do this?
+
+  boost::filesystem::path p( mypitem.mydir );
+  uintmax_t removed = boost::filesystem::remove_all( p );
+
+  //Another option is to move it to a tmp location...?
   
 }
 
 void execute_master_loop()
 {
-  //
+  // This requires me to wait/keep track of where work is farmed, etc.
+  // Careful coding this :)
 }
 
 
