@@ -1,4 +1,5 @@
 CC=g++
+MPICC=mpic++
 INCLUDEFLAG=-I./ -I./include
 CFLAGS=-std=c++11 -O3
 INCLUDEDIR=./include
@@ -24,5 +25,9 @@ testfunctrep2.exe: $(INCLUDEDIR)/psweep_cmd_script_parser.h $(INCLUDEDIR)/script
 
 testfunctrep.exe: $(INCLUDEDIR)/psweep_cmd_script_parser.h $(INCLUDEDIR)/script_unroller.h $(INCLUDEDIR)/variable.h $(INCLUDEDIR)/hierarchical_varlist.h $(INCLUDEDIR)/functrep.h   $(UNITTESTDIR)/testfunctrep.cpp
 	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/testfunctrep.cpp -o testfunctrep.exe
+
+test_boostmpi.exe: $(UNITTESTDIR)/test_boostmpi.cpp
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_boostmpi.cpp -o test_boostmpi.exe -lboost_mpi
+
 clean:
 	rm *.exe *.o
