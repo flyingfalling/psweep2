@@ -105,7 +105,7 @@ std::string CONCATENATE_STR_ARRAY(const std::vector<std::string>& arr, const std
 //REV: this is a worker item. I.e. a single parameterized worker thing.
 struct pitem
 {
-
+  
  
   //std::string mycmd; //the main thing, this is the cmd I am running via system()?
   std::vector< std::string > mycmd; //Needs to be catted.
@@ -921,6 +921,30 @@ struct search_function
   
 };
 
+
+struct pset_result
+{
+  std::vector< varlist > pitem_results;
+  pset_result( const size_t& nitems )
+  {
+    pitem_results = std::vector< varlist >( nitems );
+  }
+};
+
+struct parampoint_result
+{
+  std::vector< pset_result > pset_results;
+
+  parampoint_result( const parampoint& myp  )
+  {
+    for(size_t x=0; x<myp.psets.size(); ++x)
+      {
+	pset_results.push_back( pset_result( myp.psets[x].pitems.size() ) );
+      }
+  }
+};
+
+
 struct parampoint_generator
 {
   //This needs to have the ability to take current list and generate new ones?
@@ -931,6 +955,8 @@ struct parampoint_generator
 
   std::vector< parampoint > parampoints;
 
+  std::vector< parampoint_result > parampoint_results; //make sure these are same shape as the actual parampoint...
+  
   std::string basedir="./";
 
   size_t first_active=0; //this is first in array of parampoints that is active i.e. not finished.
@@ -977,6 +1003,8 @@ struct parampoint_generator
     
     parampoints.push_back ( retp );
 
+    parampoint_results.push_back( parampoint_result( retp ) );
+    
     return (parampoints.size() - 1);
   }
 

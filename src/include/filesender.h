@@ -1044,7 +1044,8 @@ struct work_progress
   bool avail_worker( std::vector<bool>& workingworkers )
   {
     //for(size_t x=0; x<farmed_status.size(); ++x)
-    for(size_t x=0; x<workingworkers.size(); ++x)
+    //REV: START FROM 1 BECAUSE ROOT RANK SHOULD BE ZERO!
+    for(size_t x=1; x<workingworkers.size(); ++x)
       {
 	if(workingworkers[x] == false)
 	  {
@@ -1057,7 +1058,8 @@ struct work_progress
   size_t get_next_worker(std::vector<bool>& workingworkers)
   {
     //for(size_t x=0; x<farmed_status.size(); ++x)
-    for(size_t x=0; x<workingworkers.size(); ++x)
+    //REV: START FROM 1 bc root rank is 0.
+    for(size_t x=1; x<workingworkers.size(); ++x)
        {
 	if(workingworkers[x] == false)
 	  {
@@ -1101,6 +1103,14 @@ struct work_progress
     return res;
   }
 
+  
+  pitem get_corresponding_pitem_from_workernum( parampoint_generator& pg, const size_t& workernum )
+  {
+    
+    parampoint_coord pc = farmed_status[ workernum ];
+    return get_corresponding_pitem( pg, pc );
+  }
+  
   pitem get_corresponding_pitem( parampoint_generator& pg, const parampoint_coord& pc )
   {
     
@@ -1218,6 +1228,35 @@ struct farmer
 	    //WORKER. So, I need to remember which are which, i.e.
 	    //pass around a WORKING thing separate from the list of PP.
 	    //OK, do it.
+
+	    psweep_cmd pcmd = receive_cmd_from_any();
+	    if( is_finished_work( pcmd ) == true )
+	      {
+		//pcmd contains DONE cmd
+		//I need to handle it based on corresponding worker.
+		size_t workernum = pcmd.SRC;
+
+		//farmed_status[workernum] should tell us where
+		pitem handledpitem = get_corresponding_pitem_from_workernum( pg, workernum );
+		varlist result = handle_finished_work( psweep_cmd, handledpitem );
+
+		//SET IT TO corresponding value in pg.parampoint_results[]
+		//of this ones coordinates.
+		
+		workingworkers[ pcmd.SRC ] == false;
+	      }
+	    else if( is_ready_for_work( pcmd ) == true )
+	      {
+		//Contains READY cmd, just mark to not working.
+		workingworkers[ pcmd.SRC ] == false;
+	      }
+	    else
+	      {
+		//should be an error
+		fprintf(stderr, "In root: unrecognized cmd [%s]\n", pcmd.CMD.c_str() );
+		exit(1);
+		
+	      }
 	  }
 	//both work and worker available: farm it.
 	else
@@ -1233,106 +1272,10 @@ struct farmer
 	
 	
       }
-
-    
-    //While   all progress is != DONE (finally done whole parampoint)
-    //  **AND**
-    //  any of the workers are still active/working:
-    //  1) BLOCK_GET_CMD_FROM_WORKER (PROBE BUT DO NOT RECEIVE IT!!!!! I.e. leave it in buffer?!?!? Crap they might/will pile up a LOT. Much better to
-    //     keep track of which workers are available on THIS side and to stop probing them. If it's done we receive data immediately of course. )
-    //  2)
-    // Basically, if there is any work to be done, we farm it off, if there are any workers open.
-    //      We keep track of which worker which PITEM/PPSET/etc. was farmed to by using a PPSET_COORD
-    // We also accept the next message from any worker (note: there might be none!!!! If there are none, that means that there are no workers open? Crap.
-    // I.e. only accept messages AFTER we are sure that EVERYTHING (all work) is farmed off (i.e. all workers are full). If there are any workers open
-    //           (**and any work to do), don't bother accepting messages
-  
-    
-    transfer_data td = get_data_from_worker( Handle );
-    
-    
-    //OK, got it, now I need to get more JUST FROM THAT TARGET, until it is done. E.g. finish up stuff. I get some "chunk" of results, which is what, a structure?
-    //Need to use serialization after all ugh...
-    
-    //Literally spins waiting for a signal from any of the workers.
-    //Two conditions
-    //1) it has finished some work I gave it and now everything must be copied back and checked.
-    //2) it didn't have any work, so just farm out (i.e. first spin through).
   }
 
-    bool checkalldone( std::deque< completion_struct > & prog )
-    {
-      
-    }
-
-    bool check_work_avail( std::deque< completion_struct >& prog  )
-    {
-    }
-
-    void farmwork( std::deque< completion_struct> & prog, const size_t& workernum )
-    {
-      
-    }
-    
-    //this will contain somem implementation of a communicator method? 
-    
-    while( false == checkalldone( progress ) )
-      {
-	//block, waiting for a worker to tell that it is ready (or to finish?)
-	
-	
-	//wait for a worker to be open (or to get it back)
-	//This will both "handle" a successful return data (if that is what happened)
-	//and/or it will also.
-	//This will impl with MPI, or maybe HADOOP etc.
-	//Why do we need to know what worker it is? We know at least ONE is open.
-	//Does only one worker (?). We could do this on multiple threads if
-	//we really wanted to be cool ;)
-	//This copies all stuff back to this side, but to where? To PG? I guess.
-	//Copying back just the varlist, or all the filesystem that was possibly
-	//created at /TMP???
-	//It will update progress. Will it also do something fancy, writing back
-	//to correct location in filesystem? It must ;) We must have our "local"
-	//guy here, OK. So, it writes to PG locations the corresponding stuff
-	//from the other side fS? How does it know? We had to have built
-	//a correspondence on this side/that side somewhere. In the PG?
-	size_t openw = wait_for_worker( progress, pg );
-	
-	//wait for work to be available (or, check if it is?)
-	//If not, loop back to top.
-
-	
-	
-	//Checks if work is available
-	bool iswork = check_work_avail( progress );
-
-	if( iswork )
-	  {
-	    farmwork( progress, openw );
-	  }
-	//Else, loop back to top, to check and wait for a worker to be open...
-
-      } //end while we're not all done
-    
-    
-    
-    //Passes as memory, so much easier... I.e. it modifies it in line...
-    //OK, and I do everything. This is all on the master rank.
-    //Keeping stuff here allows me to not mess around with internals of parampoint_generator other than to get the guys from it?
-    
-    //Do all "in processing", "output to archive", "done" checking, and "send to workers" here.
-  }
-
-
-  //local struct that keeps track of which:
-  //PARAMPOINT, PSET, and PITEM have been farmed out, to where/which worker (will depend on implementation?), which are done, etc.
-
   
-  
-  //keep an index for each of the PARAMPOINTS in pg, that tells stuff for each.
-  
-  
-  
+    
 };
 
 
