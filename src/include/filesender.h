@@ -502,7 +502,7 @@ int get_int( const int& targrank )
   
 }
 
-
+/*
 psweep_cmd wait_for_cmd()
 {
   //Only receive mesgs from ROOT. Blocking.
@@ -521,9 +521,11 @@ psweep_cmd wait_for_cmd()
   return mypcmd;
 }
 
+*/
 
 
-pitem handle_cmd( psweep_cmd pcmd )
+//REV: This is only for WORKERS
+pitem handle_cmd( const psweep_cmd& pcmd )
 {
   //get the CMD from it, return...
   if( pcmd.SRC != ROOT_RANK )
@@ -538,7 +540,7 @@ pitem handle_cmd( psweep_cmd pcmd )
       fprintf(stderr, "Worker [%d] received EXIT command from root rank\n", MYRANK);
       exit(1);
     }
-  else if( strcmd( pcmd.CMD, "PITEM") == 0 )
+  else if( strcmp( pcmd.CMD, "PITEM") == 0 )
     {
       //will process this pitem.
       pitem mypitem = get_pitem_from_targ_rank( ROOT_RANK );
@@ -669,28 +671,6 @@ bool execute_work( const pitem& mypitem )
   return success;
 }
 
-void execute_slave_loop()
-{
-  //WAIT for mesg from MASTER
-  psweep_cmd cmd = wait_for_cmd();
-  
-  pitem myitem = handle_cmd( cmd ); //REV: may EXIT, or contain a PITEM (to execute).
-
-  std::string LOCALDIR = "/TMP/scratch"; //will execute in local scratch. Note, might need to check we have enough memory etc.
-  
-  handle_pitem( mypitem, LOCALDIR ); // This will do the receiving of all files and writing to LOCALDIR, it will also rename them and keep track
-  //of the correspondence. Note the SENDING side will do the error out if it is no in the __MY_DIR. Do that on PARENT side I guess. OK.
-
-  //We now have PITEM updated, we will now EXECUTE it (until it fails, keep checking success).
-
-  execute_work( mypitem );
-
-  //NEED TO SEND RESULTS
-  notify_finished( mypitem ); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
-  
-  cleanup_workspace( mypitem );
-}
-
 void cleanup_workspace( const pitem& mypitem )
 {
   //FINISHED? Destruct everything locally in TMP? I.e. remove PITEM's DIR?
@@ -703,11 +683,659 @@ void cleanup_workspace( const pitem& mypitem )
   
 }
 
-void execute_master_loop()
+void execute_slave_loop_single()
 {
-  // This requires me to wait/keep track of where work is farmed, etc.
-  // Careful coding this :)
+  bool loopslave=true;
+  while( loopslave == true )
+    {
+      //WAIT for mesg from MASTER
+      psweep_cmd cmd = wait_for_cmd();
+  
+      pitem myitem = handle_cmd( cmd ); //REV: may EXIT, or contain a PITEM (to execute).
+
+      std::string LOCALDIR = "/TMP/scratch"; //will execute in local scratch. Note, might need to check we have enough memory etc.
+  
+      handle_pitem( mypitem, LOCALDIR ); // This will do the receiving of all files and writing to LOCALDIR, it will also rename them and keep track
+      //of the correspondence. Note the SENDING side will do the error out if it is no in the __MY_DIR. Do that on PARENT side I guess. OK.
+
+      //We now have PITEM updated, we will now EXECUTE it (until it fails, keep checking success).
+
+      execute_work( mypitem );
+
+      //NEED TO SEND RESULTS
+      notify_finished( mypitem ); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
+  
+      cleanup_workspace( mypitem );
+    }
 }
+
+
+
+bool is_finished_work( const psweep_cmd& pcmd )
+{
+  if( pcmd.CMD.equals( "DONE" )  == 0 )
+    {
+      return true;
+    }
+  else
+    {
+      return false;
+    }
+}
+
+bool is_ready_for_work( const psweep_cmd& pcmd )
+{
+  if( pcmd.CMD.equals( "READY" )  == 0 )
+    {
+      return true;
+    }
+  else
+    {
+      return false;
+    }
+}
+
+struct parampoint_coord
+{
+  //bool working;
+  size_t parampointn;
+  size_t psetn;
+  size_t pitemn;
+
+  parampoint_coord()
+  //: working(true)
+  {
+    //REV: nothing to do.
+  }
+
+
+  //REV: starts off default working, waits for message even if its not
+  //working on a specific problem. Based on message we get from it.
+parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi )
+: parampointn(pp), psetn(ps), pitemn(pi) //, working(true)
+  {
+    //REV: nothing to do.
+  }
+};
+
+struct pprep
+{
+  size_t pset_idx;
+  size_t pitem_idx;
+  //a pointer or marker?
+
+  pprep( const size_t& psi, const size_t& pii )
+  : pset_idx(psi), pitem_idx(pii)
+  {
+  }
+
+  inline bool operator==(const pprep& lhs, const pprep& rhs)
+  {
+    if( lhs.pset_idx == rhs.pset_idx
+	&&
+	lhs.pitem_idx == rhs.pitem_idx )
+      {
+	return true;
+      }
+    else
+      {
+	return false;
+      }
+  }
+
+  inline bool operator!=(const pprep& lhs, const pprep& rhs)
+  {
+    if( lhs == rhs )
+      {
+	return false;
+      }
+    else
+      {
+	return true;
+      }
+  }
+};
+
+//REV: This keeps track of where there is WORK, which ones have already been farmed, which ones need to be farmed, etc.
+//active means farmed
+struct completion_struct
+{
+  std::deque<pprep> farmed_pps;
+  
+  parampoint_rep state;
+
+  
+  //contains um, list of pps, as well as each "index" of each, i.e. where it is in the pg struct?
+  //Fuck, so much better to just include this in the parampoint_gen thing. But then we don't know what format workers are etc. So better to
+  //separate it out.
+  //But we "know" what format of parampoint etc is, i.e. list of psets, and each pset is a list of pitems. OK.
+  //I.e. what is the "next one" to farm out in each?
+  
+  completion_struct( parampoint_generator& pg, const size_t& idx )
+  {
+    state = parampoint_rep( pg.parampoints[idx], idx );
+  }
+
+  bool check_work_avail()
+  {
+    if( !state.checkdone() &&
+	!state.psets[ state.current_pset ].checkdone() )
+      {
+	
+	for(size_t x=0; x<state.psets[ state.current_pset ].size() ; ++x )
+	  {
+	    if( state.psets[ state.current_pset ].pitems[ x ].checkavail() == true)
+	      {
+		return true;
+	      }
+	  }
+      }
+    return false;
+  }
+
+  pprep get_next_work()
+  {
+    if( !state.checkdone() &&
+	!state.psets[ state.current_pset ].checkdone() )
+      {
+	
+	for(size_t x=0; x<state.psets[ state.current_pset ].size() ; ++x )
+	  {
+	    if( state.psets[ state.current_pset ].pitems[ x ].checkavail() == true)
+	      {
+		//MARK IT FARMED...
+		state.psets[ state.current_pset ].pitems[ x ].farmed = true;
+
+		return pprep(state.current_pset, x);
+	      }
+	  }
+      }
+    fprintf(stderr, "REV: THIS (get next work) SHOULD NOT HAVE BEEN CALLED IF THERE IS NO WORK!\n");
+    exit(1);
+  }
+  
+    
+  struct parampoint_rep
+  {
+    size_t myidx;
+    bool done=false;
+
+    size_t current_pset=0;
+    std::vector< pset_rep > psets;
+    
+    parampoint_rep( const parampoint& pp, const size_t& idx )
+    {
+      myidx = idx;
+      psets.resize( parampoint.psets.size() );
+      for(size_t x=0; x<psets.size(); ++x)
+	{
+	  psets[x].resize( parampoint.psets[x].size() );
+	}
+    }
+    
+
+    void markdone( const parampoint_coord& pc )
+    {
+      psets[ pc.psetn ].pitems[ pc.pitemn ].done = true;
+      bool psetdone=true;
+      for(size_t x=0; x<psets[ pc.psetn ].pitems.size(); ++x)
+	{
+	  if( psets[ pc.psetn ].pitems[x].checkdone() == false )
+	    {
+	      psetdone = false;
+	    }
+	}
+      psets[ pc.psetn ].done = psetdone;
+      if(psetdone==true)
+	{
+	  ++current_pset;
+	}
+      
+      
+      bool parampointdone = true;
+      for(size_t x=0; x<psets.size(); ++x)
+	{
+	  if( psets[x].checkdone() == false )
+	    {
+	      parampointdone = false;
+	    }
+	}
+
+      done = parampointdone;
+
+      return;
+    }
+    
+    bool checkdone()
+    {
+      if(done)
+	{
+	  return done;
+	}
+      else
+	{
+	  done=true;
+	  for(size_t p=0; p<psets.size(); ++p)
+	    {
+	      if( psets[p].checkdone() == false )
+		{
+		  done=false;
+		  return done;
+		}
+	    }
+	}
+      return done;
+    }
+    
+  };
+
+  
+  struct pset_rep
+  {
+    bool done=false;
+    std::vector< pitem_rep > pitems;
+
+    pset_rep()
+    {
+      
+    }
+    
+    bool checkdone()
+    {
+      if(done)
+	{
+	  return done;
+	}
+      else
+	{
+	  done=true;
+	  for(size_t p=0; p<pitems.size(); ++p )
+	    {
+	      if( pitems[p].checkdone() == false )
+		{
+		  done=false;
+		  return done;
+		}
+	    }
+	}
+      return done;
+    }
+  };
+    
+  struct pitem_rep
+  {  
+    bool farmed=false;
+    bool done=false;
+    size_t farmed_worker=0;
+
+    bool checkavail()
+    {
+      if( farmed == false && done == false )
+	{
+	  return true;
+	}
+      else
+	{
+	  return false;
+	}
+    }
+    
+    pitem_rep()
+    {
+    }
+    
+    bool checkdone()
+    {
+      return done; //actually check it?
+    }
+  };
+    
+};
+
+
+size_t wait_for_worker( std::deque< completion_struct >& prog )
+{
+
+  psweep_cmd pcmd = block_and_wait_for_notify();
+
+  if( is_finished_work( pcmd ) == true )
+    {
+      //pcmd contains DONE cmd
+      //I need to handle it based on corresponding worker.
+    }
+  else if( is_ready_for_work( pcmd ) == true )
+    {
+      //pcmd is first time, i.e. just give it work without handling its return values
+    }
+  else
+    {
+      //should be an error
+    }
+      
+      
+}
+
+
+void master_to_slave( const pitem& mypitem, const size_t& workeridx )
+{
+  send_cmd( "PITEM", workeridx );
+
+  int nfiles = mypitem.required_files.size();
+  send_int( workeridx, nfiles );
+  
+  //Then, send the files.
+  for(size_t f=0; f<mypitem.required_files.size(); ++f)
+    {
+      send_file( workeridx, mypitem.required_files[f] );
+    }
+
+  //REV: And that is it, return
+  return;
+}
+
+
+struct work_progress
+{
+  //REV: I would delete from this deque as I go???
+  std::deque< completion_struct > progress;
+  std::vector<parampoint_coord> farmed_status;
+  //std::deque< size_t > working_workers;
+
+  bool avail_worker( std::vector<bool>& workingworkers )
+  {
+    //for(size_t x=0; x<farmed_status.size(); ++x)
+    for(size_t x=0; x<workingworkers.size(); ++x)
+      {
+	if(workingworkers[x] == false)
+	  {
+	    return true;
+	  }
+      }
+    return false;
+  }
+
+  size_t get_next_worker(std::vector<bool>& workingworkers)
+  {
+    //for(size_t x=0; x<farmed_status.size(); ++x)
+    for(size_t x=0; x<workingworkers.size(); ++x)
+       {
+	if(workingworkers[x] == false)
+	  {
+	    return x;
+	  }
+      }
+    fprintf(stderr, "REV: this get next worker should only happen if available!\n");
+    exit(1);
+  }
+  
+  work_progress( parampoint_generator& pg, std::vector<varlist>& newlist, const size_t& nworkers )
+  {
+    farmed_status.resize( nworkers );
+    
+    for( size_t n=0; n<newlist.size(); ++n )
+      {
+	//make the parampoint (i.e. generate the hierarchical varlists etc. locally).
+	size_t idx = pg.generate( newlist[n] );
+	
+	add_parampoint( pg, idx );
+      }
+
+    return;
+  }
+		 
+  
+  //REV: this really needs a POINTER, not a reference orz.
+  void add_parampoint( parampoint_generator& pg, const size_t& idx )
+  {
+    completion_struct cs(pg, idx);
+    progress.push_back( cs );
+  }
+  
+  size_t check_any_working( )
+  {
+    size_t res=0;
+    for(size_t x=0; x<progress.size(); ++x)
+      {
+	res += progress[x].farmed_pps.size();
+      }
+    return res;
+  }
+
+  pitem get_corresponding_pitem( parampoint_generator& pg, const parampoint_coord& pc )
+  {
+    
+    return (pg.parampoints[ pc.parampointn ].psets[ pc.psetn ].pitems[ pc.pitemn ]);
+  }
+  
+  bool check_all_done( )
+  {
+    bool done=true;
+    for(size_t x=0; x<progress.size(); ++x )
+      {
+	if( progress[x].check_all_done() == false )
+	  {
+	    done = false;
+	  }
+      }
+    return done;
+  }
+
+  bool check_work_avail( )
+  {
+    bool workavail=false;
+    for(size_t x=0; x<progress.size(); ++x)
+      {
+	if( progress[x].check_work_avail() == true )
+	  {
+	    workavail = true;
+	  }
+      }
+    return workavail;
+  }
+
+  parampoint_coord find_first_avail_work()
+  {
+    for(size_t x=0; x<progress.size(); ++x)
+      {
+	if( progress[x].check_work_avail() == true )
+	  {
+	    pprep firstwork = progress[x].get_next_work( );
+	    parampoint_coord pc(x, firstwork.pset_idx, firstwork.pitem_idx);
+	    
+	    return pc;
+	  }
+      }
+    fprintf(stderr, "REV: we should never have got here in find_first_avail_work()\n"); exit(1);
+  }
+  
+  //Marks it as if it is farmed
+  size_t farm_work( std::vector<bool>& workingworkers )
+  {
+    parampoint_coord pc = find_first_avail_work();
+    farmed_pps.push_back( pprep(pc.psetn, pc.pitemn) );
+
+    size_t workeridx = get_next_worker( workingworkers );
+    farmed_status[ workeridx ] = pc;
+
+    return workeridx; //this needs to be marked for other guy...
+  }
+
+  void mark_done( const parampoint_coord& pc )
+  {
+    pprep pr( pc.setn, pc.pitemn );
+    size_t found=0;
+    size_t loc=0;
+    for( size_t x=0; x<progress[ pc.parampointn ].farmed_pps.size(); ++x )
+      {
+	if( progress[ pc.parampointn ].farmed_pps[ x ] == pr )
+	  {
+	    ++found;
+	    loc = x;
+	  }
+      }
+    if( found != 1 )
+      {
+	fprintf(stderr, "REV: error in markdone, more than one found!\n");
+	exit(1);
+      }
+
+    //Erase the one that is currently working.
+    //Mark it done.
+    progress[ pc.parampointn ].farmed_pps[ loc ].erase( progress[ pc.parampointn ].farmed_pps[ loc ].begin() + loc );
+
+    progress[ pc.parampointn].state.markdone( pc );
+  }
+};
+
+struct farmer
+{
+  //This does everything necessary for it. So on other side, it will do all this. This will include the MPI guys?
+  //List of workers, note it is indexed from 1...i.e. 0 is worker 1...
+  void comp_pp_list( parampoint_generator& pg, std::vector<varlist>& newlist, const size_t& nworkers, std::vector<bool>& workingworkers )
+  {
+
+    work_progress wprog(pg, newlist);
+
+    //REV: these should never happen at the same time, i.e. it shouldn't
+    //be done if there are any workers working...
+    while( wprog.check_all_done() == false )
+      {
+	//Only accept messages if there are no available workers and
+	//there's no work to do.
+	//If there is available workers, but no work to do, accept messages
+	//If there is no available workers, but work to do, accept messages
+	//if( (wprog.avail_worker() == false && wprog.check_work_avail() == true) || (wprog.avail_worker() == true && wprog.check_work_avail() == false) )
+	//As long as there are not both available workers and available work...
+	if( !(wprog.avail_worker( workingworkers ) == true &&
+	      wprog.check_work_avail() == true )
+	    )
+	  {
+	    //ACCEPT MESSAGES FROM WORKERS AND HANDLE.
+	    //Note, we want to keep it so that this array will carry over
+	    //to the next loop??? Fuck. They sent DONE or READY or
+	    //whatever, we said OK to that, and marked our guy NOT WORKING.
+	    //Because of that, there is no more message from the
+	    //WORKER. So, I need to remember which are which, i.e.
+	    //pass around a WORKING thing separate from the list of PP.
+	    //OK, do it.
+	  }
+	//both work and worker available: farm it.
+	else
+	  {
+	    size_t farmedworker = wprog.farm_work(workingworkers);
+
+
+	    parampoint_coord pc = farmed_status[ farmedworker ];
+	    //FARM TO THAT WORKER, i.e. send message to that rank.
+	    master_to_slave( get_corresponding_pitem( pg, pc),
+			     farmedworker );
+	  }
+	
+	
+      }
+
+    
+    //While   all progress is != DONE (finally done whole parampoint)
+    //  **AND**
+    //  any of the workers are still active/working:
+    //  1) BLOCK_GET_CMD_FROM_WORKER (PROBE BUT DO NOT RECEIVE IT!!!!! I.e. leave it in buffer?!?!? Crap they might/will pile up a LOT. Much better to
+    //     keep track of which workers are available on THIS side and to stop probing them. If it's done we receive data immediately of course. )
+    //  2)
+    // Basically, if there is any work to be done, we farm it off, if there are any workers open.
+    //      We keep track of which worker which PITEM/PPSET/etc. was farmed to by using a PPSET_COORD
+    // We also accept the next message from any worker (note: there might be none!!!! If there are none, that means that there are no workers open? Crap.
+    // I.e. only accept messages AFTER we are sure that EVERYTHING (all work) is farmed off (i.e. all workers are full). If there are any workers open
+    //           (**and any work to do), don't bother accepting messages
+  
+    
+    transfer_data td = get_data_from_worker( Handle );
+    
+    
+    //OK, got it, now I need to get more JUST FROM THAT TARGET, until it is done. E.g. finish up stuff. I get some "chunk" of results, which is what, a structure?
+    //Need to use serialization after all ugh...
+    
+    //Literally spins waiting for a signal from any of the workers.
+    //Two conditions
+    //1) it has finished some work I gave it and now everything must be copied back and checked.
+    //2) it didn't have any work, so just farm out (i.e. first spin through).
+  }
+
+    bool checkalldone( std::deque< completion_struct > & prog )
+    {
+      
+    }
+
+    bool check_work_avail( std::deque< completion_struct >& prog  )
+    {
+    }
+
+    void farmwork( std::deque< completion_struct> & prog, const size_t& workernum )
+    {
+      
+    }
+    
+    //this will contain somem implementation of a communicator method? 
+    
+    while( false == checkalldone( progress ) )
+      {
+	//block, waiting for a worker to tell that it is ready (or to finish?)
+	
+	
+	//wait for a worker to be open (or to get it back)
+	//This will both "handle" a successful return data (if that is what happened)
+	//and/or it will also.
+	//This will impl with MPI, or maybe HADOOP etc.
+	//Why do we need to know what worker it is? We know at least ONE is open.
+	//Does only one worker (?). We could do this on multiple threads if
+	//we really wanted to be cool ;)
+	//This copies all stuff back to this side, but to where? To PG? I guess.
+	//Copying back just the varlist, or all the filesystem that was possibly
+	//created at /TMP???
+	//It will update progress. Will it also do something fancy, writing back
+	//to correct location in filesystem? It must ;) We must have our "local"
+	//guy here, OK. So, it writes to PG locations the corresponding stuff
+	//from the other side fS? How does it know? We had to have built
+	//a correspondence on this side/that side somewhere. In the PG?
+	size_t openw = wait_for_worker( progress, pg );
+	
+	//wait for work to be available (or, check if it is?)
+	//If not, loop back to top.
+
+	
+	
+	//Checks if work is available
+	bool iswork = check_work_avail( progress );
+
+	if( iswork )
+	  {
+	    farmwork( progress, openw );
+	  }
+	//Else, loop back to top, to check and wait for a worker to be open...
+
+      } //end while we're not all done
+    
+    
+    
+    //Passes as memory, so much easier... I.e. it modifies it in line...
+    //OK, and I do everything. This is all on the master rank.
+    //Keeping stuff here allows me to not mess around with internals of parampoint_generator other than to get the guys from it?
+    
+    //Do all "in processing", "output to archive", "done" checking, and "send to workers" here.
+  }
+
+
+  //local struct that keeps track of which:
+  //PARAMPOINT, PSET, and PITEM have been farmed out, to where/which worker (will depend on implementation?), which are done, etc.
+
+  
+  
+  //keep an index for each of the PARAMPOINTS in pg, that tells stuff for each.
+  
+  
+  
+};
+
+
 
 
 
