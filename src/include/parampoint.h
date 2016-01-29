@@ -966,6 +966,14 @@ struct parampoint_generator
   //It's a single executable representation...
   executable_representation exec_rep; //representation of the "script" to run to generate psets (param point) etc.
 
+  void set_result( const parampoint_coord& pc, const varlist& result )
+  {
+    parampoint_results[ pc.parampointn ].pset_results[ pc.psetn ].pitem_results[ pc.pitemn ] = result;
+    return;
+  }
+  
+  
+  
   //Construct it by specifying global vars or something?
 
   parampoint_generator()

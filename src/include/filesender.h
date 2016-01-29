@@ -1235,14 +1235,16 @@ struct farmer
 		//pcmd contains DONE cmd
 		//I need to handle it based on corresponding worker.
 		size_t workernum = pcmd.SRC;
-
+		
 		//farmed_status[workernum] should tell us where
+		parampoint_coord pc = wprog.farmed_status[workernum];
+		
 		pitem handledpitem = get_corresponding_pitem_from_workernum( pg, workernum );
+		
 		varlist result = handle_finished_work( psweep_cmd, handledpitem );
 
-		//SET IT TO corresponding value in pg.parampoint_results[]
-		//of this ones coordinates.
-		
+		pg.set_result( pc, result );
+
 		workingworkers[ pcmd.SRC ] == false;
 	      }
 	    else if( is_ready_for_work( pcmd ) == true )
