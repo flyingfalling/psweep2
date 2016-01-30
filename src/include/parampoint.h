@@ -1,80 +1,3 @@
-//REV: add some "CMDS" to execute at beginning, e.g. MAKE all guys etc.
-//May set some global variables? Locate data files? CP data files?
-//Figure that out later ;)
-
-//We can keep all variables internal? Nasty...
-
-//NOTE: REQUIRED files may need to be copied locally?!?!?! Or should I just access them elsewher? I will not modify them, only read from them I assume...
-//Individual PSETS may (before threading) have "shared" parameters file! And other files? And these are copied to all worker???
-
-//Have ways to access PSET specific files and, data files like sound files etc.? Should all such files be copied to "current worker"? Obviously we don't
-//want to keep them around afterwards. But, have user specify them all at beginning so we can store them all in some "data source" for this "run". That
-//way there is no double.
-//We can also e.g. require whole directories, like C++ source files etc., for posterity. Obviously we can't do libs etc., but for user models, we can
-//have them force the source code in, and have it auto-compile etc. at beginning. And even check some hash of it regularly to make sure there are
-//no changes heh. Or at least give a warning. I.e. for all executables or scripts we will be running.
-
-//REV: in the "hierarch" varlist will the param settings be stored? Are they always single variable single value? I guess.
-//Kind of stupid to "force" it to store. Make a function that does the writing and then require that file I guess ;)
-//but, in that case I need a way to write other "set" variables to the file?
-
-
-//REV: what do I need to do to get a FUNCTIONAL thing???
-//I.e. best to keep all "variable" files stored in memory???!
-
-
-//Difference between "workers" and "non-workers". Note, for each (worker) guy, there will be a specific "data" holding folder that holds it for
-//that worker. It may be in TMP. These can be specified as general data guys required for everyone. I guess we could have separate for each WORKER
-//since it may need to be held locally. Or even faster, just once for each NODE, if we can logically include that.
-
-
-//Right now, I can do everything...but how do I get the variables? Yappa, specify all "required" files. How do I get access to "write out" param for
-//passing to user? Make it an option? Have a list of "fixed" variables always present too? Write them all out every time? Or leave them separate.
-//Best is to have that "option". I.e. specify "fixed" params, etc. But, of course it doesn't know that. Still need a way for me to get my params to
-//user program ostensibly. So, let user set a variable telling file to which to write params? I.e. "input filename", we don't know content though?
-
-//Force user to store it that way though? Var-value. Can variables (read in by user?) be arrays as well?
-
-
-//Automatically write it to a specified guy after executing of script (user might set it in there).
-
-//REV: build TEST to actually execute some simple guy, build the dirs, set variables appropriately, read out results, etc.
-
-//Test a couple cases where test program does/doesn't do stuff.
-
-//Set a "chunk size" of parampoints that I save HDF5 after.
-
-//TODO, need to make it so that I can actually construct CMD out of CMD added things.
-
-//REV: todo, specify "shared" data points (so it doesn't copy them). We can do that just fine.
-//There must be some "basic" required dirs for the whole thing to run in the first place. It will check all of that.
-//So, those are all copied at beginning (?).
-
-//Separate "DATA" required files etc.? From other types of required files? Like large guys. We don't want to re-copy each time? But, each one
-//should have a copy? But for very large things, passing in memory is obviously much better orz. Reading the same file over and over is bullshit.
-
-
-//REV: set everything up to set up directories now. In other words, order them appropriately and name them in that way.
-//And automatically add the correct "existing" guys to the variable list etc.
-
-//WRITE FUNCTS:
-// varlist.inputfromfile( filename ) //adds vars in that file to this varlist.
-// bool check_file_existence( fname )
-
-
-//## TODO: make special functs to add file to REQUIRED/SUCCESS/etc.
-//TODO: Make it so that we can also pass along/check "named" varlist
-//TODO: make special functs to access previous psets/pitems (directories) so we can do that. It will get like "dir" of that one? Or something?
-//TODO: Figure out how to organize directories/access them? Workers/etc.
-
-//Questions: how to deal with variables over different PSETS in PARAMPOINT
-//Questions: how to build CMD better? Add option type thing? Make CMD a str var array and have it do the stuff ;). And at the end it adds with seps
-//           or something
-
-//TODO: special variables to generate guys from array with other string, with certain sep. E.g. to access "all" the other worker guys. Need a way to
-//      access programmatically how many PARALLEL guys there are? Yappa over PSET we want to have many. Have a special function to access #P or something.
-
-//REV: names...um, need to have way to deal with different models names/specific variables. That is what the named variables are.
 
 #pragma once
 
@@ -84,13 +7,6 @@
 #include <boost/mpi.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/vector.hpp>
-
-//REV: this is a parampoint. It has a command thing that is what to run
-//each time point. Note, we only actually want one of those representations,
-//that is run each time I guess, applied to the specific parampoint.
-
-//The parampoints need to have their variable lists or something. I'd really prefer to not have a global var list. But, we can always just pass it
-//as an argument in functions.
 
 std::string CONCATENATE_STR_ARRAY(const std::vector<std::string>& arr, const std::string& sep)
 {

@@ -215,6 +215,20 @@ struct varlist
     //nothing
   }
 
+  template <typename TT>
+  void add_to_varlist( const std::vector<std::string>& varnames, const std::vector<TT>& varvals )
+  {
+    if(varnames.size() != varvals.size())
+      {
+	fprintf(stderr, "ERROR add to varlist, VARNAMES != VARVALS SIZE\n"); exit(1);
+      }
+    for(size_t x=0; x<varnames.size(); ++x)
+      {
+	//REV: will this even work? What the heck?
+	variable v(varnames[x], std::to_string(varvals[x]) );
+      }
+  }
+
   //modifies it if it exists, otherwise adds it.
   void setvar( const std::string& _varname, const variable<T>& _v )
   {
