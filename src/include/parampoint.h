@@ -8,6 +8,8 @@
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/vector.hpp>
 
+#include <hierarchical_varlist.h>
+
 std::string CONCATENATE_STR_ARRAY(const std::vector<std::string>& arr, const std::string& sep)
 {
   std::string ret="";
@@ -17,6 +19,36 @@ std::string CONCATENATE_STR_ARRAY(const std::vector<std::string>& arr, const std
     }
   return ret;
 }
+
+//REV: OK so this is it. This is what we build. Note this is a SINGLE representation of a PSET (not a parampoint)
+struct pset_functional_representation
+{
+  functlist myfl; //default constructed? Single static? No state.
+  std::vector< functrep > frlist;
+
+  size_t pset_width; //width i.e. num threads or whatever of this pthread.
+  std::string myname;
+  
+  //Takes some registered functions struct (list?), and the (unrolled) stmnts thing.
+  //    std::vector< client::STMNT >& stmnts ) //so, we take the STMNT list of this pset, and make what we need.
+  pset_functional_representation( client::PSET& p )
+  {
+    myname = p.NAME;
+    pset_width = std::stoul( p.NREP );
+    for( size_t s=0; s<p.CONTENT.size(); ++s )
+      {
+	functrep tmpfr(p.CONTENT[s], myfl);
+	frlist.push_back( tmpfr );
+      }
+    
+    //frlist now has the recursive functional representations that we can call each of frlist[f].execute( vectofHIERCH, myHIEARCHindex)
+  }
+
+
+  
+};
+
+
 
 //REV: this is a worker item. I.e. a single parameterized worker thing.
 struct pitem
@@ -46,7 +78,7 @@ struct pitem
     ar & required_files;
     ar & success_files;
     ar & output_files;
-    ar & input file;
+    ar & input_file;
     ar & mydir;
   }
   
@@ -141,7 +173,7 @@ struct pitem
   //SLAVE is DONE.
 
   void rename_to_targ( std::vector<std::string>& targvect, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir,
-		       const std::vector<string>& oldfnames, const std::vector<string>& newfnames )
+		       const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames )
   {
     if( newfnames.size() != targvect.size() || newfnames.size() != oldfnames.size() )
       {
@@ -218,7 +250,7 @@ struct pitem
   }
   
   //REV: For success etc. check existence AND THAT IT IS A FILE!!!! I.e. we don't do DIRS (for now)
-  void re_base_directory( const std::string& olddir, const std::string& newdir, const std::vector<string>& oldfnames, const std::vector<string>& newfnames )
+  void re_base_directory( const std::string& olddir, const std::string& newdir, const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames )
   {
     std::vector<bool> marked(mycmd.size(), false);
     
@@ -231,15 +263,7 @@ struct pitem
     
   }
   
-  void reconstruct_cmd_with_file_corresp( const std::vector< std::string >& orig, const std::vector< std::string >& new)
-  {
-    //Rebuild CMD array list, but replace all instances of ORIG with NEW.
-    //Note if it was a DATA file, it will already exist with same name in data folder.
-    
-     
-  }
-  
-  pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist& hv)
+  pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv)
   {
     //Need to add to the most recent pset a child...
     std::vector<size_t> rootchildren = hv.get_children( 0 );
@@ -275,7 +299,7 @@ struct pitem
     bool succ = make_directory( mydir );
     
     
-    std::vector<hierarchical_varlist> hvl;
+    std::vector<hierarchical_varlist<std::string>> hvl;
     hvl.push_back( hv ); //will it modify it? I'm not sure! Crap.
     //This is a copy operator, so it will not bubble up the copy operator
     //unless I re-copy
@@ -390,9 +414,10 @@ struct pitem
     //ending. Don't check file contents though.
   }
 
-  varlist get_output()
+  
+  varlist<std::string> get_output()
   {
-    varlist retvarlist;
+    varlist<std::string> retvarlist;
     
     //REV: I could read this some other way? Some number of (named) varlists? A list of them? OK.
     for(size_t f=0; f<output_files.size(); ++f)
@@ -409,6 +434,23 @@ struct pitem
   
   
 };
+
+
+struct functional_representation
+{
+  std::vector< pset_functional_representation > pset_list;
+  
+  //Constructs the list of each parampoint. Great.
+  functional_representation( const client::PARAMPOINT& pp )
+  {
+    for( size_t ps=0; ps<pp.psets.size(); ++ps)
+      {
+	pset_functional_representation pfr( pp.psets[ ps ] );
+	pset_list.push_back( pfr );
+      }
+  }
+};
+
 
 
 //REV:
@@ -470,7 +512,7 @@ struct pset
   }
 
 
-  pset(hierarchical_varlist& hv)
+  pset(hierarchical_varlist<std::string>& hv)
   {
     //std::vector<size_t> rootchildren = hv.get_children(0);
     size_t myidx = hv.add_child( 0 ); //add child to root;
@@ -579,7 +621,7 @@ struct parampoint
   }
 
   //Makes the dir at the location "inside", but success and required files are still treated as if they are purely global names.
-  parampoint( hierarchical_varlist& hv, std::string dirname )
+  parampoint( hierarchical_varlist<std::string>& hv, std::string dirname )
   {
     mydir = dirname;
     variable<std::string> var1( "__MY_DIR", mydir );
@@ -619,56 +661,6 @@ struct parampoint
 
 //REV: Functions must have access to appropriate variable lists to do things.
 
-
-
-
-//REV: OK so this is it. This is what we build. Note this is a SINGLE representation of a PSET (not a parampoint)
-struct pset_functional_representation
-{
-  functlist myfl; //default constructed? Single static? No state.
-  std::vector< functrep > frlist;
-
-  size_t pset_width; //width i.e. num threads or whatever of this pthread.
-  std::string myname;
-  
-  //Takes some registered functions struct (list?), and the (unrolled) stmnts thing.
-  //    std::vector< client::STMNT >& stmnts ) //so, we take the STMNT list of this pset, and make what we need.
-  pset_functional_representation( const client::PSET& p )
-  {
-    myname = ps.NAME;
-    pset_width = std::stoul( p.NREP );
-    for( size_t s=0; s<p.CONTENT.size(); ++s )
-      {
-	functrep tmpfr(p.CONTENT[s], myfl);
-	frlist.push_back( tmpfr );
-      }
-    
-    //frlist now has the recursive functional representations that we can call each of frlist[f].execute( vectofHIERCH, myHIEARCHindex)
-  }
-
-
-  //REV: TODO: This will do things like get actual worker locations? What about existing data/required data for each worker etc., stored/written to TMP?
-  std::vector< worker_functional_representation > generate_workers( hierarchical_varlist& hv )
-  {
-    std::vector<  worker_functional_representation > wfrs;
-  }
-};
-
-
-struct functional_representation
-{
-  std::vector< pset_functional_representation > pset_list;
-  
-  //Constructs the list of each parampoint. Great.
-  functional_representation( const client::PARAMPOINT& pp )
-  {
-    for( size_t ps=0; ps<pp.psets.size(); ++ps)
-      {
-	pset_functional_representation pfr( pp.psets[ ps ] );
-	pset_list.push_back( pfr );
-      }
-  }
-};
 
 
 
@@ -730,7 +722,7 @@ struct executable_representation
   //etc.
 
   //Builds and returns a parampoint. Which can then be executed in its own way.
-  parampoint build_parampoint( hierarchical_varlist& hv, const std::string& dir )
+  parampoint build_parampoint( hierarchical_varlist<std::string>& hv, const std::string& dir )
   {
     //REV: this will not work lol, I need one of my own?!??!!
     parampoint mypp( hv, dir );
@@ -840,10 +832,10 @@ struct search_function
 
 struct pset_result
 {
-  std::vector< varlist > pitem_results;
+  std::vector< varlist<std::string> > pitem_results;
   pset_result( const size_t& nitems )
   {
-    pitem_results = std::vector< varlist >( nitems );
+    pitem_results = std::vector< varlist<std::string> >( nitems );
   }
 };
 
@@ -865,9 +857,9 @@ struct parampoint_generator
 {
   //This needs to have the ability to take current list and generate new ones?
   
-  std::vector< hierarchical_varlist > named_vars;
+  std::vector< hierarchical_varlist<std::string> > named_vars;
 
-  std::vector< hierarchical_varlist > parampoint_vars;
+  std::vector< hierarchical_varlist<std::string> > parampoint_vars;
 
   std::vector< parampoint > parampoints;
 
@@ -882,7 +874,7 @@ struct parampoint_generator
   //It's a single executable representation...
   executable_representation exec_rep; //representation of the "script" to run to generate psets (param point) etc.
 
-  void set_result( const parampoint_coord& pc, const varlist& result )
+  void set_result( const parampoint_coord& pc, const varlist<std::string>& result )
   {
     parampoint_results[ pc.parampointn ].pset_results[ pc.psetn ].pitem_results[ pc.pitemn ] = result;
     return;
@@ -915,10 +907,10 @@ struct parampoint_generator
   //I.e. control passes to that to farm out that "set" of paramthings at a time? May be a generation, may not be?
   //We pass a set of varlists to execute, and it does everything for me.
   
-  size_t generate( const varlist& vl )
+  size_t generate( const varlist<std::string>& vl )
   {
     //Takes the varlist...
-    hierarchical_varlist hv( vl );
+    hierarchical_varlist<std::string> hv( vl );
     
     parampoint_vars.push_back( hv );
     
@@ -981,13 +973,13 @@ struct parampoint_generator
 
 struct search_funct
 {
-  search_funct( hierarchical_varlist& hv )
+  search_funct( hierarchical_varlist<std::string>& hv )
   {
     
   }
 
 
-  std::vector< varlist > gen_next_parampoints()
+  std::vector< varlist<std::string> > gen_next_parampoints()
   {
     //All different search functs must do this. It calls this, and it gets the next N param points, which are then farmed off.
     //Note this includes "getting the output". May contain current state? Note, every pitem returns OUTPUT.
@@ -1018,7 +1010,7 @@ struct master
   }
   
   
-  std::vector< varlist > process_param_points( const std::vector< varlist >& pp_toproc )
+  std::vector< varlist<std::string> > process_param_points( const std::vector< varlist<std::string> >& pp_toproc )
   {
 
     //what calls this? We call this each time? NO THIS IS PART OF THE "PROCESS" FARMER-OUTER.
@@ -1043,7 +1035,7 @@ struct farmer
 
   //For example, if we exit by accident partway through a whole chunk of "SWEEP" guys, we'll still have the guys that were done. I.e. we want to be able to re-start
   //part way through? But, that is difficult if they are all done at once. Need a way to save "processing" state if its a really big guy. Whatever, figure it out later.
-  void comp_pp_list( parampoint_generator& pg, std::vector<varlist>& newlist )
+  void comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist )
   {
     //Only compute newlist. Make a "completed" thing for each one...
     std::deque< completion_struct > progress;

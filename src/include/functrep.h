@@ -6,9 +6,15 @@
 #include <hierarchical_varlist.h>
 
 
+#include <psweep_cmd_script_parser.h>
+
 typedef variable<std::string>  myvar_t;
 //typedef (std::function< myvar_t(const client::STMNT&, std::vector< hierarchical_varlist >&, const std::vector< size_t >&) >) functtype;
 typedef std::function< myvar_t( std::vector< myvar_t >&, std::vector< hierarchical_varlist<std::string> >&, const std::vector< size_t >&) > functtype;
+
+
+
+#define FUNCTDEF( fname ) myvar_t fname( std::vector< myvar_t >& args, std::vector< hierarchical_varlist<std::string> >& hvl, const std::vector< size_t >& hvi )
 
 //typedef  myvar_t( std::vector< myvar_t > a, std::vector< hierarchical_varlist<std::string> >& b, const std::vector< size_t >& c) functdefn;
 
@@ -78,7 +84,7 @@ functsig( const std::string& _tag, const size_t& argsize, const functtype& f )
 //This is fine (it will be either a monad that returns the string without lookup, or a variable lookup, or a constant function).
 //However, I need to write the logic to differentiate those cases based on the ISLIT tag, and the existence of a starting "$" for variable reads.
 
-#define FUNCTDEF( fname ) myvar_t fname( std::vector< myvar_t >& args, std::vector< hierarchical_varlist<std::string> >& hvl, const std::vector< size_t >& hvi )
+
 
 
 
@@ -113,7 +119,7 @@ FUNCTDEF( GET_PREV_VAR )
 FUNCTDEF( GET_PREV_DIR )
 {
   std::vector<variable<std::string> > args2 = args;
-  args.push_back( std::variable<std::string>("__MY_DIR") );
+  args.push_back( variable<std::string>("__MY_DIR", "__MY_DIR") );
   return GET_PREV_VAR(args, hvl, hvi );
 }
 
@@ -138,13 +144,14 @@ FUNCTDEF( GET_PREV_DIR )
 //Go through each compute e.g. synapse model "group" separately? If we can't fill up the CPUs, run multiple at a time.
 
 
-FUNDTDEF( SET_INPUT_FILE )
+FUNCTDEF( SET_INPUT_FILE )
 {
-  hvl[0].setvar( "__MY_INPUT_FILE", args[0].get_s(), hvi[0]);
+  //hvl[0].setvar( "__MY_INPUT_FILE", args[0].get_s(), hvi[0]);
+  hvl[0].setvar( "__MY_INPUT_FILE", args[0], hvi[0]);
   return variable<std::string>("__SETINPUTSUCCESSNAME", "__SETINPUTSUCCESSVAL"); 
 }
 
-FUNDTDEF( GET_INPUT_FILE )
+FUNCTDEF( GET_INPUT_FILE )
 {
   return hvl[0].getvar( "__MY_INPUT_FILE", hvi[0]);
 }

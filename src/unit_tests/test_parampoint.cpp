@@ -12,26 +12,6 @@
 #include <include/filesender.h>
 
 
-void master_loop(const boost::mpi::communicator& world)
-{
-  fprintf(stderr, "Master %d REPORTING\n", world.rank());
-  
-  
-}
-
-void slave_loop(const boost::mpi::communicator& world)
-{
-  fprintf(stderr, "Slave %d REPORTING\n", world.rank());
-}
-
-//REV: T must be REAL type?
-template <typename T>
-void recursive_permute_params(const std::vector< std::vector<T> >& list_to_permute,
-			      const size_t& binlevel, /* REV: I guess this is 1d specification of 2d space? */
-			      std::vector< T >& permuted_list_in_progress,
-			      std::vector< std::vector< T > >& finished_list
-			      );
-
 
 template <typename T>
 void recursive_permute_params(const std::vector< std::vector<T> >& list_to_permute,
@@ -62,7 +42,7 @@ void recursive_permute_params(const std::vector< std::vector<T> >& list_to_permu
 	  /* REV: I need to make it back to binsize */
 	  permuted_list_in_progress.push_back( list_to_permute[binlevel][binitem] );
 	  
-	  recursive_permute_params(list_to_permute, binlevel+1, permuted_list_in_progress, finished_list);
+	  recursive_permute_params<double>(list_to_permute, binlevel+1, permuted_list_in_progress, finished_list);
 	}
     }
 }

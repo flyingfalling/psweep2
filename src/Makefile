@@ -6,7 +6,8 @@ INCLUDEDIR=./include
 UNITTESTDIR=./unit_tests
 
 #default: scriptparser2.exe
-default: test_cmd_script_parser.exe
+#default: test_cmd_script_parser.exe
+default: test_parampoint.exe
 
 testvariable.exe: $(INCLUDEDIR)/variable.h $(UNITTESTDIR)/testvariable.cpp 
 	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/testvariable.cpp -o testvariable.exe
@@ -28,6 +29,9 @@ testfunctrep.exe: $(INCLUDEDIR)/psweep_cmd_script_parser.h $(INCLUDEDIR)/script_
 
 test_boostmpi.exe: $(UNITTESTDIR)/test_boostmpi.cpp
 	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_boostmpi.cpp -o test_boostmpi.exe -lboost_mpi
+
+test_parampoint.exe: $(UNITTESTDIR)/test_parampoint.cpp
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_parampoint.cpp -o test_parampoint.exe -lboost_mpi
 
 clean:
 	rm *.exe *.o

@@ -8,6 +8,8 @@
 #include <iostream>
 #include <cstdlib>
 
+#include <utility_functs.h>
+
 #include <new> //need this for variant in construcor type things? Maybe not, was doing it for unions with non-POD
 
 //REV: includes...
@@ -140,7 +142,7 @@ struct varlist
     //be arrays?
     for(size_t v=0; v<vars.size(); ++v)
       {
-	f << vars[v].name << vars[v].get_s() << std::endl
+	f << vars[v].name << vars[v].get_s() << std::endl;
       }
 
     close_ofstream( f );
@@ -225,7 +227,7 @@ struct varlist
     for(size_t x=0; x<varnames.size(); ++x)
       {
 	//REV: will this even work? What the heck?
-	variable v(varnames[x], std::to_string(varvals[x]) );
+	variable<TT> v(varnames[x], std::to_string(varvals[x]) );
       }
   }
 
