@@ -318,6 +318,7 @@ struct varlist
 	fprintf(stdout, "WARNING: Found multiple variables (%ld) with name [%s], will only use first\n", locs.size(), _varname.c_str());
 	//Don't exit?
       }
+
     
     return vars[ locs[0] ];
     

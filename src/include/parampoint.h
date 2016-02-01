@@ -361,8 +361,8 @@ struct pitem
 
     //REV: this was error, this should have been cmdarray before changing mycmd to be vector of strings.
 
-    mycmd.push_back( "1>"+stdoutfile );
-    mycmd.push_back( "2>"+stderrfile );
+    //mycmd.push_back( "1>"+stdoutfile );
+    //mycmd.push_back( "2>"+stderrfile );
     
     //std::string sep = " "; //spaces. Make user specify "cmd sep" if it exists or something?
 

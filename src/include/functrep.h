@@ -153,6 +153,39 @@ FUNCTDEF( GET_PREV_DIR )
 //probably most efficient. And reading out (every N time steps or something). Storing data on GPU in buffer. Do asynchronous.
 //Go through each compute e.g. synapse model "group" separately? If we can't fill up the CPUs, run multiple at a time.
 
+FUNCTDEF( ITER_ARRAY_WITH_FLAG )
+{
+  //REV: ITERATE through array, interspacing with flag each time. Should
+  //return another array variable in the end
+
+  //These will error out if not right variant type.
+  //make another for array-array
+  std::string FLAG = args[0].get_s();
+  //std::vector< std::string > arr = args[1].get_v();
+  variable<std::string> arr = args[1];
+  fprintf(stdout, "EXECUTING ITER WITH FLAG, casting to array...\n");
+  std::vector<std::string> arr2 = arr.get_v();
+  std::vector< std::string > out;
+  for(size_t x=0; x<arr2.size(); ++x)
+    {
+      out.push_back( FLAG );
+      out.push_back( arr2[x] );
+    }
+
+  fprintf(stdout, "FINISHED MAKING NEW ONE IN ITER_WITH_FLAG\n");
+  variable< std::string > new_arrayvar( "__ITER_ARRAY_WITH_FLAG_RETVAL", out);
+  return new_arrayvar;
+}
+
+FUNCTDEF( GET_OUTPUT_FILES )
+{
+  //RETURN ARRAY (output files)
+  return hvl[0].getvar( "__MY_OUTPUT_FILES", hvi[0]);
+  //std::vector< std::string > dv = { "__DUMMYVALUE1"};
+  //return variable<std::string>("__DUMMYOUTPUTFILES", dv );
+  //return variable<std::string>("__DUMMYOUTPUTFILES", "__DUMMYOUTPUTSTRING" );
+}
+
 FUNCTDEF( SET_INPUT_FILE )
 {
   //hvl[0].setvar( "__MY_INPUT_FILE", args[0].get_s(), hvi[0]);
@@ -194,6 +227,16 @@ FUNCTDEF( ADD_CMD_ITEM )
 {
   //REV: adds one at a time?
   hvl[0].add_to_var( "__MY_CMD", args[0].get_s(), hvi[0] );
+  return variable<std::string>("__ADDEDTOCMDNAME", "__ADDEDTOCMDVAL"); 
+  
+}
+
+FUNCTDEF( ADD_CMD_ITEMS )
+{
+  //REV: adds one at a time?
+
+  hvl[0].add_array_to_var( "__MY_CMD", args[0].get_v(), hvi[0] );
+  
   return variable<std::string>("__ADDEDTOCMDNAME", "__ADDEDTOCMDVAL"); 
   
 }
@@ -379,9 +422,12 @@ struct functlist
     ADDFUNCT( 1, ADD_SUCCESS_FILE );
     ADDFUNCT( 1, ADD_REQUIRED_FILE );
     ADDFUNCT( 1, ADD_CMD_ITEM );
+    ADDFUNCT( 1, ADD_CMD_ITEMS );
     ADDFUNCT( 2, CAT_ARRAY_TO_STR );
     ADDFUNCT( 1, ADD_OUTPUT_FILE );
     ADDFUNCT( 0, GET_MY_DIR );
+    ADDFUNCT( 2, ITER_ARRAY_WITH_FLAG );
+    ADDFUNCT( 0, GET_OUTPUT_FILES );
     
       /*functtype fa = IDENTITY;
 	functtype fb = READVAR;
@@ -514,7 +560,7 @@ struct functrep
 	//MV is of size ZERO here!
 	
 	myvar_t ret = fs.funct( mv, hvl, hvi ); //however, this might return an "empty" variable if it just has a side-effect...
-	fprintf(stdout, "(in execute: ) GOT RET: [%s]\n", ret.get_s().c_str());
+	//fprintf(stdout, "(in execute: ) GOT RET: [%s]\n", ret.get_s().c_str());
 	return ret; //This may return e.g. CMD. Or final side effect may be to set CMD to it? Some special lowest-level variable named CMD?
       }
   }

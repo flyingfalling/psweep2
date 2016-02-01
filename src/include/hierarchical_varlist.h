@@ -171,12 +171,29 @@ struct hierarchical_varlist
 
 
   //Only works if var is ARRAY type.
-  void add_to_var( const std::string& targ, T _v, const size_t startvl )
+  void add_to_var( const std::string& targ, const T _v, const size_t startvl )
   {
     //fprintf(stdout, "In add to var...trying to get array var\n");
     std::vector<T> r = get_array_var( targ, startvl );
     //fprintf(stdout, "DONE got array var...\n");
     r.push_back( _v );
+    variable<T> tmp( targ, r ); //"name" is targ, note that setvar will automatically set that anyways...
+    //fprintf(stdout, "Will try to set var...\n");
+    setvar( targ, tmp, startvl );
+    //fprintf(stdout, "DONE set var...returning.\n");
+    return;
+  }//Only works if var is ARRAY type.
+
+  void add_array_to_var( const std::string& targ, const std::vector<T>& _v, const size_t startvl )
+  {
+    //fprintf(stdout, "In add to var...trying to get array var\n");
+    std::vector<T> r = get_array_var( targ, startvl );
+    //fprintf(stdout, "DONE got array var...\n");
+    for(size_t x=0; x<_v.size(); ++x)
+      {
+	r.push_back( _v[x] );
+      }
+    
     variable<T> tmp( targ, r ); //"name" is targ, note that setvar will automatically set that anyways...
     //fprintf(stdout, "Will try to set var...\n");
     setvar( targ, tmp, startvl );
@@ -225,6 +242,8 @@ struct hierarchical_varlist
     std::vector< size_t > v_indices;
     size_t nfound = find_var_in_hierarchy( targ, startvl, vl_indices, v_indices );
 
+    fprintf(stdout, "IN GET VAR!!! Searching for [%s]\n", targ.c_str());
+    
     if( nfound > 1 )
       {
 	//fprintf(stderr, "REV: WARNING: get_array_var in hierarchical: more than one instance found! (Var=[%s]). Will set leaf-most by default.\n", targ.c_str());
