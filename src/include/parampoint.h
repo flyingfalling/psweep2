@@ -246,7 +246,8 @@ struct pitem
 
     if( dirname.compare( canonicalize_fname( olddir ) ) != 0 )
       {
-	fprintf(stderr, "in REBASE DIRECTORY: ERROR: olddir and found dir in SUCCESS file are not the same!!! WTF\n");
+	fprintf(stderr, "in REBASE DIRECTORY: ERROR: olddir and found dir in SUCCESS file are not the same!!! WTF target: [%s], old: [%s] (targ: [%s], newdir: [%s], fnametail: [%s]\n", dirname.c_str(), olddir.c_str(), targ.c_str(), newdir.c_str(), fnametail.c_str());
+	
 	exit(1);
       }
 	
@@ -270,34 +271,7 @@ struct pitem
       {
 	rename_str_to_targ_dir( targvect[x], marked, olddir, newdir );
       }
-    /*
-    //FOR all files in SUCCESS, OUTPUT, INPUT, change to new fname. If they match (canonically) we will go.
-    for(size_t x=0; x<targvect.size(); ++x)
-      {
-	std::string fnametail;
-	
-	//REV: oops I fucked up, I need to only change the DIR for these!
-	std::string dirname = get_canonical_dir_of_fname( targvect[x], fnametail );
-
-	if( dirname.compare( canonicalize_fname( olddir ) ) != 0 )
-	  {
-	    fprintf(stderr, "in REBASE DIRECTORY: ERROR: olddir and found dir in SUCCESS file are not the same!!! WTF\n");
-	    exit(1);
-	  }
-	
-	
-	std::string fname = canonicalize_fname(targvect[x]);
-	//locate it in cmd...if it exists...
-	
-	std::vector<size_t> matched=find_matching_files(fname, mycmd, marked);
-
-	std::string newfname = newdir + "/" + fnametail;
-	replace_old_fnames_with_new( mycmd, newfname, matched ); //replaces mycmd inline.
-
-	//Now replace SUCCESS itself.
-	targvect[x] = newfname;
-      }
-    */
+    
   }
   
   //REV: For success etc. check existence AND THAT IT IS A FILE!!!! I.e. we don't do DIRS (for now)

@@ -9,6 +9,8 @@ UNITTESTDIR=./unit_tests
 #default: test_cmd_script_parser.exe
 default: test_parampoint.exe
 
+HEADERFILES=$(INCLUDEDIR)/$*
+
 testvariable.exe: $(INCLUDEDIR)/variable.h $(UNITTESTDIR)/testvariable.cpp 
 	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/testvariable.cpp -o testvariable.exe
 
@@ -30,7 +32,7 @@ testfunctrep.exe: $(INCLUDEDIR)/psweep_cmd_script_parser.h $(INCLUDEDIR)/script_
 test_boostmpi.exe: $(UNITTESTDIR)/test_boostmpi.cpp
 	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_boostmpi.cpp -o test_boostmpi.exe -lboost_mpi
 
-test_parampoint.exe: $(UNITTESTDIR)/test_parampoint.cpp
+test_parampoint.exe: $(UNITTESTDIR)/test_parampoint.cpp $(HEADERFILES)
 	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_parampoint.cpp -o test_parampoint.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
 
 clean:

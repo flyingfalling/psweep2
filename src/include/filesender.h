@@ -670,6 +670,8 @@ struct filesender
   {
     bool loopslave=true;
     std::string LOCALDIR = "/tmp/scratch" + std::to_string( world->rank() ); //will execute in local scratch. Note, might need to check we have enough memory etc.
+
+    //MKDIR HERE?
     
     fprintf(stderr, "REV: WORKER [%d] is executing slave loop. Local work dir is: [%s]\n", world->rank(), LOCALDIR.c_str() );
 
@@ -682,6 +684,8 @@ struct filesender
     
     while( loopslave == true )
       {
+	make_directory( LOCALDIR );
+	
 	fprintf(stdout, "WORKER [%d]: waiting for cmd\n", world->rank() );
 	//WAIT for mesg from MASTER
 	//psweep_cmd cmd = receive_cmd_from_any();  //wait_for_cmd();

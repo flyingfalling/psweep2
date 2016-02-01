@@ -51,6 +51,11 @@ std::string get_canonical_dir_of_fname( const std::string& s, std::string& fname
 {
   std::stack<std::string> fnstack;
 
+  //This will go through canonicalized and push back... I.e. stack contains
+  //FIRST one DEEPEST.
+
+  //FIRST POP should have FILENAME
+  
   //Only works on LINUX/UNIX? That begin with root assuming /
   //Otherwise, windows would be like C:// etc.
   bool isglobal=false;
@@ -81,25 +86,45 @@ std::string get_canonical_dir_of_fname( const std::string& s, std::string& fname
 	}
       
     }
-  std::vector<std::string> ret( fnstack.size() );
+
   if(fnstack.size() < 1)
     {
       fprintf(stderr, "REV: ERROR, trying to get dir of a file(name) that is HERE\n");
     }
-  for(size_t x=0; x<ret.size()-1; ++x)
+  
+  
+  fnametail = fnstack.top();
+  fnstack.pop();
+  
+  std::vector<std::string> ret( fnstack.size() );
+  
+  if(ret.size() == 0)
     {
-      ret[ x ] = fnstack.top();
+      fprintf(stderr, "ERROR, ret vect size is 0\n"); exit(1);
+    }
+  
+  
+
+
+  for(size_t x=ret.size(); x>0; --x)
+    {
+      ret[ x-1 ] = fnstack.top();
       fnstack.pop();
     }
 
   
   std::string finalstring =  CONCATENATE_STR_ARRAY( ret, "/" );
-
+  
+  
   if(isglobal)
     {
       finalstring = "/" + finalstring;
     }
-
+  else
+    {
+      finalstring = "./" + finalstring;
+    }
+  
   return finalstring;
     
   //Ending is the filename or dir name. Note remove all double or multiple slashes // etc.
@@ -141,19 +166,34 @@ std::string canonicalize_fname( const std::string& s )
 	}
       
     }
-  std::vector<std::string> ret( fnstack.size() );
-  for(size_t x=0; x<ret.size(); ++x)
+
+  
+  if(fnstack.size() < 1)
     {
-      ret[ x ] = fnstack.top();
+      fprintf(stderr, "REV: ERROR, trying to get dir of a file(name) that is HERE\n");
+    }
+  
+  std::vector<std::string> ret( fnstack.size() );
+  
+  //REV: these are different, this one doesnt want to get last guy separate.
+  for(size_t x=ret.size(); x>0; --x)
+    {
+      ret[ x-1 ] = fnstack.top();
       fnstack.pop();
     }
+  
 
+  
   //Will this work, cast to vector?
   std::string finalstring =  CONCATENATE_STR_ARRAY( ret, "/" );
 
   if(isglobal)
     {
       finalstring = "/" + finalstring;
+    }
+  else
+    {
+      finalstring = "./" + finalstring;
     }
 
   return finalstring;
