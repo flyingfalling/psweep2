@@ -14,6 +14,16 @@ typedef std::function< myvar_t( std::vector< myvar_t >&, std::vector< hierarchic
 
 
 
+
+#define ADDFUNCT(numarg, fname)						\
+  {									\
+    functtype fa = fname;						\
+    functsig varname(std::string( #fname ), (size_t)numarg, fa );	\
+    sigs.push_back( varname );						\
+  }
+
+
+
 #define FUNCTDEF( fname ) myvar_t fname( std::vector< myvar_t >& args, std::vector< hierarchical_varlist<std::string> >& hvl, const std::vector< size_t >& hvi )
 
 //typedef  myvar_t( std::vector< myvar_t > a, std::vector< hierarchical_varlist<std::string> >& b, const std::vector< size_t >& c) functdefn;
@@ -143,7 +153,6 @@ FUNCTDEF( GET_PREV_DIR )
 //probably most efficient. And reading out (every N time steps or something). Storing data on GPU in buffer. Do asynchronous.
 //Go through each compute e.g. synapse model "group" separately? If we can't fill up the CPUs, run multiple at a time.
 
-
 FUNCTDEF( SET_INPUT_FILE )
 {
   //hvl[0].setvar( "__MY_INPUT_FILE", args[0].get_s(), hvi[0]);
@@ -232,6 +241,14 @@ FUNCTDEF( IDENTITY )
   return (variable<std::string>("__TMPVARNAME(IDENT)", args[0].get_s() ) );
 }
 
+FUNCTDEF( GET_MY_DIR )
+{
+  //fprintf(stdout, "INSIDE IDENT FUNCT. Size of args is [%ld]\n", args.size() );
+  //myvar_t test("TMPVAR", "YOLO");
+  //return test;
+  return ( hvl[0].getvar("__MY_DIR", hvi[0]) );
+}
+
 FUNCTDEF( READVAR )
 {
   if(hvl.size() < 1)
@@ -266,9 +283,6 @@ FUNCTDEF( CAT )
   variable<std::string> v( "TMPVAR", c );
   return v;
 }
-
-
-#define ADDFUNCT(varname, fstr, numarg, fname)   functsig varname (std::string(fstr), (size_t)numarg, fname )
 
 struct functlist
 {
@@ -354,27 +368,42 @@ struct functlist
   
   functlist()
   {
-    functtype fa = IDENTITY;
-    functtype fb = READVAR;
-    functtype fc = SETVAR;
-    functtype fd = CAT;
-    ADDFUNCT(a, "IDENTITY", 1, fa );
-    ADDFUNCT(b, "READVAR", 1, fb );
-    ADDFUNCT(c, "SETVAR", 2, fc );
-    ADDFUNCT(d, "CAT", 3, fd );
-
+    ADDFUNCT( 1, IDENTITY );
+    ADDFUNCT( 1, READVAR );
+    ADDFUNCT( 2, SETVAR );
+    ADDFUNCT( 3, CAT );
+    ADDFUNCT( 1, GET_PREV_VAR );
+    ADDFUNCT( 1, GET_PREV_DIR );
+    ADDFUNCT( 1, SET_INPUT_FILE );
+    ADDFUNCT( 0, GET_INPUT_FILE );
+    ADDFUNCT( 1, ADD_SUCCESS_FILE );
+    ADDFUNCT( 1, ADD_REQUIRED_FILE );
+    ADDFUNCT( 1, ADD_CMD_ITEM );
+    ADDFUNCT( 2, CAT_ARRAY_TO_STR );
+    ADDFUNCT( 1, ADD_OUTPUT_FILE );
+    ADDFUNCT( 0, GET_MY_DIR );
     
+      /*functtype fa = IDENTITY;
+	functtype fb = READVAR;
+	functtype fc = SETVAR;
+	functtype fd = CAT;
+	ADDFUNCT(a, "IDENTITY", 1, fa );
+	ADDFUNCT(b, "READVAR", 1, fb );
+	ADDFUNCT(c, "SETVAR", 2, fc );
+	ADDFUNCT(d, "CAT", 3, fd );
+	
+	
     //USERS: Add other function signatures here
     sigs.push_back( a );
     sigs.push_back( b );
     sigs.push_back( c );
     sigs.push_back( d );
     
+    }
+      */
+      
   }
-  
-  
 };
-
 
 struct functrep
 {

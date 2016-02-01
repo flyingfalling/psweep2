@@ -14,74 +14,331 @@
 
 #include <boost/filesystem.hpp>
 
+#include <utility_functs.h>
+
+#include <string_manip.h>
+
+
+
+
+
+struct psweep_cmd
+{
+  int SRC;
+  std::string CMD;
+
+psweep_cmd( const int srcr, const std::string& cm )
+: SRC( srcr ), CMD( cm )
+  {
+    //NOTHING
+  }
+};
+
+
 
 struct filesender
 {
 
-  boost::mpi::environment env;
-  boost::mpi::communicator world;
-
-
-  filesender( boost::mpi::environment& tenv,  boost::mpi::communicator& tworld )
+  std::shared_ptr< boost::mpi::communicator > world;
+  std::shared_ptr< boost::mpi::environment > env;
+  
+  
+  struct mem_file
   {
-    env = tenv;
+    std::string fname;
+    std::vector<char> contents;
+
+
+    mem_file()
+    : fname("ERRORNOFNAME")
+    {
+    }
+    
+  mem_file( const std::string& fn, const std::vector<char> cont )
+  : fname( fn ), contents (cont )
+    {
+      //REV: NOTHING
+    }
+
+    //Automatically reads from disk.
+    mem_file( const std::string& fn )
+    {
+      fname = fn;
+      
+      
+      // open the file:
+      std::streampos fileSize;
+      std::ifstream file(fname, std::ios::binary);
+      
+      // get its size:
+      file.seekg(0, std::ios::end);
+      fileSize = file.tellg();
+      file.seekg(0, std::ios::beg);
+      
+      // read the data:
+      //std::vector<char> fileData(fileSize);
+      contents.resize(fileSize);
+      file.read(contents.data(), fileSize);
+    }
+    
+    
+    void tofile(const std::string& dir, const std::string& myfname )
+    {
+      //REV: this does not use the FNAME of this mem_file...? Ugh.
+      std::string fullfname = dir + "/" + myfname;
+
+      std::ofstream ofs;
+
+      open_ofstream( fullfname, ofs );
+    
+      ofs.write( contents.data(), contents.size() );
+
+      //REV: does it work? Need to check sanity before I go?
+    }
+    
+    //REV: REQUIRED for boost serialization (to send over MPI)
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+      ar & fname;
+      ar & contents;
+    }
+  };
+
+
+  struct pitem_rep
+  {  
+    bool farmed=false;
+    bool done=false;
+    size_t farmed_worker=0;
+
+    bool checkavail()
+    {
+      if( farmed == false && done == false )
+	{
+	  return true;
+	}
+      else
+	{
+	  return false;
+	}
+    }
+    
+    pitem_rep()
+    {
+      //nothing to do
+    }
+    
+    bool checkdone()
+    {
+      return done; //actually check it?
+    }
+  };
+    
+  
+  struct pset_rep
+  {
+    bool done=false;
+    std::vector< pitem_rep > pitems;
+
+    pset_rep()
+    {
+      
+    }
+    
+    bool checkdone()
+    {
+      if(done)
+	{
+	  return done;
+	}
+      else
+	{
+	  done=true;
+	  for(size_t p=0; p<pitems.size(); ++p )
+	    {
+	      if( pitems[p].checkdone() == false )
+		{
+		  done=false;
+		  return done;
+		}
+	    }
+	}
+      return done;
+    }
+  };
+    
+  struct parampoint_rep
+  {
+    size_t myidx;
+    bool done=false;
+
+    size_t current_pset=0;
+    std::vector< pset_rep > psets;
+
+    parampoint_rep()
+    {
+    }
+    
+    parampoint_rep( const parampoint& pp, const size_t& idx )
+    {
+      myidx = idx;
+      psets.resize( pp.psets.size() );
+      for(size_t x=0; x<psets.size(); ++x)
+	{
+	  psets[x].pitems.resize( pp.psets[x].pitems.size() );
+	}
+    }
+    
+    
+    void markdone( const parampoint_coord& pc )
+    {
+      psets[ pc.psetn ].pitems[ pc.pitemn ].done = true;
+      bool psetdone=true;
+      for(size_t x=0; x<psets[ pc.psetn ].pitems.size(); ++x)
+	{
+	  if( psets[ pc.psetn ].pitems[x].checkdone() == false )
+	    {
+	      psetdone = false;
+	    }
+	}
+      psets[ pc.psetn ].done = psetdone;
+      if(psetdone==true)
+	{
+	  ++current_pset;
+	}
+      
+      
+      bool parampointdone = true;
+      for(size_t x=0; x<psets.size(); ++x)
+	{
+	  if( psets[x].checkdone() == false )
+	    {
+	      parampointdone = false;
+	    }
+	}
+
+      done = parampointdone;
+
+
+      return;
+    }
+    
+    bool checkdone()
+    {
+      if(done)
+	{
+	  return done;
+	}
+      else
+	{
+	  done=true;
+	  for(size_t p=0; p<psets.size(); ++p)
+	    {
+	      if( psets[p].checkdone() == false )
+		{
+		  done=false;
+		  return done;
+		}
+	    }
+	}
+      return done;
+    }
+    
+  };
+
+
+  //REV: Now I'm getting lazy..lala
+  filesender( const std::shared_ptr<boost::mpi::environment>& tenv, const std::shared_ptr<boost::mpi::communicator>& tworld )
+  
+  {
+    //gonna guess that references can't be dereferenced...
     world = tworld;
+    env = tenv;
   }
 
-  void send_varlist( const varlist<std::string>& v, const int& targrank )
+  filesender()
   {
-    world.send( targrank, any_tag, v );
   }
 
-
-  void send_cmd( const std::string& cmd, const int& targrank )
+  void send_varlist(  const int& targrank, const varlist<std::string>& v ) //, boost::mpi::communicator& world )
   {
-    world.send( targrank, any_tag, cmd );
+    //*world.send( targrank, boost::mpi::any_tag, v );
+    //world->send( targrank, boost::mpi::any_tag, v );
+    world->send( targrank, 0, v );
   }
 
-  void send_pitem( const pitem& mypitem, const int& targrank )
+
+  void send_cmd( const std::string& cmd, const int& targrank ) //, boost::mpi::communicator& world )
   {
-    world.send( targrank, any_tag, mypitem ); //will serialize it for me.
+    //world->send( targrank, boost::mpi::any_tag, cmd );
+    world->send( targrank, 0, cmd );
   }
 
-  varlist receive_varlist( const int& targrank )
+  void send_pitem( const pitem& mypitem, const int& targrank ) //, boost::mpi::communicator& world )
+  {
+    //world->send( targrank, boost::mpi::any_tag, mypitem ); //will serialize it for me.
+    world->send( targrank, 0, mypitem ); //will serialize it for me.
+  }
+
+  varlist<std::string> receive_varlist( const int& targrank ) //, boost::mpi::communicator& world  )
   {
     varlist<std::string> tmpv;
-    world.receive( targrank, any_tag, tmpv );
+    world->recv( targrank, boost::mpi::any_tag, tmpv );
     return tmpv;
   }
 
   //I want to block but I want to get message from target before handling others.
-  psweep_cmd receive_cmd_from_any( )
+  psweep_cmd receive_cmd_from_any( ) //boost::mpi::communicator& world )
   {
-    mpi::status msg = world.probe();
+    boost::mpi::status msg = world->probe();
   
     std::string data;
-    world.recv(msg.source(), any_tag, data);
 
+    
+    world->recv(msg.source(), boost::mpi::any_tag, data);
+    
     psweep_cmd pc( msg.source(), data );
 
     return pc;
   }
 
-  pitem receive_pitem( const int& targrank )
+  psweep_cmd receive_cmd_from_root( ) //boost::mpi::communicator& world )
+  {
+    boost::mpi::status msg = world->probe();
+  
+    std::string data;
+
+    if ( msg.source() == 0 )
+      {
+	world->recv(msg.source(), boost::mpi::any_tag, data);
+      }
+    
+    psweep_cmd pc( msg.source(), data );
+
+    return pc;
+  }
+
+  pitem receive_pitem( const int& targrank ) //, boost::mpi::communicator& world  )
   {
     pitem newpitem;
-    world.recv( targrank, any_tag, newpitem );
+    world->recv( targrank, boost::mpi::any_tag, newpitem );
     return newpitem;
   }
 
-  int receive_int( const int& targrank )
+  int receive_int( const int& targrank ) //, boost::mpi::communicator& world )
   {
     int newint;
-    world.recv( targrank, any_tag, newint );
+    world->recv( targrank, boost::mpi::any_tag, newint );
     return newint;
   }
 
-  void send_int( const int& targrank, const int& tosend )
+  void send_int( const int& targrank, const int& tosend ) //, boost::mpi::communicator& world )
   {
     int newint;
-    world.send( targrank, any_tag, tosend );
+    //world->send( targrank, boost::mpi::any_tag, tosend );
+    world->send( targrank, 0, tosend );
   
   }
 
@@ -92,287 +349,20 @@ struct filesender
   //This will rename all files in MYPITEM (in SUCCESS only?), given a list of files? An array of files? Yea, it will tell which ones should be renamed.
   //I.e. gives list of indices to it.
 
-  /* keep empty, i.e. do I want to know when it is e.g. :: or //? */
-  std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats=false)
-  {
-    std::vector<std::string> res;
-  
-    /* REV: size_t is uint? */
-    size_t prev = 0;
-    size_t next = 0;
-
-    /* npos is -1 */
-    while ((next = source.find_first_of(delim, prev)) != std::string::npos)
-      {
-	if (include_empty_repeats || ((next-prev) != 0) )
-	  {
-	    res.push_back(source.substr(prev, (next-prev)) );
-	  }
-	prev = next + 1;
-      }
-
-    /* REV: push back remainder if there is anything left (i.e. after the last token?) */
-    if (prev < source.size())
-      {
-	res.push_back(source.substr(prev));
-      }
-
-    return res;
-  }
-
+ 
   //compare two filenames in canonical thing? E.g. /.././../. etc. /. will remove current, i.e. can be safely removed. /.. will remove the previous
   //thing (if it starts with that /.. then error out). Can't handle things like symlinks anyway so whatever...
 
   //REV: BIG PROBLEM, I need to check whether it starts with a / or not.
 
-  std::string get_canonical_dir_of_fname( const std::string& s, std::string& fnametail )
-  {
-    std::stack<std::string> fnstack;
-
-    //Only works on LINUX/UNIX? That begin with root assuming /
-    //Otherwise, windows would be like C:// etc.
-    bool isglobal=false;
-  
-    //First, remove all whitespace? No, don't.
-    if( s[0] == '/' )
-      {
-	isglobal = true;
-      }
-  
-    //first, tokenize it by /  (how to handle first one?)
-    std::vector<std::string> vect = tokenize_string( s, '/');
-  
-    //Then, iterate through from beginning, push back thing to a stack. If .., pop the stack. If stack size < 0, error.
-    for(size_t x=0; x<vect.size(); ++x)
-      {
-	if( vect[x].compare("..") == 0 )
-	  {
-	    fnstack.pop();
-	  }
-	else if( vect[x].compare(".") == 0)
-	  {
-	    //do nothing (just remove it, no need for something that specifies "same" directory
-	  }
-	else
-	  {
-	    fnstack.push( vect[x] );
-	  }
-      
-      }
-    std::vector<std::string> ret( stack.size() );
-    if(stack.size() < 1)
-      {
-	fprintf(stderr, "REV: ERROR, trying to get dir of a file(name) that is HERE\n");
-      }
-    for(size_t x=0; x<ret.size()-1; ++x)
-      {
-	ret[ x ] = fnstack.top();
-	fnstack.pop();
-      }
-
-  
-    std::string finalstring =  CONCATENATE_STR_ARRAY( ret, "/" );
-
-    if(isglobal)
-      {
-	finalstring = "/" + finalstring;
-      }
-
-    return finalstring;
-    
-    //Ending is the filename or dir name. Note remove all double or multiple slashes // etc.
-    
-  }
-
-  std::string canonicalize_fname( const std::string& s )
-  {
-    std::stack<std::string> fnstack;
-
-    bool isglobal=false;
-  
-    //First, remove all whitespace? No, don't.
-    if( s[0] == '/' )
-      {
-	isglobal = true;
-      }
-  
-    //first, tokenize it by /  (how to handle first one?)
-    std::vector<std::string> vect = tokenize_string( s, '/');
-
-  
-  
-    //Then, iterate through from beginning, push back thing to a stack. If .., pop the stack. If stack size < 0, error.
-    for(size_t x=0; x<vect.size(); ++x)
-      {
-	if( vect[x].compare("..") == 0 )
-	  {
-	    fnstack.pop();
-	  }
-	else if( vect[x].compare(".") == 0)
-	  {
-	    //do nothing (just remove it, no need for something that specifies "same" directory
-	  }
-	else
-	  {
-	    fnstack.push( vect[x] );
-	  }
-      
-      }
-    std::vector<std::string> ret( stack.size() );
-    for(size_t x=0; x<ret.size(); ++x)
-      {
-	ret[ x ] = fnstack.top();
-	fnstack.pop();
-      }
-
-    //Will this work, cast to vector?
-    std::string finalstring =  CONCATENATE_STR_ARRAY( ret, "/" );
-
-    if(isglobal)
-      {
-	finalstring = "/" + finalstring;
-      }
-
-    return finalstring;
-  
-    
-  }
-  std::string canonicalize_fname( const std::string& s )
-  {
-    std::stack<std::string> fnstack;
-
-    bool isglobal=false;
-  
-    //First, remove all whitespace? No, don't.
-    if( s[0] == '/' )
-      {
-	isglobal = true;
-      }
-  
-    //first, tokenize it by /  (how to handle first one?)
-    std::vector<std::string> vect = tokenize_string( s, '/');
-
-  
-  
-    //Then, iterate through from beginning, push back thing to a stack. If .., pop the stack. If stack size < 0, error.
-    for(size_t x=0; x<vect.size(); ++x)
-      {
-	if( vect[x].compare("..") == 0 )
-	  {
-	    fnstack.pop();
-	  }
-	else if( vect[x].compare(".") == 0)
-	  {
-	    //do nothing (just remove it, no need for something that specifies "same" directory
-	  }
-	else
-	  {
-	    fnstack.push( vect[x] );
-	  }
-      
-      }
-    std::vector<std::string> ret( stack.size() );
-    for(size_t x=0; x<ret.size(); ++x)
-      {
-	ret[ x ] = fnstack.top();
-	fnstack.pop();
-      }
-
-    //Will this work, cast to vector?
-    std::string finalstring =  CONCATENATE_STR_ARRAY( ret, "/" );
-
-    if(isglobal)
-      {
-	finalstring = "/" + finalstring;
-      }
-
-    return finalstring;
-  
-    
-  }
-
-  bool same_fnames(const std::string& fname1, const std::string& fname2)
-  {
-    std::string s1 = canonicalize_fname( fname1 );
-    std::string s2 = canonicalize_fname( fname2 );
-    if( fname1.compare( fname2 ) == 0 )
-      {
-	return true;
-      }
-    else
-      {
-	return false;
-      }
-  }
-
-
-  void replace_old_fnames_with_new( std::vector<std::string>& fvect, const std::string& newfname, const std::vector<size_t> replace_locs )
-  {
-    for(size_t x=0; x<replace_locs.size(); ++x)
-      {
-	fvect[ replace_locs[ x ] ] = newfname;
-      }
-  
-    return;
-  }
-
-  //This only matches EXACT filenames
-  std::vector<size_t> find_matching_files(const std::string& fname, const std::vector<std::string>& fnamevect, std::vector<bool>& marked )
-  {
-    std::vector<size_t> foundvect;
-    for(size_t x=0; x<fnamevect.size(); ++x)
-      {
-	std::string canonical = canonicalize_fname( fnamevect[x] );
-	//if( strcmp( fnamevect[x], fname ) == 0 )
-	if( same_fnames( canonical, fname ) == true )
-	  {
-	    if(marked[x] == false)
-	      {
-		foundvect.push_back( x );
-		marked[x] = true;
-	      }
-	    else
-	      {
-		fprintf( stderr, "REV: WARNING in find_matching_filenames: RE-CHANGING already MARKED file (i.e. circular renaming?) File: [%s]\n",
-			 fname.c_str() );
-	      }
-	  }
-      
-      
-      }
-    return foundvect;
-  }
-
-  void rename_file( pitem& mypitem, std::string fname, std::string origdir, std::string newdir )
-  {
-  
-  }
-
-  pitem modify_pitem( const pitem& mypitem, const std::vector<mem_file>& mf,
-		      const std::vector<std::string> newfnames,
-		      const std::string& dir )
-  {
-    //1) REQUIRED file list (these will all be copied from source location to MYDIR/required_files and renamed as well). We keep that "renamer" around.
-    //2) SUCCESS file list (these will all be transferred to MYCMD, no renaming as some might be hardcoded in user program? In which case if DIR doesn't exist
-    // and we can't specify it, it will error out -- so we will check to make sure it is forced to be in user dir). We copy these back.
-    //3) OUTPUT file list (these must be inside MYDIR or else error, so I will rename them). We copy these back (and read out?)
-    //4) INPUT file (name) just a single one (rename this and specify, inside MYDIR).
-    //5) MYDIR string (just a single one) -- will modify to user.
-    //6) MYCMD, a vector of strings, will be concat with some "SEP" at the end. Find all of the above changed guys, stringmatch, and change to new updated
-    //      guys. Note, change to some canonical form first, to handle stuff like ../blah versus /local/blah, etc. I.e. use PWD, etc. Do that later.
-
-  
-  
-  }
-
   void handle_pitem( pitem& mypitem, const std::string& dir )
   {
     //First, get an INT, number of files.
-    int numfiles = get_int( 0 );
+    int numfiles = receive_int( 0 ); //get_int( 0 );
     std::vector< mem_file > mfs;
     std::vector< std::string > newfnames;
     std::vector< std::string > oldfnames;
-  
+    
     std::string fnamebase= "reqfile";
     for(size_t f=0; f<numfiles; ++f)
       {
@@ -402,69 +392,42 @@ struct filesender
   
   }
 
-  struct psweep_cmd
-  {
-    int SRC;
-    std::string CMD;
-
-  psweep_cmd( const int srcr, const std::string& cm )
-  : SRC( srcr ), CMD( cm )
-    {
-      //NOTHING
-    }
-
   
-  };
-
-  struct mem_file
+  //void send_file( const int& targrank, const mem_file& memf )
+  void send_file( const int& targrank, const mem_file& memf )
   {
-    std::string fname;
-    std::vector<char> contents;
-
-  mem_file( const std::string& fn, const std::vector<char> cont )
-  : fname( fn ), contents (cont )
-    {
-      //REV: NOTHING
-    }
-
-    void tofile(const std::string& dir, const std::string& myfname )
-    {
-      //REV: this does not use the FNAME of this mem_file...? Ugh.
-      std::string fullfname = dir + "/" + myfname;
-
-      ofstream ofs;
-
-      open_ofstream( fullfname, ofs, );
-    
-      ofs.write( contents.data(), contents.size() );
-
-      //REV: does it work? Need to check sanity before I go?
-    }
-  };
-
-
+    //world->send( targrank, boost::mpi::any_tag, memf );
+    world->send( targrank, 0, memf );
+  }
+  
+  void send_file_from_disk( const int& targrank, const std::string& fname )
+  {
+    mem_file mf( fname );
+    send_file( targrank, mf );
+  }
+  
+  
   mem_file receive_file( const int& targrank )
   {
     //REV: crap I can't just cast to a string, I need to CONSTRUCT it.
-    std::vector<char> fname = receive_memory( targrank );
-    std::string fn = std::string( fname.data() );
+    //std::vector<char> fname = receive_memory( targrank );
 
-    std::vector<char> fcontents = receive_memory( targrank );
-
-    mem_file mf(  fn, fcontents );
-
+    mem_file mf;
+    world->recv( targrank, boost::mpi::any_tag, mf );
     return mf;
   }
 
 
+  /*
   pitem get_pitem_from_targ_rank( const int& targrank )
   {
     std::vector< char > tmpmem = receive_memory( targrank );
-  
+    
     pitem tmppitem = cast_to_type< pitem >( tmpmem );
 
-    return tmpitem;
+    return tmppitem;
   }
+  */
 
   //arbitrary byte array as VECTOR, and we can cast it to a target TYPE in some way? Like...static_cast? whoa...blowin my mind haha.
   std::vector< char > receive_memory( const int& targrank )
@@ -473,7 +436,7 @@ struct filesender
     std::vector< char > mem;
   
     MPI_Status s;
-    MPI_probe(targrank, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+    MPI_Probe(targrank, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
   
     //first, get the size.. Note, we will execute this as a SINGLE send, in future we might want to do another if there is a max MPI buffer?
     int mesgsize;
@@ -486,10 +449,11 @@ struct filesender
     //REV: thsould this be MPI_INT? Or char? for 3rd arg?
     MPI_Recv(mem.data(), mesgsize, MPI_INT, 0, 0,
 	     MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
+    
     return mem;
   }
 
+  /*
   template <typename T>
   T cast_to_type( std::vector< char > membuff )
   {
@@ -497,7 +461,9 @@ struct filesender
     T tmpitem = (T)membuff.data();
     return tmpitem;
   }
+  */
 
+  /*
   int get_int( const int& targrank )
   {
     std::vector<char> mem = receive_memory( targrank );
@@ -507,7 +473,7 @@ struct filesender
     return myint;
 
   
-  }
+    }*/
 
   /*
     psweep_cmd wait_for_cmd()
@@ -532,7 +498,8 @@ struct filesender
 
   bool cmd_is_exit(  const psweep_cmd& pcmd )
   {
-    if( strcmp( pcmd.CMD, "EXIT") == 0 )
+    //if( strcmp( pcmd.CMD, "EXIT") == 0 )
+    if( pcmd.CMD.compare( "EXIT" ) == 0 )
       {
 	return true;
       }
@@ -548,26 +515,28 @@ struct filesender
     //get the CMD from it, return...
     if( pcmd.SRC != 0 )
       {
-	fprintf(stderr, "ERROR worker [%d] got cmd from non-root rank...[%d]\n", world.rank(),  pcmd.SRC);
+	fprintf(stderr, "ERROR worker [%d] got cmd from non-root rank...[%d]\n", world->rank(),  pcmd.SRC);
 	exit(1); //EXIT more gracefully?
       }
 
-    if( strcmp( pcmd.CMD, "EXIT") == 0 )
+    //if( strcmp( pcmd.CMD, "EXIT") == 0 )
+    if( pcmd.CMD.compare("EXIT") == 0 )
       {
 	//exit
-	fprintf(stderr, "Worker [%d] received EXIT command from root rank\n", world.rank());
+	fprintf(stderr, "Worker [%d] received EXIT command from root rank\n", world->rank());
 	exit(1);
       }
-    else if( strcmp( pcmd.CMD, "PITEM") == 0 )
+    //else if( strcmp( pcmd.CMD, "PITEM") == 0 )
+    else if( pcmd.CMD.compare( "PITEM") == 0 )
       {
 	//will process this pitem.
-	pitem mypitem = get_pitem_from_targ_rank( 0 );
+	pitem mypitem = receive_pitem( 0 ); //get_pitem_from_targ_rank( 0 );
 
 	return mypitem;
       }
     else
       {
-	fprintf(stderr, "ERROR, rank [%d] received unknown command [%s]\n", world.rank(), pcmd.CMD );
+	fprintf(stderr, "ERROR, rank [%d] received unknown command [%s]\n", world->rank(), pcmd.CMD.c_str() );
 	exit(1);
       }
   }
@@ -576,7 +545,7 @@ struct filesender
 
 
 
-  void notify_finished( const pitem& mypitem )
+  void notify_finished( pitem& mypitem )
   {
     //REV: this needs to notify master, wait for it, then send back
     //any results. Master needs to wait for this too (i.e. handle a "finished"
@@ -602,12 +571,12 @@ struct filesender
 
     for(size_t x=0; x<nsuccess; ++x)
       {
-	send_file( targrank, mypitem.success_files[x] );
+	send_file( 0, mypitem.success_files[x] );
       }
 
     varlist<std::string> resvar = mypitem.get_output();
 
-    send_varlist( targrank, resvar );
+    send_varlist( 0, resvar );
 
 
   
@@ -615,15 +584,11 @@ struct filesender
     
   }
 
-  psweep_cmd block_and_wait_for_notify()
-  {
-    psweep_cmd pc = get_cmd_from_any();
-    return pc;
-  }
-
+  
+  
 
   //REV: this needs to "find" which PITEM was allocated to that worker/ thread.
-  varlist<std::string> handle_finished_work( const psweep_cmd& pc, const pitem& corresp_pitem )
+  varlist<std::string> handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem )
   {
     int targrank = pc.SRC;
     std::string cmd = pc.CMD;
@@ -638,7 +603,7 @@ struct filesender
     //Or, allow it to do non-blocking, i.e. spin off threads? That
     //seems best.
 
-    size_t nfiles = recieve_int( targrank );
+    size_t nfiles = receive_int( targrank );
 
     //std::vector<mem_file> mfs;
     for(size_t x=0; x<nfiles; ++x)
@@ -660,8 +625,8 @@ struct filesender
 	//This had sure has hell better exist in original SUCCESS too haha.
 	//Check for sanity.
 
-	std::vector<bool> tmpmarked
-	  std::vector<size_t> matched = find_matching_files( newlocal, corresp_pitem.success_files, tmpmarked);
+	std::vector<bool> tmpmarked;
+	std::vector<size_t> matched = find_matching_files( newlocal, corresp_pitem.success_files, tmpmarked);
 
 	//We expect it to find AT LEAST one.
 	if( matched.size() == 0 )
@@ -682,7 +647,7 @@ struct filesender
     return outputvlist;
   }
 
-  bool execute_work( const pitem& mypitem )
+  bool execute_work( pitem& mypitem )
   {
     //This should do all checks (locally?) and check satisfactory output too.
     bool success = mypitem.execute_cmd();
@@ -704,35 +669,55 @@ struct filesender
   void execute_slave_loop()
   {
     bool loopslave=true;
-    std::string LOCALDIR = "/tmp/scratch" + std::to_string( world.rank() ); //will execute in local scratch. Note, might need to check we have enough memory etc.
+    std::string LOCALDIR = "/tmp/scratch" + std::to_string( world->rank() ); //will execute in local scratch. Note, might need to check we have enough memory etc.
+    
+    fprintf(stderr, "REV: WORKER [%d] is executing slave loop. Local work dir is: [%s]\n", world->rank(), LOCALDIR.c_str() );
 
-    fprintf(stderr, "REV: WORKER [%d] is executing slave loop. Local work dir is: [%s]\n", world.rank(), LOCALDIR.c_str() );
+
+    //REV: need to send first guy to tell its ready
+    std::string pcinit = "READY";
+    send_cmd( pcinit, 0 );
+
+    fprintf(stdout, "WORKER [%d] send CMD READY to root\n", world->rank());
+    
     while( loopslave == true )
       {
+	fprintf(stdout, "WORKER [%d]: waiting for cmd\n", world->rank() );
 	//WAIT for mesg from MASTER
-	psweep_cmd cmd = wait_for_cmd();
-
+	//psweep_cmd cmd = receive_cmd_from_any();  //wait_for_cmd();
+	psweep_cmd cmd = receive_cmd_from_root();  //wait_for_cmd();
+	
+	fprintf(stdout, "WORKER [%d]: GOT CMD [%s]. Will handle.\n", world->rank(), cmd.CMD.c_str() );
+	
 	if( cmd_is_exit( cmd ) == true )
 	  {
-	    fprintf(stderr, "REV: WORKER [%d] received EXIT\n", world.rank() );
+	    fprintf(stderr, "REV: WORKER [%d] received EXIT\n", world->rank() );
 	    loopslave = false;
 	    break;
 	  }
-	
-	pitem myitem = handle_cmd( cmd ); //REV: may EXIT, or contain a PITEM (to execute).
-	
+
+	fprintf(stdout, "HANDLING CMD\n");
+	pitem mypitem = handle_cmd( cmd ); //REV: may EXIT, or contain a PITEM (to execute).
+	fprintf(stdout, "WORKER [%d]: received pitem\n", world->rank());
 	
 	handle_pitem( mypitem, LOCALDIR ); // This will do the receiving of all files and writing to LOCALDIR, it will also rename them and keep track
 	//of the correspondence. Note the SENDING side will do the error out if it is no in the __MY_DIR. Do that on PARENT side I guess. OK.
+
+	fprintf(stdout, "WORKER [%d]: handled PITEM\n", world->rank());
 
 	//We now have PITEM updated, we will now EXECUTE it (until it fails, keep checking success).
 
 	execute_work( mypitem );
 
+	fprintf(stdout, "WORKER [%d]: EXECUTED WORK\n", world->rank());
+
 	//NEED TO SEND RESULTS
 	notify_finished( mypitem ); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
-  
+
+
+	fprintf(stdout, "WORKER [%d]: sent finished notify\n", world->rank());
 	cleanup_workspace( mypitem );
+	fprintf(stdout, "WORKER [%d]: cleaned up\n", world->rank());
       }
   }
 
@@ -740,7 +725,7 @@ struct filesender
 
   bool is_finished_work( const psweep_cmd& pcmd )
   {
-    if( pcmd.CMD.equals( "DONE" )  == 0 )
+    if( pcmd.CMD.compare( "DONE" )  == 0 )
       {
 	return true;
       }
@@ -752,7 +737,7 @@ struct filesender
 
   bool is_ready_for_work( const psweep_cmd& pcmd )
   {
-    if( pcmd.CMD.equals( "READY" )  == 0 )
+    if( pcmd.CMD.compare( "READY" )  == 0 )
       {
 	return true;
       }
@@ -762,28 +747,7 @@ struct filesender
       }
   }
 
-  struct parampoint_coord
-  {
-    //bool working;
-    size_t parampointn;
-    size_t psetn;
-    size_t pitemn;
-
-    parampoint_coord()
-    //: working(true)
-    {
-      //REV: nothing to do.
-    }
-
-
-    //REV: starts off default working, waits for message even if its not
-    //working on a specific problem. Based on message we get from it.
-  parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi )
-  : parampointn(pp), psetn(ps), pitemn(pi) //, working(true)
-    {
-      //REV: nothing to do.
-    }
-  };
+  
 
   struct pprep
   {
@@ -796,11 +760,12 @@ struct filesender
     {
     }
 
-    inline bool operator==(const pprep& lhs, const pprep& rhs)
+    //inline bool operator==(const pprep& lhs, const pprep& rhs)
+    inline bool operator==(const pprep& rhs)
     {
-      if( lhs.pset_idx == rhs.pset_idx
+      if( this->pset_idx == rhs.pset_idx
 	  &&
-	  lhs.pitem_idx == rhs.pitem_idx )
+	  this->pset_idx == rhs.pitem_idx )
 	{
 	  return true;
 	}
@@ -810,9 +775,9 @@ struct filesender
 	}
     }
 
-    inline bool operator!=(const pprep& lhs, const pprep& rhs)
+    inline bool operator!=(const pprep& rhs)
     {
-      if( lhs == rhs )
+      if( *this == rhs )
 	{
 	  return false;
 	}
@@ -849,7 +814,7 @@ struct filesender
 	  !state.psets[ state.current_pset ].checkdone() )
 	{
 	
-	  for(size_t x=0; x<state.psets[ state.current_pset ].size() ; ++x )
+	  for(size_t x=0; x<state.psets[ state.current_pset ].pitems.size() ; ++x )
 	    {
 	      if( state.psets[ state.current_pset ].pitems[ x ].checkavail() == true)
 		{
@@ -866,14 +831,20 @@ struct filesender
 	  !state.psets[ state.current_pset ].checkdone() )
 	{
 	
-	  for(size_t x=0; x<state.psets[ state.current_pset ].size() ; ++x )
+	  for(size_t x=0; x<state.psets[ state.current_pset ].pitems.size() ; ++x )
 	    {
 	      if( state.psets[ state.current_pset ].pitems[ x ].checkavail() == true)
 		{
 		  //MARK IT FARMED...
 		  state.psets[ state.current_pset ].pitems[ x ].farmed = true;
 
-		  return pprep(state.current_pset, x);
+		  //REV: pushing it back here. This is erased OUTSIDE
+		  //of it, at a kind of "MARK DONE" type thing?
+		  pprep pp(state.current_pset, x);
+		  farmed_pps.push_back(  pp );
+		  
+
+		  return pp;
 		}
 	    }
 	}
@@ -881,179 +852,34 @@ struct filesender
       exit(1);
     }
   
-    
-    struct parampoint_rep
+
+    //REV: how to check if all done?
+    bool check_all_done()
     {
-      size_t myidx;
-      bool done=false;
-
-      size_t current_pset=0;
-      std::vector< pset_rep > psets;
+      //for state, check if all done.
+      //go through and update it?
+      return state.checkdone();
+    }
     
-      parampoint_rep( const parampoint& pp, const size_t& idx )
-      {
-	myidx = idx;
-	psets.resize( parampoint.psets.size() );
-	for(size_t x=0; x<psets.size(); ++x)
-	  {
-	    psets[x].resize( parampoint.psets[x].size() );
-	  }
-      }
-    
-
-      void markdone( const parampoint_coord& pc )
-      {
-	psets[ pc.psetn ].pitems[ pc.pitemn ].done = true;
-	bool psetdone=true;
-	for(size_t x=0; x<psets[ pc.psetn ].pitems.size(); ++x)
-	  {
-	    if( psets[ pc.psetn ].pitems[x].checkdone() == false )
-	      {
-		psetdone = false;
-	      }
-	  }
-	psets[ pc.psetn ].done = psetdone;
-	if(psetdone==true)
-	  {
-	    ++current_pset;
-	  }
-      
-      
-	bool parampointdone = true;
-	for(size_t x=0; x<psets.size(); ++x)
-	  {
-	    if( psets[x].checkdone() == false )
-	      {
-		parampointdone = false;
-	      }
-	  }
-
-	done = parampointdone;
-
-	return;
-      }
-    
-      bool checkdone()
-      {
-	if(done)
-	  {
-	    return done;
-	  }
-	else
-	  {
-	    done=true;
-	    for(size_t p=0; p<psets.size(); ++p)
-	      {
-		if( psets[p].checkdone() == false )
-		  {
-		    done=false;
-		    return done;
-		  }
-	      }
-	  }
-	return done;
-      }
-    
-    };
-
   
-    struct pset_rep
-    {
-      bool done=false;
-      std::vector< pitem_rep > pitems;
-
-      pset_rep()
-      {
-      
-      }
-    
-      bool checkdone()
-      {
-	if(done)
-	  {
-	    return done;
-	  }
-	else
-	  {
-	    done=true;
-	    for(size_t p=0; p<pitems.size(); ++p )
-	      {
-		if( pitems[p].checkdone() == false )
-		  {
-		    done=false;
-		    return done;
-		  }
-	      }
-	  }
-	return done;
-      }
-    };
-    
-    struct pitem_rep
-    {  
-      bool farmed=false;
-      bool done=false;
-      size_t farmed_worker=0;
-
-      bool checkavail()
-      {
-	if( farmed == false && done == false )
-	  {
-	    return true;
-	  }
-	else
-	  {
-	    return false;
-	  }
-      }
-    
-      pitem_rep()
-      {
-      }
-    
-      bool checkdone()
-      {
-	return done; //actually check it?
-      }
-    };
-    
   };
 
 
-  size_t wait_for_worker( std::deque< completion_struct >& prog )
-  {
-
-    psweep_cmd pcmd = block_and_wait_for_notify();
-
-    if( is_finished_work( pcmd ) == true )
-      {
-	//pcmd contains DONE cmd
-	//I need to handle it based on corresponding worker.
-      }
-    else if( is_ready_for_work( pcmd ) == true )
-      {
-	//pcmd is first time, i.e. just give it work without handling its return values
-      }
-    else
-      {
-	//should be an error
-      }
-      
-      
-  }
-
-
+  
   void master_to_slave( const pitem& mypitem, const size_t& workeridx )
   {
     send_cmd( "PITEM", workeridx );
 
+    send_pitem( mypitem, workeridx ); 
+
     int nfiles = mypitem.required_files.size();
+    
     send_int( workeridx, nfiles );
   
     //Then, send the files.
     for(size_t f=0; f<mypitem.required_files.size(); ++f)
       {
-	send_file( workeridx, mypitem.required_files[f] );
+	send_file_from_disk( workeridx, mypitem.required_files[f] );
       }
 
     //REV: And that is it, return
@@ -1061,6 +887,8 @@ struct filesender
   }
 
 
+
+  
   struct work_progress
   {
     //REV: I would delete from this deque as I go???
@@ -1090,6 +918,7 @@ struct filesender
 	{
 	  if(workingworkers[x] == false)
 	    {
+	      workingworkers[x] = true;
 	      return x;
 	    }
 	}
@@ -1189,7 +1018,10 @@ struct filesender
     size_t farm_work( std::vector<bool>& workingworkers )
     {
       parampoint_coord pc = find_first_avail_work();
-      farmed_pps.push_back( pprep(pc.psetn, pc.pitemn) );
+
+      //This isn't going to work. farmed_pps is in COMPLETION STRUCT.
+      //This is WORK PROGRESS. Our progress[] array is list of
+      //  COMPLETION STRUCT. We can set individual ones of those.
 
       size_t workeridx = get_next_worker( workingworkers );
       farmed_status[ workeridx ] = pc;
@@ -1199,7 +1031,7 @@ struct filesender
 
     void mark_done( const parampoint_coord& pc )
     {
-      pprep pr( pc.setn, pc.pitemn );
+      pprep pr( pc.psetn, pc.pitemn );
       size_t found=0;
       size_t loc=0;
       for( size_t x=0; x<progress[ pc.parampointn ].farmed_pps.size(); ++x )
@@ -1218,9 +1050,9 @@ struct filesender
 
       //Erase the one that is currently working.
       //Mark it done.
-      progress[ pc.parampointn ].farmed_pps[ loc ].erase( progress[ pc.parampointn ].farmed_pps[ loc ].begin() + loc );
+      progress[ pc.parampointn ].farmed_pps.erase( progress[ pc.parampointn ].farmed_pps.begin() + loc );
 
-      progress[ pc.parampointn].state.markdone( pc );
+      progress[ pc.parampointn ].state.markdone( pc );
     }
   };
 
@@ -1231,12 +1063,13 @@ struct filesender
   void comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, std::vector<bool>& workingworkers )
   {
 
-    work_progress wprog(pg, newlist);
+    work_progress wprog( pg, newlist, workingworkers.size() );
 
     //REV: these should never happen at the same time, i.e. it shouldn't
     //be done if there are any workers working...
     while( wprog.check_all_done() == false )
       {
+	fprintf(stdout, "Not all done of WPROG!\n");
 	//Only accept messages if there are no available workers and
 	//there's no work to do.
 	//If there is available workers, but no work to do, accept messages
@@ -1247,6 +1080,16 @@ struct filesender
 	      wprog.check_work_avail() == true )
 	    )
 	  {
+	    fprintf(stdout, "CASE: Either there is a worker available, OR there is work available. I will receive a response from a worker\n");
+	    if( wprog.avail_worker( workingworkers ) == true )
+	      {
+		fprintf(stdout, " NOTE: there ARE workers available\n");
+	      }
+
+	    if(  wprog.check_work_avail() == true  )
+	      {
+		fprintf(stdout, " NOTE: there IS work available\n");
+	      }
 	    //ACCEPT MESSAGES FROM WORKERS AND HANDLE.
 	    //Note, we want to keep it so that this array will carry over
 	    //to the next loop??? Fuck. They sent DONE or READY or
@@ -1257,27 +1100,37 @@ struct filesender
 	    //OK, do it.
 
 	    psweep_cmd pcmd = receive_cmd_from_any();
+
+	    fprintf(stdout, "RECEIVED COMMAND (%s)\n", pcmd.CMD.c_str() );
 	    if( is_finished_work( pcmd ) == true )
 	      {
+		
+		
 		//pcmd contains DONE cmd
 		//I need to handle it based on corresponding worker.
 		size_t workernum = pcmd.SRC;
 		
+		fprintf(stdout, "IT WAS A FINISHED CMD from [%ld]\n", workernum);
+		
 		//farmed_status[workernum] should tell us where
 		parampoint_coord pc = wprog.farmed_status[workernum];
 		
-		pitem handledpitem = get_corresponding_pitem_from_workernum( pg, workernum );
+		pitem handledpitem = wprog.get_corresponding_pitem_from_workernum( pg, workernum );
 		
-		varlist<std::string> result = handle_finished_work( psweep_cmd, handledpitem );
+		varlist<std::string> result = handle_finished_work( pcmd, handledpitem );
+		
+		//need to mark it DONE in pitem representation.
+		wprog.mark_done( pc );
 
 		pg.set_result( pc, result );
 
-		workingworkers[ pcmd.SRC ] == false;
+		workingworkers[ pcmd.SRC ] = false;
 	      }
 	    else if( is_ready_for_work( pcmd ) == true )
 	      {
+		fprintf(stdout, "NO, IT WAS JUST READY (setting worker [%d] to FALSE)\n", pcmd.SRC);
 		//Contains READY cmd, just mark to not working.
-		workingworkers[ pcmd.SRC ] == false;
+		workingworkers[ pcmd.SRC ] = false;
 	      }
 	    else
 	      {
@@ -1290,29 +1143,19 @@ struct filesender
 	//both work and worker available: farm it.
 	else
 	  {
+	    fprintf(stdout, "CASE: BOTH WORK AND A WORKER ARE AVAILABLE. WILL FARM\n");
 	    size_t farmedworker = wprog.farm_work(workingworkers);
 
-
-	    parampoint_coord pc = farmed_status[ farmedworker ];
+	    fprintf(stdout, "FARMED IT LOCALLY. Now will send data to slave\n");
+	    parampoint_coord pc = wprog.farmed_status[ farmedworker ];
 	    //FARM TO THAT WORKER, i.e. send message to that rank.
-	    master_to_slave( get_corresponding_pitem( pg, pc),
+	    master_to_slave( wprog.get_corresponding_pitem( pg, pc),
 			     farmedworker );
+	    fprintf(stdout, "DONE master to slave.\n");
 	  }
-	
-	
       }
+    fprintf(stdout, "ALL DONE WITH WPROG!!! WOW!\n");
   }
 
   
-    
-  //}; //end struct FARMER
-
 };
-
-//REV: T must be REAL type?
-template <typename T>
-void recursive_permute_params(const std::vector< std::vector<T> >& list_to_permute,
-			      const size_t& binlevel, /* REV: I guess this is 1d specification of 2d space? */
-			      std::vector< T >& permuted_list_in_progress,
-			      std::vector< std::vector< T > >& finished_list
-			      );

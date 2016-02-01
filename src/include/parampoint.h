@@ -10,15 +10,29 @@
 
 #include <hierarchical_varlist.h>
 
-std::string CONCATENATE_STR_ARRAY(const std::vector<std::string>& arr, const std::string& sep)
+#include <string_manip.h>
+
+
+
+struct parampoint_coord
 {
-  std::string ret="";
-  for(size_t a=0; a<arr.size(); ++a)
-    {
-      ret+= arr[a] + sep;
-    }
-  return ret;
-}
+  //bool working;
+  size_t parampointn;
+  size_t psetn;
+  size_t pitemn;
+
+
+  parampoint_coord()
+  {
+  }
+  
+parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi )
+: parampointn(pp), psetn(ps), pitemn(pi)
+  {
+    //REV: nothing to do.
+  }
+};
+  
 
 //REV: OK so this is it. This is what we build. Note this is a SINGLE representation of a PSET (not a parampoint)
 struct pset_functional_representation
@@ -88,7 +102,8 @@ struct pitem
     std::vector< std::string > notready = check_ready();
 
     std::string sep = " ";
-    std::execute_string = mycmd.CONCATENATE_STR_ARRAY( cmdarray, sep );
+    //std::string execute_string = mycmd.CONCATENATE_STR_ARRAY( cmdarray, sep );
+    std::string execute_string = CONCATENATE_STR_ARRAY( mycmd, sep );
     
     if( !notready.size() > 0 )
       {
@@ -101,7 +116,7 @@ struct pitem
 	exit(1);
       }
     
-    system( execute_string );
+    int sysret = system( execute_string.c_str() );
     
     std::vector<std::string> notdone = checkdone();
 
@@ -109,8 +124,9 @@ struct pitem
     size_t NTRIES=10;
     while( notdone.size() > 0 && tries < NTRIES)
       {
-	system( mycmd ); //Delete/reset this pitem?
+	sysret = system( execute_string.c_str() ); //Delete/reset this pitem?
 	notdone = checkdone();
+	++NTRIES;
       }
 
     if(notdone.size() > 0)
@@ -121,12 +137,13 @@ struct pitem
 	  {
 	    fprintf(stderr, "FILE: [%s]\n", notdone[f].c_str());
 	  }
-	exit(1);
+	exit(1); //Just exiting now...but meh.
+	return false;
       }
 
     //More elegantly exit. Note all guys should output to a certain specific output file!!! In their dir.
     
-    return done;
+    return true;
     //this only tells if it was SUCCESSFUL or not (?). For example we had problems before due to something failing for one reason or another. In this way
     //we can automatically restart it...?
   }
@@ -193,7 +210,7 @@ struct pitem
 
 	//locate it in cmd...if it exists...
 	std::vector<size_t> reqmatched=find_matching_files(fname, targvect, reqmarked); //will canonicalize fnames in MYCMD as they go.
-	std::vector<size_t> cmdmatched=find_matching_files(fname, cmd, marked); //will canonicalize fnames in MYCMD as they go.
+	std::vector<size_t> cmdmatched=find_matching_files(fname, mycmd, marked); //will canonicalize fnames in MYCMD as they go.
 
 	std::string newfname = canonicalize_fname( newfnames[x] );
 
@@ -217,9 +234,43 @@ struct pitem
       }
 
   }
+
+  
+  void rename_str_to_targ_dir( std::string& targ, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir )
+  {
+    
+    std::string fnametail;
+	
+    //REV: oops I fucked up, I need to only change the DIR for these!
+    std::string dirname = get_canonical_dir_of_fname( targ, fnametail );
+
+    if( dirname.compare( canonicalize_fname( olddir ) ) != 0 )
+      {
+	fprintf(stderr, "in REBASE DIRECTORY: ERROR: olddir and found dir in SUCCESS file are not the same!!! WTF\n");
+	exit(1);
+      }
+	
+    std::string fname = canonicalize_fname(targ);
+    //locate it in cmd...if it exists...
+    
+    std::vector<size_t> matched=find_matching_files(fname, mycmd, marked);
+
+    std::string newfname = newdir + "/" + fnametail;
+    replace_old_fnames_with_new( mycmd, newfname, matched ); //replaces mycmd inline.
+
+    //Now replace SUCCESS itself.
+    targ = newfname;
+      
+
+  }
   
   void rename_to_targ_dir( std::vector<std::string>& targvect, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir )
   {
+    for(size_t x=0; x<targvect.size(); ++x)
+      {
+	rename_str_to_targ_dir( targvect[x], marked, olddir, newdir );
+      }
+    /*
     //FOR all files in SUCCESS, OUTPUT, INPUT, change to new fname. If they match (canonically) we will go.
     for(size_t x=0; x<targvect.size(); ++x)
       {
@@ -246,21 +297,27 @@ struct pitem
 	//Now replace SUCCESS itself.
 	targvect[x] = newfname;
       }
-
+    */
   }
   
   //REV: For success etc. check existence AND THAT IT IS A FILE!!!! I.e. we don't do DIRS (for now)
   void re_base_directory( const std::string& olddir, const std::string& newdir, const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames )
   {
     std::vector<bool> marked(mycmd.size(), false);
+
+    rename_to_targ_dir(success_files, marked, olddir, newdir);//, oldfnames);
+    rename_to_targ_dir(output_files, marked, olddir, newdir);//, oldfnames);
     
-    rename_to_targ_dir(success_files, marked, olddir, newdir, oldfnames);
-    rename_to_targ_dir(output_files, marked, olddir, newdir, oldfnames);
-    rename_to_targ_dir(input_files, marked, olddir, newdir, oldfnames);
+    //REV: Input file is just a string, not vector<string>, so need to have a similar function to just do single file...And modify underlying string.
+    rename_str_to_targ_dir(input_file, marked, olddir, newdir);//, oldfnames);
     rename_to_targ(required_files, marked, olddir, newdir, oldfnames, newfnames);
 
     //All MARKED not necessarily, because it might contain non-files in the string vector representing the command.
     
+  }
+
+  pitem( )
+  {
   }
   
   pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv)
@@ -268,7 +325,8 @@ struct pitem
     //Need to add to the most recent pset a child...
     std::vector<size_t> rootchildren = hv.get_children( 0 );
     size_t npsets = rootchildren.size();
-    size_t myidx = hv.add_child( rootchildren[npsets-1] ); //add child to the last PSET (!!)
+    varlist<std::string> emptyvl;
+    size_t myidx = hv.add_child( rootchildren[npsets-1],  emptyvl); //add child to the last PSET (!!)
     my_hierarchical_idx = myidx;
 
     //Set up the required variables. Automatically name the things here (like choose dir based on sub of parent), much easier ;)
@@ -304,11 +362,12 @@ struct pitem
     //This is a copy operator, so it will not bubble up the copy operator
     //unless I re-copy
     //Add other HVarlist to it such as the global NAMES one.
-    
+
+    std::vector<size_t> idcs = {myidx};
     //And now execute all arguments in pset_functional_rep
     for(size_t s=0; s<pfr.frlist.size(); ++s)
       {
-	myvar_t retval = pfr.frlist[s].execute( hvl, myidx );
+	myvar_t retval = pfr.frlist[s].execute( hvl, idcs );
 	//What to do with retval?!?!?! Ignore it?
       }
 
@@ -327,6 +386,7 @@ struct pitem
 
 
     //REV: this was error, this should have been cmdarray before changing mycmd to be vector of strings.
+
     mycmd.push_back( "1>"+stdoutfile );
     mycmd.push_back( "2>"+stderrfile );
     
@@ -343,8 +403,10 @@ struct pitem
     //Maybe only the FIRST one needs it. OK.
     
     input_file = hv.get_val_var( "__MY_INPUT_FILE", my_hierarchical_idx );
-    
-    hv.tofile( input_file, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
+
+    //REV: here is the problem, it was outputting ALL local variables to the INPUT file of the user...crap.
+    //hv.tofile( input_file, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
+    hv.tofile( input_file, 0); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
     
     //Input files are REQUIRED files (by default, might be checked twice oh well).
     //Furthermore, output files are SUCCESS files (fails and tries to re-run without their creation of course).
@@ -379,34 +441,36 @@ struct pitem
   }
   
  
-  bool check_ready()
+  std::vector<std::string> check_ready()
   {
-    bool ready=true;
+    std::vector<std::string> notreadylist;
+    //bool ready=true;
     //Strings must be FULL filename? Or are they relative? Assume full...
     for(size_t f=0; f<required_files.size(); ++f)
       {
 	if( check_file_existence( required_files[f] ) == false )
 	  {
-	    ready = false;
+	    notreadylist.push_back( required_files[f] );
 	  }
       }
-    return ready;
+    return notreadylist;
     
     //checks if all required files are present?? etc.
   }
   
-  bool checkdone()
+  std::vector<std::string> checkdone()
   {
-    bool ready=true;
+    std::vector<std::string> notdonelist;
     //Strings must be FULL filename? Or are they relative? Assume full...
     for(size_t f=0; f<success_files.size(); ++f)
       {
 	if( check_file_existence( success_files[f] ) == false )
 	  {
-	    ready = false;
+	    //ready = false;
+	    notdonelist.push_back( success_files[f] );
 	  }
       }
-    return ready;
+    return notdonelist;
     
     //checks if I'm done. Specifically by seeing if all required guys are
     //finished. I need multiple "variable lists" of guys, some that
@@ -427,7 +491,7 @@ struct pitem
     return retvarlist;
   }
 
-  std::string get_cmd()
+  std::vector<std::string> get_cmd()
   {
     return mycmd;
   }
@@ -441,7 +505,7 @@ struct functional_representation
   std::vector< pset_functional_representation > pset_list;
   
   //Constructs the list of each parampoint. Great.
-  functional_representation( const client::PARAMPOINT& pp )
+  functional_representation( client::PARAMPOINT& pp )
   {
     for( size_t ps=0; ps<pp.psets.size(); ++ps)
       {
@@ -449,6 +513,11 @@ struct functional_representation
 	pset_list.push_back( pfr );
       }
   }
+
+  functional_representation()
+  {
+  }
+  
 };
 
 
@@ -456,38 +525,14 @@ struct functional_representation
 //REV:
 struct pset
 {
+  
+  
   std::string mydir;
   std::vector< pitem > pitems;
   size_t my_hierarchical_idx; //index in my parampoint hierarchical varlist array of my leaf (or middle) node.
 
+  /*bool done;
   
-  pitem farm_next_pitem()
-  {
-    for(size_t p=0; p<pitems.size(); ++p)
-      {
-	if( pitems[p].checkfarmed() == false )
-	  {
-	    pitems[p].markfarmed();
-	    return pitems[p];
-	  }
-      }
-    fprintf(stderr, "ERROR should not reach this point in pitem farm next pitem\n");
-    exit(1);
-  }
-
-  bool checkfarmed()
-  {
-    //could make this have state var too but whatever...
-    bool allfarmed=true;
-    for(size_t p=0; p<pitems.size(); ++p)
-      {
-	if(pitems[p].checkfarmed() == false)
-	  {
-	    return false;
-	  }
-      }
-    return allfarmed;
-  }
   
   bool checkdone()
   {
@@ -510,12 +555,13 @@ struct pset
       }
     fprintf(stderr, "ERROR in checkdone in pset, why am I reaching end?\n"); exit(1);
   }
-
+  */
 
   pset(hierarchical_varlist<std::string>& hv)
   {
     //std::vector<size_t> rootchildren = hv.get_children(0);
-    size_t myidx = hv.add_child( 0 ); //add child to root;
+    varlist<std::string> emptyvl;
+    size_t myidx = hv.add_child( 0, emptyvl ); //add child to root;
     my_hierarchical_idx = myidx;
 
     //REV: get root's dir... i.e. my parent...
@@ -556,6 +602,19 @@ struct parampoint
 
   std::vector< pset > psets;
 
+  
+
+  static const size_t my_hierarchical_idx = 0;
+
+
+  void add_pset( const pset& myps)
+  {
+    psets.push_back( myps );
+  }
+  
+  //bool done=false;
+
+  /*
   pitem get_next_pitem()
   {
     for(size_t p=0; p<psets.size(); ++p)
@@ -566,13 +625,14 @@ struct parampoint
 	  }
       }
   }
+  */
   
 
   
 
   
   //Can do "check done" but better to just "get next pitem"
-
+  /*
   bool checkfarmed()
   {
     for(size_t p=0; p<psets.size(); ++p)
@@ -585,7 +645,7 @@ struct parampoint
     return true;
   }
   
-  bool done=false;
+  
   bool checkdone()
   {
     if(done)
@@ -619,6 +679,8 @@ struct parampoint
     fprintf(stderr, "REV: get_next_pitem: ERROR, we are trying to get next pitem despite PSET being ostensibly finished! Error!\n");
     exit(1);
   }
+  */
+
 
   //Makes the dir at the location "inside", but success and required files are still treated as if they are purely global names.
   parampoint( hierarchical_varlist<std::string>& hv, std::string dirname )
@@ -632,7 +694,7 @@ struct parampoint
   }
 
 
-  static const size_t my_hierarchical_idx = 0;
+  
   //REV: this will always be the root node in the parampoint hierarchical varlist array...
   
 };
@@ -891,7 +953,7 @@ struct parampoint_generator
   
   parampoint_generator( const std::string& scriptfname, const std::string& bdir )
   {
-    exec_rep = exec_rep( scriptfname );
+    exec_rep = executable_representation( scriptfname );
     
     basedir = bdir;
     make_directory( basedir ); //better already exist...
@@ -971,330 +1033,6 @@ struct parampoint_generator
 
 //Takes generic hierarch varlist that handles things?
 
-struct search_funct
-{
-  search_funct( hierarchical_varlist<std::string>& hv )
-  {
-    
-  }
-
-
-  std::vector< varlist<std::string> > gen_next_parampoints()
-  {
-    //All different search functs must do this. It calls this, and it gets the next N param points, which are then farmed off.
-    //Note this includes "getting the output". May contain current state? Note, every pitem returns OUTPUT.
-  }
-  
-  //So any derived classes might override this.
-  //It generates (possibly from previous or from nothing),
-  //executes, and then generates based on results? Generates 2x? Nah.
-
-  
-};
-
-
-
-//Passes these off to the "worker distributor" and does the farming etc.
-struct master
-{
-  //Easiet way is to carry around a "full" one, and only push/pass a few to it as we go. I guess.
-  //Or, specify ones to execute?
-
-  farmer thefarmer; //keeps track of the system, i.e. where GPUs, etc. are located, IP to connect to build MPI thing, etc.
-  
-  parampoint_generator maingen;
-  
-  master( scriptfname, bdir, )
-  {
-    
-  }
-  
-  
-  std::vector< varlist<std::string> > process_param_points( const std::vector< varlist<std::string> >& pp_toproc )
-  {
-
-    //what calls this? We call this each time? NO THIS IS PART OF THE "PROCESS" FARMER-OUTER.
-    //Assume we do everything AFTER having passed the varlists etc. to the target? We just pass parampoints I guess?
-    //What about vars etc.? At any rate, once it gets the parampoints etc., it goes off. So we need to pass the whole struct including
-    //the lists it has. Pass both the things I guess haha.
-    
-  }
-
-};
-
-struct farmer
-{
-  //Pass back/copy back the whole thing? Ugly...vicious!
-  //But we're writing out to HDF5 or something somewhere along the way,...
-  //I.e. as its going its writing it out? Only after "completion" of a given parampoint. But dirs are already made when farmed out? Only made as
-  //sent to workers?
-
-  //Make user bundle all his own functions (in the same language?) or possibly glue it all together, but with main as C++?. Or give it as a lib...heh.).
-  //If that's the case, no need to specify all the files and shit though ;). But if each one is running as "system" that's fine. But if user has spawned
-  //so many guys, hm. We can't run multiple kernels on same guy.
-
-  //For example, if we exit by accident partway through a whole chunk of "SWEEP" guys, we'll still have the guys that were done. I.e. we want to be able to re-start
-  //part way through? But, that is difficult if they are all done at once. Need a way to save "processing" state if its a really big guy. Whatever, figure it out later.
-  void comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist )
-  {
-    //Only compute newlist. Make a "completed" thing for each one...
-    std::deque< completion_struct > progress;
-    for( size_t n=0; n<newlist.size(); ++n )
-      {
-	//make the parampoint.
-
-	size_t idx = pg.generate( newlist[n] );
-
-	//This constructs a thing matching the specific parampoint shape. 
-	completion_struct cs( pg, idx );
-
-	progress.push_back( cs );
-      }
-
-    //I will delete them as they are completed from deque?
-    //Or I need them for re-writing info back? To pg.
-    //I need to have some list of "workers" or something to look through to
-    //check everything.
-
-
-    //Have a list of workers, and some way to initialize them all? They are all initialized themselves somehow? I need to somehow get info about them?
-    //Allow other guys to register online with me? Or have it all start at beginning with MPI?
-    //Keep track of WHICH worker I sent WHICH info to?
-    //Yea, otherwise I need to look for which completion struct has this worker as the farmed worker...
-    //Just get a pointer to it easier..ugh.
-
-    std::vector<parampoint_coord> currentworking;
-    
-    size_t wait_for_worker( std::deque< completion_struct >& prog )
-    {
-      //Note iprobe is NON BLOCKING, probe is blocking?
-      //use MPI...easier?
-      //http://mpitutorial.com/tutorials/dynamic-receiving-with-mpi-probe-and-mpi-status/
-      MPI_Status s;
-      MPI_probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
-      int mesgsize;
-      int sourcerank = s.MPI_SOURCE;
-      //This is assuming its int?
-      MPI_Get_count(&s, MPI_CHAR, &mesgsize);
-      char mesg_buf[mesgsize];
-      
-      MPI_Recv(mesg_buf, mesgsize, MPI_INT, 0, 0,
-	       MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-      if( strcmp(mesg_buf, "DONE") == 0 )
-	{
-	  //This is from a finished guy. Just set it to waiting and loop back.
-	  //We need to "read in" and handle all the stuff sent by the worker.
-	  //This includes copying over the filesystem,
-	  //This may include LOTS of data
-	  transfer_data td = get_data_from_worker( Handle );
-	  //sourcerank it, i.e. write to filesystem etc.
-	  //This writes all "files" to "name" and "file" in memory. We need to know corresponding place to write here as well though.
-	  //And, we need to appropriately modify parampoint that finished, etc., with the results?
-	  
-	}
-      else if( strcmp(mesg_buf, "WAITING") == 0 )
-	{
-	  //this is first time, no need to get result from target. 
-	}
-      else
-	{
-	  fprintf(stderr, "Huh, returned mesg from rank [%d] containing [%s] is not expected content\n", sourcerank, mesg_buf );
-	  exit(1);
-	}
-
-      //OK, got it, now I need to get more JUST FROM THAT TARGET, until it is done. E.g. finish up stuff. I get some "chunk" of results, which is what, a structure?
-      //Need to use serialization after all ugh...
-      
-      //Literally spins waiting for a signal from any of the workers.
-      //Two conditions
-      //1) it has finished some work I gave it and now everything must be copied back and checked.
-      //2) it didn't have any work, so just farm out (i.e. first spin through).
-    }
-
-    bool checkalldone( std::deque< completion_struct > & prog )
-    {
-      
-    }
-
-    bool check_work_avail( std::deque< completion_struct >& prog  )
-    {
-    }
-
-    void farmwork( std::deque< completion_struct> & prog, const size_t& workernum )
-    {
-      
-    }
-    
-    //this will contain somem implementation of a communicator method? 
-    
-    while( false == checkalldone( progress ) )
-      {
-	//block, waiting for a worker to tell that it is ready (or to finish?)
-	
-	
-	//wait for a worker to be open (or to get it back)
-	//This will both "handle" a successful return data (if that is what happened)
-	//and/or it will also.
-	//This will impl with MPI, or maybe HADOOP etc.
-	//Why do we need to know what worker it is? We know at least ONE is open.
-	//Does only one worker (?). We could do this on multiple threads if
-	//we really wanted to be cool ;)
-	//This copies all stuff back to this side, but to where? To PG? I guess.
-	//Copying back just the varlist, or all the filesystem that was possibly
-	//created at /TMP???
-	//It will update progress. Will it also do something fancy, writing back
-	//to correct location in filesystem? It must ;) We must have our "local"
-	//guy here, OK. So, it writes to PG locations the corresponding stuff
-	//from the other side fS? How does it know? We had to have built
-	//a correspondence on this side/that side somewhere. In the PG?
-	size_t openw = wait_for_worker( progress, pg );
-	
-	//wait for work to be available (or, check if it is?)
-	//If not, loop back to top.
-
-	
-	
-	//Checks if work is available
-	bool iswork = check_work_avail( progress );
-
-	if( iswork )
-	  {
-	    farmwork( progress, openw );
-	  }
-	//Else, loop back to top, to check and wait for a worker to be open...
-
-      } //end while we're not all done
-    
-    
-    
-    //Passes as memory, so much easier... I.e. it modifies it in line...
-    //OK, and I do everything. This is all on the master rank.
-    //Keeping stuff here allows me to not mess around with internals of parampoint_generator other than to get the guys from it?
-    
-    //Do all "in processing", "output to archive", "done" checking, and "send to workers" here.
-  }
-
-
-  //local struct that keeps track of which:
-  //PARAMPOINT, PSET, and PITEM have been farmed out, to where/which worker (will depend on implementation?), which are done, etc.
-
-  struct parampoint_coord
-  {
-    bool working;
-    size_t parampointn;
-    size_t psetn;
-    size_t pitemn;
-
-    parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi )
-    : parampointn(pp), psetn(ps), pitemn(pi), working(true)
-    {
-      //REV: nothing to do.
-    }
-  };
-  
-  //keep an index for each of the PARAMPOINTS in pg, that tells stuff for each.
-  struct completion_struct
-  {
-    std::deque<> active_pps; //contains um, list of pps, as well as each "index" of each, i.e. where it is in the pg struct?
-    //Fuck, so much better to just include this in the parampoint_gen thing. But then we don't know what format workers are etc. So better to
-    //separate it out.
-    //But we "know" what format of parampoint etc is, i.e. list of psets, and each pset is a list of pitems. OK.
-
-    struct pprep
-    {
-      size_t pset_idx;
-      size_t pitem_idx;
-      //a pointer or marker?
-    };
-    
-    struct parampoint_rep
-    {
-
-      bool checkdone()
-      {
-	if(done)
-	  {
-	    return done;
-	  }
-	else
-	  {
-	    done=true;
-	    for(size_t p=0; p<psets.size(); ++p)
-	      {
-		if( psets[p].checkdone() == false )
-		  {
-		    done=false;
-		    return done;
-		  }
-	      }
-	  }
-	return done;
-      }
-
-      
-      
-      size_t myidx;
-      size_t current_pset=0;
-      bool done=false;
-      std::vector< pset_rep > psets;
-    };
-    
-    struct pset_rep
-    {
-      size_t current_pitem=0;
-      bool done=false;
-      std::vector< pitem_rep > pitems;
-
-      bool checkdone()
-      {
-	if(done)
-	  {
-	    return done;
-	  }
-	else
-	  {
-	    done=true;
-	    for(size_t p=0; p<pitems.size(); ++p )
-	      {
-		if( pitems[p].checkdone() == false )
-		  {
-		    done=false;
-		    return done;
-		  }
-	      }
-	  }
-	return done;
-      }
-    };
-    
-    struct pitem_rep
-    {
-      bool checkdone()
-      {
-	return done; //actually check it?
-      }
-      
-      bool farmed=false;
-      bool done=false;
-      size_t farmed_worker=0;
-    };
-    
-  };
-  
-  
-};
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1319,33 +1057,6 @@ struct farmer
 
 
 
-
-
-struct master
-{
-  //REV: this has a specific algorithm in it for generating the param points?
-  parampoint_generator pg;
-  
-  
-  bool spin=true;
-  void run()
-  {
-    while( spin )
-      {
-	//1 Attempt to generate new param points.
-	
-	//2 Spin until they're all done? Need a place to cut/push HDF5.
-	
-	//Best to do them as they are done? In "generations"? Nah...
-	//Just one PP at a time.
-
-	//This will be determined by the parampoint generation algorithm. It may generate them in a chunk though. E.g. as generations.
-	
-      }
-  }
-  
-  
-}; //end struct master
 
 
 

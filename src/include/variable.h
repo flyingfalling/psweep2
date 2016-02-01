@@ -3,6 +3,10 @@
 //Crap, need to use variant after all orz
 #include <boost/variant.hpp>
 
+#include <boost/serialization/variant.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
+
 #include <vector>
 #include <string>
 #include <iostream>
@@ -26,6 +30,8 @@ struct variable
   type mytype;
   std::string name;
 
+
+  //REV: OK MAIN PROBLEM IS THAT I CANNOT SERIALIZE VARIANTS CONTAINING ARBITRARY DATA TYPES?!
   boost::variant< T, std::vector<T> > val;
 
   //REV: REQUIRED for boost serialization (to send over MPI)
@@ -58,6 +64,11 @@ struct variable
     mytype = VAR;
   }
 
+  variable<T>()
+  {
+    name="ERRORNOVARNAME";
+  }
+  
   variable<T>( const std::string _name, const std::vector<T>& _val)
   {
     //it's a variable...
@@ -142,7 +153,10 @@ struct varlist
     //be arrays?
     for(size_t v=0; v<vars.size(); ++v)
       {
-	f << vars[v].name << vars[v].get_s() << std::endl;
+	//REV: It's trying to write CMD array variable to the file which is fucked up. I don't want that. I only want the root parameters I think? Crap.
+	//OVERLOAD variable so that it appropriately outputs it if it is an array.
+	//f << vars[v].name << " " << vars[v].get_s() << std::endl;
+	f << vars[v].name << " " << vars[v].get_s() << std::endl;
       }
 
     close_ofstream( f );
@@ -227,7 +241,9 @@ struct varlist
     for(size_t x=0; x<varnames.size(); ++x)
       {
 	//REV: will this even work? What the heck?
-	variable<TT> v(varnames[x], std::to_string(varvals[x]) );
+	//Will only work if T==std::string
+	variable<T> v(varnames[x], std::to_string(varvals[x]) );
+	vars.push_back(v);
       }
   }
 

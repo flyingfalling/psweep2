@@ -17,7 +17,8 @@ struct hierarchical_varlist
 	fprintf(stderr, "ERROR in get_parent, trying to get parent of root...\n");
 	exit(1);
       }
-    else if( v < parents.size() ) //bc root has no parent...
+    //REV: Because user will pass "actual" v he wants, not the one that doesnt include the root as 0, which is what we are thinking of...
+    else if( v <= parents.size() ) //bc root has no parent...
       {
 	return parents[v-1]; //pain in the butt.
       }
@@ -41,8 +42,11 @@ struct hierarchical_varlist
 	size_t idx=starti;
 	while( idx > 0 )
 	  {
+	    //fprintf(stdout, "WRITING TO FILE IDX=%ld\n", idx);
 	    vl[idx].tofile( fname ); //wow this will open and close it again, definitely not worth it. It's appending recall. OK.
+	    //fprintf(stdout, "FINISHED WRITING\n");
 	    idx = get_parent( idx );
+	    //fprintf(stdout, "GOT PARENT AFTER WRITING...\n");
 	  }
 	if( idx != 0)
 	  {
@@ -169,10 +173,14 @@ struct hierarchical_varlist
   //Only works if var is ARRAY type.
   void add_to_var( const std::string& targ, T _v, const size_t startvl )
   {
+    //fprintf(stdout, "In add to var...trying to get array var\n");
     std::vector<T> r = get_array_var( targ, startvl );
+    //fprintf(stdout, "DONE got array var...\n");
     r.push_back( _v );
     variable<T> tmp( targ, r ); //"name" is targ, note that setvar will automatically set that anyways...
+    //fprintf(stdout, "Will try to set var...\n");
     setvar( targ, tmp, startvl );
+    //fprintf(stdout, "DONE set var...returning.\n");
     return;
   }
   
@@ -184,19 +192,22 @@ struct hierarchical_varlist
     
     if( nfound > 1 )
       {
-	fprintf(stderr, "REV: ERROR: get_array_var in hierarchical (while trying to set var): more than one instance found! (Var=[%s])\n", targ.c_str());
-	enumerate();
-	exit(1);
+	//fprintf(stderr, "REV: WARNING: get_array_var in hierarchical (while trying to set var): more than one instance found! (Var=[%s]). Will set leaf-most by default\n", targ.c_str());
+	//enumerate();
+	//exit(1);
+	vl[ vl_indices[0] ].setvar( targ, _v );
       }
     else if( nfound == 0 )
       {
-	fprintf(stdout, "Adding new variable [%s] [(name=%s) (val=%s)]\n", targ.c_str(), _v.name.c_str(), _v.get_s().c_str());
+	//fprintf(stdout, "About to try to report adding new var\n");
+	//fprintf(stdout, "Adding new variable [%s] [(name=%s) (val=%s)]\n", targ.c_str(), _v.name.c_str(), _v.get_s().c_str());
 	//just do an "addvar"
 	addvar( targ, _v, startvl );
       }
     else
       {
-	fprintf(stdout, "Setting existing variable [%s] [(name=%s) (val=%s)]\n", targ.c_str(), _v.name.c_str(), _v.get_s().c_str());
+	//fprintf(stdout, "About to try to report setting existing var\n");
+	fprintf(stdout, "Setting existing variable [%s] [(name=%s)]]\n", targ.c_str(), _v.name.c_str() ); //REV: haha retard you were trying to print get_s in a case where it might have been an array.
 	vl[ vl_indices[0] ].setvar( targ, _v );
       }
   }
@@ -216,9 +227,10 @@ struct hierarchical_varlist
 
     if( nfound > 1 )
       {
-	fprintf(stderr, "REV: ERROR: get_array_var in hierarchical: more than one instance found! (Var=[%s])\n", targ.c_str());
-	enumerate();
-	exit(1);
+	//fprintf(stderr, "REV: WARNING: get_array_var in hierarchical: more than one instance found! (Var=[%s]). Will set leaf-most by default.\n", targ.c_str());
+	return ( vl[ vl_indices[0] ].getvar( targ ) );
+	//enumerate();
+	//exit(1);
       }
     else if( nfound == 0 )
       {
@@ -237,13 +249,17 @@ struct hierarchical_varlist
   {
     std::vector< size_t > vl_indices;
     std::vector< size_t > v_indices;
+
+    //fprintf(stdout, "In array var, about to find var in hierarchy, starting from [%ld]\n", startvl);
     size_t nfound = find_var_in_hierarchy( targ, startvl, vl_indices, v_indices );
 
+    //fprintf(stdout, "DONE found in hierarchy\n");
     if( nfound > 1 )
       {
-	fprintf(stderr, "REV: ERROR: get_array_var in hierarchical: more than one instance found! (Var=[%s])\n", targ.c_str());
-	enumerate();
-	exit(1);
+	//fprintf(stderr, "REV: WARNING: get_array_var in hierarchical: more than one instance found! (Var=[%s]). Will return leaf-most by default.\n", targ.c_str());
+	return (vl[ vl_indices[0] ].getArrayvar( targ ) );
+	//enumerate();
+	//exit(1);
       }
     else if( nfound == 0 )
       {
@@ -267,9 +283,10 @@ struct hierarchical_varlist
 
     if( nfound > 1 )
       {
-	fprintf(stderr, "REV: ERROR: get_val_var in hierarchical: more than one instance found! (Var=[%s])\n", targ.c_str());
-	enumerate();
-	exit(1);
+	//fprintf(stderr, "REV: WARNING: get_val_var in hierarchical: more than one instance found! (Var=[%s]). Will return leaf-most by default\n", targ.c_str());
+	return ( vl[ vl_indices[0] ].getTvar( targ ) );
+	//enumerate();
+	//exit(1);
       }
     else if( nfound == 0 )
       {

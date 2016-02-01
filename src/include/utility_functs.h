@@ -59,7 +59,10 @@ bool make_directory( const std::string& s )
 {
   if( check_file_existence( s ) == false )
     {
-      int res = mkdir( s.c_str(),  getumask() );
+      
+      //int res = mkdir( s.c_str(),  getumask() );
+      int res = mkdir( s.c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH  );
+      
       if(res != 0)
 	{
 	  //REV: might want to try a few times or something? Or sleep or something? Ugh...
