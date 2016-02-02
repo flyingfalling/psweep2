@@ -611,12 +611,17 @@ struct filesender
     //Or, allow it to do non-blocking, i.e. spin off threads? That
     //seems best.
 
+    fprintf(stdout, "MASTER: receiving INT\n");
     size_t nfiles = receive_int( targrank );
+    fprintf(stdout, "MASTER: Received int [%ld]\n", nfiles);
 
     //std::vector<mem_file> mfs;
     for(size_t x=0; x<nfiles; ++x)
       {
+	fprintf(stdout, "MASTER: receiving file from WORKER [%d]\n", targrank);
 	mem_file mf = receive_file( targrank );
+
+	fprintf(stdout, "MASTER Received file from WORKER [%d]\n", targrank);
 	//mfs.push_back( mf );
 	//REV: need to figure out how to output these
 	//I need to rebase them
@@ -624,9 +629,9 @@ struct filesender
 	//Need to know what was the original PITEM????!!
 	//Anyway, keep a PITEM around so we know MYDIR for that
 	//executed worker, and just use that.
-
+	
 	std::string origdir = corresp_pitem.mydir;
-
+	
 	std::string fname="ERRORFNAME";
 	std::string dirofreceived = get_canonical_dir_of_fname( mf.fname, fname );
 	std::string newlocal = origdir + "/" + fname;
@@ -636,6 +641,8 @@ struct filesender
 	std::vector<bool> tmpmarked;
 	std::vector<size_t> matched = find_matching_files( newlocal, corresp_pitem.success_files, tmpmarked);
 
+	fprintf(stdout, "MASTER: Renaming received file to [%s]\n", newlocal.c_str());
+	
 	//We expect it to find AT LEAST one.
 	if( matched.size() == 0 )
 	  {
@@ -647,10 +654,14 @@ struct filesender
 	    fprintf(stderr, "WARNING! In receive files from notify, got MORE than one match in SUCCESS array to file [%s]\n", newlocal.c_str() );
 	  }
 
+	fprintf(stdout, "MASTER: Will attempt to write file to filename [%s]\n", newlocal.c_str());
 	mf.tofile( origdir, fname );
+	fprintf(stdout, "MASTER: wrote file\n");
       }
-  
+
+    fprintf(stdout, "MASTER: RECEIVING VARLIST from worker [%d].\n", targrank);
     varlist<std::string> outputvlist = receive_varlist( targrank );
+    fprintf(stdout, "MASTER: **DONE rec VARLIST from worker [%d].\n", targrank);
     
     return outputvlist;
   }
@@ -981,7 +992,8 @@ struct filesender
   
     pitem get_corresponding_pitem( parampoint_generator& pg, const parampoint_coord& pc )
     {
-    
+
+      
       return (pg.parampoints[ pc.parampointn ].psets[ pc.psetn ].pitems[ pc.pitemn ]);
     }
   
@@ -1124,21 +1136,29 @@ struct filesender
 
 
 		//REV: FIX THIS HERE FEB 2
-		fprintf(stdout, "IT WAS A FINISHED CMD from [%ld]\n", workernum);
+		//fprintf(stdout, "IT WAS A FINISHED CMD from [%ld]\n", workernum);
 		
 		//farmed_status[workernum] should tell us where
 		parampoint_coord pc = wprog.farmed_status[workernum];
+
+		fprintf(stdout, "&&& Recevied finished cmd from worker [%ld]. The received was coordinate: PPOINT [%ld], PSET [%ld], PITEM [%ld]\n", workernum,  pc.parampointn, pc.psetn, pc.pitemn );
 		
 		pitem handledpitem = wprog.get_corresponding_pitem_from_workernum( pg, workernum );
+		fprintf(stdout, "Got handled pitem from that coordinate\n");
 		
 		varlist<std::string> result = handle_finished_work( pcmd, handledpitem );
-		
+
+		fprintf(stdout, "MASTER: got result from worker [%ld]. Now marking done...\n", workernum);
 		//need to mark it DONE in pitem representation.
 		wprog.mark_done( pc );
 
+		fprintf(stdout, "MASTER: Marked done! Will now set result in PPOINT list\n");
 		pg.set_result( pc, result );
 
+
+		fprintf(stdout, "MASTER: Finished set done. Now setting workingworkers targ to false\n");
 		workingworkers[ pcmd.SRC ] = false;
+		fprintf(stdout, "MASTER: ALl done handling received DONE\n");
 	      }
 	    else if( is_ready_for_work( pcmd ) == true )
 	      {

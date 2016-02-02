@@ -304,8 +304,6 @@ struct pitem
     
     std::string fnametail;
 
-    //Here???
-    
     //REV: oops I fucked up, I need to only change the DIR for these!
     std::string dirname = get_canonical_dir_of_fname( targ, fnametail );
 
@@ -345,9 +343,6 @@ struct pitem
   {
     std::vector<bool> marked(mycmd.size(), false);
 
-    //REV: ERROR IS SOMEWHER HERE (Feb/2)
-
-    
     rename_to_targ_dir(success_files, marked, olddir, newdir);//, oldfnames);
     rename_to_targ_dir(output_files, marked, olddir, newdir);//, oldfnames);
     
