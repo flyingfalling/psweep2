@@ -163,7 +163,7 @@ FUNCTDEF( ITER_ARRAY_WITH_FLAG )
   std::string FLAG = args[0].get_s();
   //std::vector< std::string > arr = args[1].get_v();
   variable<std::string> arr = args[1];
-  fprintf(stdout, "EXECUTING ITER WITH FLAG, casting to array...\n");
+  //fprintf(stdout, "EXECUTING ITER WITH FLAG, casting to array...\n");
   std::vector<std::string> arr2 = arr.get_v();
   std::vector< std::string > out;
   for(size_t x=0; x<arr2.size(); ++x)
@@ -172,7 +172,7 @@ FUNCTDEF( ITER_ARRAY_WITH_FLAG )
       out.push_back( arr2[x] );
     }
 
-  fprintf(stdout, "FINISHED MAKING NEW ONE IN ITER_WITH_FLAG\n");
+  //fprintf(stdout, "FINISHED MAKING NEW ONE IN ITER_WITH_FLAG\n");
   variable< std::string > new_arrayvar( "__ITER_ARRAY_WITH_FLAG_RETVAL", out);
   return new_arrayvar;
 }
@@ -226,6 +226,7 @@ FUNCTDEF( ADD_REQUIRED_FILE )
 FUNCTDEF( ADD_CMD_ITEM )
 {
   //REV: adds one at a time?
+  fprintf(stdout, "((( ADD CMD ))) ADDING TO CMD: [%s]\n", args[0].get_s().c_str() );
   hvl[0].add_to_var( "__MY_CMD", args[0].get_s(), hvi[0] );
   return variable<std::string>("__ADDEDTOCMDNAME", "__ADDEDTOCMDVAL"); 
   
@@ -337,9 +338,9 @@ struct functlist
     
     //1) A literal (if it has no args and does not begin with a $, ISLIT is true)
     //2) A readvar (if it has no args and begins with a $, ISLIT is false)
-
+#if DEBUGLEVEL>5	
     fprintf(stdout, "Searching for function [%s] (from STMNT)\n", s.TAG.c_str() );
-    
+#endif
     for(size_t x=0; x<sigs.size(); ++x)
       {
 	//Match tag to sigs[x]
@@ -352,7 +353,9 @@ struct functlist
 	      }
 	    else
 	      {
+#if DEBUGLEVEL>5	
 		fprintf(stdout, "In findfunct: FOUND correct function, returning function signature [%ld] (name is [%s], takes [%ld] args, function pointer is...)\n", x, sigs[x].mytag.c_str(), sigs[x].nargs);
+#endif
 		//std::cout << sigs[x].funct << std::endl;
 		return sigs[x]; //.funct;
 	      }
@@ -367,14 +370,16 @@ struct functlist
   
   functsig findfunct( /*const*/ client::LEAF_STMNT& s )
   {
-    
+#if DEBUGLEVEL>5	
     fprintf(stdout, "Searching for function [%s] (from LEAF_STMNT)\n", s.TAG.c_str() );
-    
+#endif
     //client::LEAF_STMNT s2 = s;
     
     if( s.ISLIT )
       {
+#if DEBUGLEVEL>5	
 	fprintf(stdout, "(In search: It's a literal!)\n");
+#endif
 	if( s.ARGS.size() > 0 )
 	  {
 	    fprintf(stderr, "REV: ERROR, found an ISLIT with >0 arguments!\n");
@@ -470,9 +475,9 @@ struct functrep
   {
     //Functs to not have types, arguments do not have types. Only # of arguments orz.
     //REV: this will check # of arguments etc. It will use s.TAG to get function, and all that.
-
+#if DEBUGLEVEL>5	
     fprintf(stdout, "Constructing a funct rep from stmnt: \n");
-
+#endif
     //REV: Just leave IDENTITY functions as such. I.e. create
     //REV: WE NEED IT TO BOTTOM OUT IN A FUNCTREP THAT JUST RETURNS THE STRING. Note, the functrep will simply return itself (functsig tag), it will not
     //actually call "identity".
@@ -481,7 +486,9 @@ struct functrep
     fs = fl.findfunct( s );
     for( size_t nesti=0; nesti<s.ARGS.size(); ++nesti )
       {
+#if DEBUGLEVEL>5	
 	fprintf(stdout, "In functrep with STMNT constructor, doing [%ld] arg (%s)\n", nesti, s.ARGS[nesti].TAG.c_str());
+#endif	
 	functrep tmpfr = functrep( s.ARGS[nesti], fl );
 	args.push_back( tmpfr );
       }
@@ -490,13 +497,16 @@ struct functrep
   //Constructor that takes leaf stmnt instead. Whatever.
   functrep( client::LEAF_STMNT& s, functlist& fl )
   {
+#if DEBUGLEVEL>5
     fprintf(stdout, "Constructing a funct rep from leaf_stmnt: \n");
-    
+#endif
     fs = fl.findfunct( s );
     //REV: does this not take into account the changed s! I.e. $AAAA -> READVAR AAAA
     for( size_t nesti=0; nesti<s.ARGS.size(); ++nesti )
       {
+#if DEBUGLEVEL>5
 	fprintf(stdout, "In functrep with LEAF STMNT constructor, doing [%ld] arg (%s)\n", nesti, s.ARGS[nesti].TAG.c_str());
+#endif
 	functrep tmpfr = functrep( s.ARGS[nesti], fl );
 	args.push_back( tmpfr );
       }
@@ -523,7 +533,9 @@ struct functrep
     //It's a literal!
     if( fs.funct == nullptr )
       {
+#if DEBUGLEVEL>5
 	fprintf(stdout, "GOT A LITERAL (%s)\n", fs.mytag.c_str());
+#endif
 	return myvar_t( "TMPVARNAME(LIT)", fs.mytag );
       }
     else
@@ -537,7 +549,9 @@ struct functrep
 	  //But, what about if a function is e.g. "construct variable from args" type thing, that constructs an array or composes one? Or what about one
 	  //that builds a large string? User function needs to e.g. handle parsing to integer, blah. We do that but then still return to myvar in the end.
 	  {
+#if DEBUGLEVEL>5
 	    fprintf(stdout, "Executing (recursively) the [%ld] argument (it holds [%s] and has [%ld] args)\n", x, args[x].fs.mytag.c_str(), args[x].args.size() );
+#endif
 	    //REV: WTF? Wait, I need user to specify how to individually handle each thing into a variable? No, into actual STRING at the end!
 	    //Each args[x] will have its own set of blah?
 	    //Note, none of these guys should update actual things?
@@ -552,7 +566,9 @@ struct functrep
 	    mv.push_back( args[x].execute( hvl, hvi ) );
 	  }
 	//execute ft and recursively do so.
+#if DEBUGLEVEL>5	
 	fprintf(stdout, "Attempting to execute actual functional (%s)! #ARGS:[%ld]\n", fs.mytag.c_str(), mv.size());
+#endif
 	/*for(size_t x=0; x<mv.size(); ++x)
 	  {
 	  }*/

@@ -70,10 +70,13 @@ bool make_directory( const std::string& s )
 	  return false; //failed to make dir..?
 	}
     }
+  
+#if DEBUGLEVEL>5
   else
     {
       fprintf(stderr, "WARNING in make_directory: trying to create already existing directory [%s]\n", s.c_str() );
     }
+#endif
   return true; //no point in returning at all -_-;
 }
 

@@ -9,12 +9,19 @@
 
 std::string CONCATENATE_STR_ARRAY(const std::vector<std::string>& arr, const std::string& sep)
 {
-  std::string ret="";
-  for(size_t a=0; a<arr.size(); ++a)
+  if(arr.size() > 0 )
     {
-      ret+= arr[a] + sep;
+      std::string ret=arr[0];
+      for(size_t a=1; a<arr.size(); ++a)
+	{
+	  ret += sep + arr[a];
+	}
+      return ret;
     }
-  return ret;
+  else
+    {
+      return "";
+    }
 }
 
 
@@ -221,6 +228,7 @@ void replace_old_fnames_with_new( std::vector<std::string>& fvect, const std::st
 {
   for(size_t x=0; x<replace_locs.size(); ++x)
     {
+      fprintf(stdout, "Replacing OLD: [%s] with NEW [%s]\n", fvect[ replace_locs[ x ] ].c_str(), newfname.c_str());
       fvect[ replace_locs[ x ] ] = newfname;
     }
   

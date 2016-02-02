@@ -105,7 +105,7 @@ struct pitem
     //std::string execute_string = mycmd.CONCATENATE_STR_ARRAY( cmdarray, sep );
     std::string execute_string = CONCATENATE_STR_ARRAY( mycmd, sep );
     
-    if( !notready.size() > 0 )
+    if( notready.size() > 0 )
       {
 	fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", execute_string.c_str());
 	fprintf(stderr, "found [%ld] NON-EXISTENT REQUIRED FILES: ", notready.size() );
@@ -113,8 +113,11 @@ struct pitem
 	  {
 	    fprintf(stderr, "FILE: [%s]\n", notready[f].c_str());
 	  }
+	fprintf(stderr, "\n");
 	exit(1);
       }
+
+    fprintf(stdout, "----EXECUTING [%s]\n", execute_string.c_str() );
     
     int sysret = system( execute_string.c_str() );
     
@@ -212,8 +215,9 @@ struct pitem
 	std::vector<size_t> reqmatched=find_matching_files(fname, targvect, reqmarked); //will canonicalize fnames in MYCMD as they go.
 	std::vector<size_t> cmdmatched=find_matching_files(fname, mycmd, marked); //will canonicalize fnames in MYCMD as they go.
 
-	std::string newfname = canonicalize_fname( newfnames[x] );
+	std::string newfname = canonicalize_fname( newdir + "/" + newfnames[x] );
 
+	fprintf( stdout, "NEW FNAME IN RENAME-to-TARG: new fname [%s] (dir=[%s])\n", newfname.c_str(), newdir.c_str());
 	replace_old_fnames_with_new( targvect, newfname, reqmatched ); //replaces mycmd inline.
 	replace_old_fnames_with_new( mycmd, newfname, cmdmatched ); //replaces mycmd inline.
 	
@@ -235,12 +239,73 @@ struct pitem
 
   }
 
-  
+  void rename_str_to_targ( std::string& targstr, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir,
+		       const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames )
+  {
+    if( newfnames.size() != oldfnames.size() )
+      {
+	fprintf(stderr, "ERROR newfnames !=  oldfnames \n");
+	exit(1);
+      }
+
+    //Note, NEWFNAMES will be the list we pushed back to of new fnames. They will be not set in NEWDIR, we need to add the NEWDIR to them? NO, THEY ARE
+    //SET IN THE NEWDIR!!!
+    
+    std::vector<bool> reqmarked = {false};
+
+    std::vector<std::string> dummyvect = { targstr };
+    
+    for(size_t x=0; x<oldfnames.size(); ++x)
+      {
+	//For all guys, I already know the ORIGINAL and NEW fnames. Specifically ORIGINAL should still be in TARGVECT (?) We'll replace them one by one.
+	std::string fname = canonicalize_fname(oldfnames[x]);
+
+	//fprintf(stdout, "Checking match: targ [%s] vs OLD fname [%s]\n", targstr.c_str(), oldfnames[x].c_str() );
+	
+	//locate it in cmd...if it exists...
+	std::vector<size_t> reqmatched=find_matching_files(fname, dummyvect, reqmarked); //will canonicalize fnames in MYCMD as they go.
+	std::vector<size_t> cmdmatched=find_matching_files(fname, mycmd, marked); //will canonicalize fnames in MYCMD as they go.
+
+	
+	
+		
+	
+	if(reqmatched.size() > 0)
+	  {
+	    std::string newfname = canonicalize_fname( newdir + "/" + newfnames[x] );
+	    fprintf(stdout, "FOUND MATCH!!!! New fname: [%s]  (newdir: [%s]\n", newfname.c_str() , newdir.c_str());
+		    
+	    //found it, rename it.
+	    targstr = newfname;
+	    //replace_old_fnames_with_new( targvect, newfname, reqmatched ); //replaces mycmd inline.
+	    replace_old_fnames_with_new( mycmd, newfname, cmdmatched ); //replaces mycmd inline. Was already replaced in REQ so no need.
+	  }
+	
+      }
+
+    bool alldone=true;
+    for(size_t x=0; x<reqmarked.size(); ++x)
+      {
+	if( reqmarked[x] == false )
+	  {
+	    alldone = false;
+	  }
+      }
+    if( alldone == false )
+      {
+	fprintf(stderr, "ERROR, not ALLDONE after doing RENAMING OF FILES, not all (REQUIRED FILES) were renamed, some are missing from newfnames/oldfnames?\n");
+	exit(1);
+      }
+
+  }
+
   void rename_str_to_targ_dir( std::string& targ, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir )
   {
     
     std::string fnametail;
-	
+
+    //Here???
+    
     //REV: oops I fucked up, I need to only change the DIR for these!
     std::string dirname = get_canonical_dir_of_fname( targ, fnametail );
 
@@ -257,6 +322,7 @@ struct pitem
     std::vector<size_t> matched=find_matching_files(fname, mycmd, marked);
 
     std::string newfname = newdir + "/" + fnametail;
+    fprintf(stdout, "In renamed_str_to_targ_dir, about to replace with [%s]\n", newfname.c_str());
     replace_old_fnames_with_new( mycmd, newfname, matched ); //replaces mycmd inline.
 
     //Now replace SUCCESS itself.
@@ -279,13 +345,28 @@ struct pitem
   {
     std::vector<bool> marked(mycmd.size(), false);
 
+    //REV: ERROR IS SOMEWHER HERE (Feb/2)
+
+    
     rename_to_targ_dir(success_files, marked, olddir, newdir);//, oldfnames);
     rename_to_targ_dir(output_files, marked, olddir, newdir);//, oldfnames);
     
     //REV: Input file is just a string, not vector<string>, so need to have a similar function to just do single file...And modify underlying string.
-    rename_str_to_targ_dir(input_file, marked, olddir, newdir);//, oldfnames);
+    //REV: BY DEFAULT, input will be named as "REQUIRED". I should just rename it that way...
+    //rename_str_to_targ_dir(input_file, marked, olddir, newdir);//, oldfnames);
+    //REV: HERE. Note clear what to do. There is simply ONE old/new, which is input_file and how it was renamed specifically. So, I need to go through
+    //it as if it was a CMD or required_files, and replace all renaemd references there. We determined old/new fnames from REBASE. So I need to make
+    //sure to change INPUTFILE too? I.e. I need to be aware of changing INPUT file name. OK.
+    fprintf(stdout, "ORIG INPUT: [%s]\n", input_file.c_str());
+    
+    
     rename_to_targ(required_files, marked, olddir, newdir, oldfnames, newfnames);
+    //bool marked1=false;
+    
+    rename_str_to_targ(input_file, marked, olddir, newdir, oldfnames, newfnames);//, oldfnames);
 
+    fprintf(stdout, "REBASED INPUT: [%s]\n", input_file.c_str());
+    
     //All MARKED not necessarily, because it might contain non-files in the string vector representing the command.
     
   }
@@ -301,12 +382,14 @@ struct pitem
     size_t npsets = rootchildren.size();
     varlist<std::string> emptyvl;
     size_t myidx = hv.add_child( rootchildren[npsets-1],  emptyvl); //add child to the last PSET (!!)
+    size_t mychildnum = hv.get_children( rootchildren[npsets-1] ).size()-1;
+    
     my_hierarchical_idx = myidx;
 
     //Set up the required variables. Automatically name the things here (like choose dir based on sub of parent), much easier ;)
 
     std::string parentdir = hv.vl[ rootchildren[npsets-1] ].getvar( "__MY_DIR" ).get_s();
-    mydir = parentdir + "/" + std::to_string( idx ); //REV: whatever, to_string shouldn't cause a problem here, other than not padding zeroes.
+    mydir = parentdir + "/" + std::to_string( mychildnum ); //REV: whatever, to_string shouldn't cause a problem here, other than not padding zeroes.
     
     
     variable<std::string> var1( "__MY_DIR", mydir );
@@ -376,8 +459,11 @@ struct pitem
     //We need a "setup" way or something. Note this is for every PITEM. I.e. it will re-write it each time, which is not good
     //Maybe only the FIRST one needs it. OK.
     
+    //REV: ANOTHER OPTION, automatically copy it to desired filename in a dir?
     input_file = hv.get_val_var( "__MY_INPUT_FILE", my_hierarchical_idx );
 
+    fprintf(stdout, "XXXXXXX In PITEM const -- Set input_file to [%s]\n", input_file.c_str());
+    
     //REV: here is the problem, it was outputting ALL local variables to the INPUT file of the user...crap.
     //hv.tofile( input_file, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
     hv.tofile( input_file, 0); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
@@ -422,6 +508,7 @@ struct pitem
     //Strings must be FULL filename? Or are they relative? Assume full...
     for(size_t f=0; f<required_files.size(); ++f)
       {
+	fprintf(stdout, " # # # CHECKING FOR EXISTENCE OF REQUIRED FILE: [%s]\n", required_files[f].c_str());
 	if( check_file_existence( required_files[f] ) == false )
 	  {
 	    notreadylist.push_back( required_files[f] );
@@ -538,10 +625,14 @@ struct pset
     size_t myidx = hv.add_child( 0, emptyvl ); //add child to root;
     my_hierarchical_idx = myidx;
 
+    size_t mychildnum = hv.get_children( 0 ).size()-1;
+
     //REV: get root's dir... i.e. my parent...
     std::string parentdir = hv.vl[ 0 ].getvar( "__MY_DIR" ).get_s();
 
-    mydir = parentdir + "/" + std::to_string( myidx ); //REV: whatever, to_string shouldn't cause a problem here, other than not padding zeroes.
+
+    //Which PSET am I???
+    mydir = parentdir + "/" + std::to_string( mychildnum ); //REV: whatever, to_string shouldn't cause a problem here, other than not padding zeroes.
 
 
     bool succ = make_directory( mydir );

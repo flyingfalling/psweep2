@@ -224,7 +224,9 @@ struct hierarchical_varlist
     else
       {
 	//fprintf(stdout, "About to try to report setting existing var\n");
+#if DEBUGLEVEL>5
 	fprintf(stdout, "Setting existing variable [%s] [(name=%s)]]\n", targ.c_str(), _v.name.c_str() ); //REV: haha retard you were trying to print get_s in a case where it might have been an array.
+#endif
 	vl[ vl_indices[0] ].setvar( targ, _v );
       }
   }
@@ -242,7 +244,7 @@ struct hierarchical_varlist
     std::vector< size_t > v_indices;
     size_t nfound = find_var_in_hierarchy( targ, startvl, vl_indices, v_indices );
 
-    fprintf(stdout, "IN GET VAR!!! Searching for [%s]\n", targ.c_str());
+    //fprintf(stdout, "IN GET VAR!!! Searching for [%s]\n", targ.c_str());
     
     if( nfound > 1 )
       {

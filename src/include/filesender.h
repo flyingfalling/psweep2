@@ -371,11 +371,18 @@ struct filesender
 	std::string myfname = fnamebase + std::to_string( f );
 	newfnames.push_back( myfname );
 	oldfnames.push_back( mf.fname ); //this is old fname, I guess I could get it elsewhere... myfname is the NEW one...
-
+	
 	//now mfs and newfnames contain orig and new fnames.
 	//REV: make something to check base of file and make sure that it
 	//is same file?
-      
+
+	//REV: It fucking renamed the INPUT file to reqfile0. So, I need to make sure to keep it named the same?
+	//I.e. I rename something? Fuck...how does user know what to do? If it is named something different. That makes it difficult to know which
+	//is which for the user haha... just have user reference certain file names specifically if he needs them. Yea...that works I guess. OK.
+	//So, now what he does, is he searches for that variable's value *now*???? Not by filename but by variable? Ugh, that's so ugly. I.e.
+	//print out INPUT FILE now... I.e. I need to re-work the command to replace any instances of OLD inputfile with NEW inputfile...meh.
+	fprintf(stdout, "IN WORKER [%d]: OUTPUTTING LOCAL FILE: [%s]\n", world->rank(), std::string(dir+"/"+myfname).c_str());
+	
 	//write to file OK.
 	mf.tofile( dir, myfname );
       
@@ -384,8 +391,9 @@ struct filesender
 	//Do this all in its own function to make it easier?
       
       }
-
+    
     mypitem.re_base_directory( mypitem.mydir, dir, oldfnames, newfnames);
+    mypitem.mydir = dir;
     //mypitem will now be rebased appropriately, although hierarchical varlists etc. are not carried with it of course.
 
   
@@ -658,7 +666,7 @@ struct filesender
   {
     //FINISHED? Destruct everything locally in TMP? I.e. remove PITEM's DIR?
     //Is there a better way to do this?
-
+    fprintf(stdout, "Worker [%d] removing recursively workspace [%s]\n", world->rank(), mypitem.mydir.c_str());
     boost::filesystem::path p( mypitem.mydir );
     uintmax_t removed = boost::filesystem::remove_all( p );
 
@@ -700,7 +708,7 @@ struct filesender
 	    break;
 	  }
 
-	fprintf(stdout, "HANDLING CMD\n");
+	//fprintf(stdout, "HANDLING CMD\n");
 	pitem mypitem = handle_cmd( cmd ); //REV: may EXIT, or contain a PITEM (to execute).
 	fprintf(stdout, "WORKER [%d]: received pitem\n", world->rank());
 	
@@ -1113,7 +1121,9 @@ struct filesender
 		//pcmd contains DONE cmd
 		//I need to handle it based on corresponding worker.
 		size_t workernum = pcmd.SRC;
-		
+
+
+		//REV: FIX THIS HERE FEB 2
 		fprintf(stdout, "IT WAS A FINISHED CMD from [%ld]\n", workernum);
 		
 		//farmed_status[workernum] should tell us where
