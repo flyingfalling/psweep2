@@ -178,14 +178,66 @@ struct varlist
     //Just read one at a time.
     std::ifstream f;
     open_ifstream( fname, f );
-    std::string n, v;
+
+    fprintf(stdout, "INPUTTING FROM FILE: [%s]\n", fname.c_str() );
+
     while( !f.eof() )
       {
-	//will fail if file ends after n? Crap.
-	f >> n >> v;
+	std::string n="YOLOERRNAME", v="YOLOERRORVAL";
+	f >> n;
+
+	fprintf(stdout, "Read [%s] for name from file [%s]\n", n.c_str(), fname.c_str() );
+	//Check if there is anything at all. If nothing, just empty...
+	if( f.eof() )
+	  {
+	    break;
+	  }
+	f >> v;
+
+
+	fprintf(stdout, "Read [%s] for val from file [%s]\n", v.c_str(), fname.c_str() );
+	//If it was EOF, means it was probably either 1) a new line or 2) a name wihtout a value. In either case ignore.
+	//Worst case is name without value followed by a newline...lol.
+	if( f.eof() )
+	  {
+	    break;
+	  }
+	variable<std::string> var( n, v );
+	addvar( var );
+	
+      }
+
+
+    
+    for( std::string n, v; f >> n >> v; )
+      {
 	variable<std::string> var( n, v );
 	addvar( var );
       }
+    
+    /*f >> n; //TRIES to read. Will be EOF only if it read EOF
+    while( !f.eof() )
+      {
+	std::string v="YOLOERRORVAL";
+	f >> v;
+	
+	if( f.eof() )
+	  {
+	    fprintf(stdout, "ERROR IN READ FROM FILE file [%s]: Only got NAME without getting VALUE name: [%s]\n", fname.c_str(), n.c_str());
+	    //exit(1);
+	    break;
+	  }
+	
+	
+	variable<std::string> var( n, v );
+	addvar( var );
+
+
+	
+	
+	f >> n;
+      }
+    */
 
     return;
   }

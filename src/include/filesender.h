@@ -631,6 +631,8 @@ struct filesender
 	//executed worker, and just use that.
 	
 	std::string origdir = corresp_pitem.mydir;
+
+	fprintf(stdout, "MASTER: will rename file to origdir: [%s]\n", origdir.c_str() );
 	
 	std::string fname="ERRORFNAME";
 	std::string dirofreceived = get_canonical_dir_of_fname( mf.fname, fname );
@@ -638,7 +640,9 @@ struct filesender
 	//This had sure has hell better exist in original SUCCESS too haha.
 	//Check for sanity.
 
-	std::vector<bool> tmpmarked;
+	fprintf(stdout, "MASTER: searching for local copies of fname we would expect: [%s]\n", newlocal.c_str() );
+	
+	std::vector<bool> tmpmarked( corresp_pitem.success_files.size(), false);
 	std::vector<size_t> matched = find_matching_files( newlocal, corresp_pitem.success_files, tmpmarked);
 
 	fprintf(stdout, "MASTER: Renaming received file to [%s]\n", newlocal.c_str());
