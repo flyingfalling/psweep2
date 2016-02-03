@@ -48,7 +48,7 @@ struct filesender
 
   boost::mpi::communicator world;
 
-  boost::mpi::environment env;
+  //boost::mpi::environment env;
   
   //Where is filesender destructor? I don't want to try to "destroy" world or env...? Or should I? Ah, if there are no other pointers to it...I get it.
   //Crap.
@@ -258,14 +258,14 @@ struct filesender
     
   };
 
-
+  
   static filesender* Create()
   {
     filesender* fs = new filesender;
     
     if( fs->world.rank() == 0 )
       {
-	return fs;
+	return(fs);
 	//return
       }
     else
@@ -274,10 +274,11 @@ struct filesender
 	
 	delete(fs);
 	//execute slave loop
-
+	
 	exit(0);
       }
-
+    // delete(fs);
+    
 
     fprintf(stderr, "REV: MASSIVE ERROR in filesender CREATOR: I reached end of function, which NEVER SHOULD HAPPEN\n");
     //REV: the other one should naturally delete it here.
@@ -285,16 +286,26 @@ struct filesender
   
   filesender()
   {
+    MPI_Init(0, NULL);
+    
     //Assume that world/env are automatically constructed?
     _workingworkers.resize( world.size(), true );
     //Wait, does this contain the info about everything e.g. -n 4??? Like ARGC and ARGV...?
-    //MPI_Init(0, NULL);
+    
+    
 
     //REV: need to start true, since they're all "kind of" working (waiting for READY)
     
     
   }
 
+  ~filesender()
+  {
+    MPI_Finalize();
+    //~world;
+  }
+
+  /*
   void filesender2()
   {
     //Assume that world/env are automatically constructed?
@@ -334,7 +345,7 @@ struct filesender
       }
     
   }
-
+*/
   
   /*~filesender()
   {

@@ -1,7 +1,7 @@
 CC=g++
 MPICC=mpic++
 INCLUDEFLAG=-I./ -I./include
-CFLAGS=-std=c++11 -O3 -g -Wall
+CFLAGS=-std=c++11 -O3 -g #-Wall
 INCLUDEDIR=./include
 UNITTESTDIR=./unit_tests
 

@@ -416,6 +416,10 @@ struct pitem
     //Add other HVarlist to it such as the global NAMES one.
 
     std::vector<size_t> idcs = {myidx};
+
+    //REV: THIS is where it executes. Get INPUT and SUCCESS first, easier.
+    
+    
     //And now execute all arguments in pset_functional_rep
     for(size_t s=0; s<pfr.frlist.size(); ++s)
       {
@@ -423,8 +427,23 @@ struct pitem
 	//What to do with retval?!?!?! Ignore it?
       }
 
+    
     //ghetto hack. GLOBAL namespace doesn't exist.
     hv = hvl[0];
+
+    
+    input_file = hv.get_val_var( "__MY_INPUT_FILE", my_hierarchical_idx );
+    
+    hv.add_to_var( "__MY_REQUIRED_FILES" , input_file, my_hierarchical_idx );
+
+
+    output_files = hv.get_array_var( "__MY_OUTPUT_FILES", my_hierarchical_idx );
+
+    for(size_t x=0; x<output_files.size(); ++x)
+      {
+	hv.add_to_var( "__MY_SUCCESS_FILES" , output_files[x], my_hierarchical_idx );
+      }
+    
     
     required_files = hv.get_array_var( "__MY_REQUIRED_FILES", my_hierarchical_idx );
     success_files = hv.get_array_var( "__MY_SUCCESS_FILES", my_hierarchical_idx );
@@ -446,7 +465,7 @@ struct pitem
 
     //mycmd = CONCATENATE_STR_ARRAY( cmdarray, sep ); //hv.get_val_var( "__MY_CMD", my_hierarchical_idx );
     
-    output_files = hv.get_array_var( "__MY_OUTPUT_FILES", my_hierarchical_idx );
+    
     
     
     //REV: I need to set INPUT files too, which I will write to from what? From HVL I guess? OK...
@@ -455,7 +474,7 @@ struct pitem
     //Maybe only the FIRST one needs it. OK.
     
     //REV: ANOTHER OPTION, automatically copy it to desired filename in a dir?
-    input_file = hv.get_val_var( "__MY_INPUT_FILE", my_hierarchical_idx );
+    
 
     fprintf(stdout, "XXXXXXX In PITEM const -- Set input_file to [%s]\n", input_file.c_str());
     
@@ -465,12 +484,13 @@ struct pitem
     
     //Input files are REQUIRED files (by default, might be checked twice oh well).
     //Furthermore, output files are SUCCESS files (fails and tries to re-run without their creation of course).
-    required_files.push_back( input_file );
+    //required_files.push_back( input_file );
 
-    for(size_t o=0; o<output_files.size(); ++o)
+    /*for(size_t o=0; o<output_files.size(); ++o)
       {
 	success_files.push_back( output_files[o] );
       }
+    */
     //but then I need to do it for each ugh.
     //REV: note this will write EVERYTHING in here out, which may not be needed/might mess things up.
     //Can we specify only things that are tagged for this model or something?
@@ -526,6 +546,8 @@ struct pitem
 	    notdonelist.push_back( success_files[f] );
 	  }
       }
+    //REV: Ah, VARLIST does not reflect modifications to REQUIRED FILES/SUCCESS FILES etc....
+    
     return notdonelist;
     
     //checks if I'm done. Specifically by seeing if all required guys are
@@ -1042,6 +1064,9 @@ struct parampoint_generator
     parampoints.push_back ( retp );
 
     parampoint_results.push_back( parampoint_result( retp ) );
+
+    fprintf(stdout, "Finished, now GENERATE pg, will enumerate.\n");
+    hv.enumerate();
     
     return (parampoints.size() - 1);
   }

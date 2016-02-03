@@ -139,10 +139,14 @@ struct hierarchical_varlist
   size_t find_var_in_hierarchy( const std::string& varname, const size_t startvl_idx, std::vector< size_t >& vl_indices, std::vector< size_t >& v_indices )
   {
     size_t searchi=startvl_idx;
+    //While not root.
     while ( searchi != 0 )
       {
+	//Search THIS varlist for the target name. 
+	//  namelocs[] holds the local indices of the found ones.
+	//I push back to vl_indices each one, etc.
 	std::vector<size_t> namelocs = vl[searchi].getname( varname );
-	for(size_t x=0; x<namelocs.size(); ++x)
+	for( size_t x=0; x<namelocs.size(); ++x )
 	  {
 	    vl_indices.push_back(searchi);
 	    v_indices.push_back(namelocs[x]);
@@ -277,9 +281,10 @@ struct hierarchical_varlist
     //fprintf(stdout, "DONE found in hierarchy\n");
     if( nfound > 1 )
       {
-	//fprintf(stderr, "REV: WARNING: get_array_var in hierarchical: more than one instance found! (Var=[%s]). Will return leaf-most by default.\n", targ.c_str());
+	fprintf(stderr, "REV: WARNING: get_array_var in hierarchical: more than one instance found! (Var=[%s]). Will return leaf-most by default.\n", targ.c_str());
+	enumerate();
 	return (vl[ vl_indices[0] ].getArrayvar( targ ) );
-	//enumerate();
+	
 	//exit(1);
       }
     else if( nfound == 0 )
@@ -290,6 +295,7 @@ struct hierarchical_varlist
       }
     else
       {
+	
 	//wasteful, this is re-searching...
 	return (vl[ vl_indices[0] ].getArrayvar( targ ) );
       }
@@ -305,6 +311,7 @@ struct hierarchical_varlist
     if( nfound > 1 )
       {
 	//fprintf(stderr, "REV: WARNING: get_val_var in hierarchical: more than one instance found! (Var=[%s]). Will return leaf-most by default\n", targ.c_str());
+	//REV: Return the MOST CHILD-MOST.
 	return ( vl[ vl_indices[0] ].getTvar( targ ) );
 	//enumerate();
 	//exit(1);

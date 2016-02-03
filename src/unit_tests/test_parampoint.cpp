@@ -86,6 +86,7 @@ int main()
   //REV: if we include loop in construcdtor, it will never actually be constructed...
   //filesender fs = filesender( std::shared_ptr<boost::mpi::environment>(&env), std::shared_ptr<boost::mpi::communicator>(&world) );
 
+  //std::unique_ptr<filesender> fs = std::unique_ptr<filesender>(filesender::Create());
   filesender* fs = filesender::Create();
   
   std::string scriptfname = "../configs/test_parampoint.cfg";
@@ -112,7 +113,7 @@ int main()
   std::string contents="EXIT";
   boost::mpi::broadcast(fs->world, contents, 0);
       
-  //delete(fs);
+  delete(fs);
   
   
 }

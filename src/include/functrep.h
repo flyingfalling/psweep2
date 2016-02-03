@@ -24,6 +24,7 @@ typedef std::function< myvar_t( std::vector< myvar_t >&, std::vector< hierarchic
 
 
 
+//REV: Will this work? The HVL in there are not going to be carried over...need to use ptrs orz.
 #define FUNCTDEF( fname ) myvar_t fname( std::vector< myvar_t >& args, std::vector< hierarchical_varlist<std::string> >& hvl, const std::vector< size_t >& hvi )
 
 //typedef  myvar_t( std::vector< myvar_t > a, std::vector< hierarchical_varlist<std::string> >& b, const std::vector< size_t >& c) functdefn;
