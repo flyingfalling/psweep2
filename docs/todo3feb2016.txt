@@ -1,0 +1,21 @@
+REV:
+1) Make it so that hierarchical prints only one from each if same in each level.
+
+2) How to handle passing of PARAMS to user program (without passing other variables e.g. MYDIR)
+--Named variables
+--MAIN named varlist
+--Only pass root-most?
+--diff names for parampoint and pset dirs not __MY_DIR.
+
+3) Call from memory, i.e. let C program call it. User registers funct, but
+   now it passes all files and keeps them in memory. User program has to
+   be able to handle those. Can I redirect stuff to memory?
+
+4) More efficient way to do it, only read input files (like data etc.?) once.
+
+5) Make a safe EXIT available to all things that call MPI_Finalize etc. and destruct all FILESENDER.
+   Also, for interrupts, catch them properly and hit all threads? I don't have any in this case so OK.
+
+6) Make search function work with old search guy other than grid. Normalize way of passing variables to global NAMEDVARIABLES or something?
+
+7) Make it write to HDF5 etc.
