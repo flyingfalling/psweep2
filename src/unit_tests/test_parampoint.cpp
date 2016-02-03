@@ -86,7 +86,7 @@ int main()
   //REV: if we include loop in construcdtor, it will never actually be constructed...
   //filesender fs = filesender( std::shared_ptr<boost::mpi::environment>(&env), std::shared_ptr<boost::mpi::communicator>(&world) );
 
-  filesender fs;
+  filesender* fs = filesender::Create();
   
   std::string scriptfname = "../configs/test_parampoint.cfg";
   std::string mydir = "./testdir";
@@ -95,7 +95,7 @@ int main()
       
       
 
-  size_t nworkers = fs.world.size();
+  size_t nworkers = fs->world.size();
   std::vector<bool> workingworkers( nworkers, true ); //they start out true by default...? OK go.
 
       
@@ -105,14 +105,14 @@ int main()
   std::vector<double> varsteps = {0.5, 50.0};
   //Need to determine "search". In our case, just do a grid search? Nah, do a couple generations...
   search_grid( varnames, varmins, varmaxes, varsteps,
-	       pg, fs, workingworkers);
+	       pg, *fs, workingworkers);
       
   //Send exit command to each worker. I.e. broadcast.
   fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
   std::string contents="EXIT";
-  boost::mpi::broadcast(fs.world, contents, 0);
+  boost::mpi::broadcast(fs->world, contents, 0);
       
-
+  //delete(fs);
   
   
 }
