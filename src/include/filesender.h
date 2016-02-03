@@ -43,6 +43,8 @@ struct filesender
   //std::shared_ptr< boost::mpi::environment > env;
   
   //boost::mpi::environment env;
+
+  std::vector<bool> _workingworkers;
   boost::mpi::communicator world;
   
   //Where is filesender destructor? I don't want to try to "destroy" world or env...? Or should I? Ah, if there are no other pointers to it...I get it.
@@ -262,6 +264,8 @@ struct filesender
     //Wait, does this contain the info about everything e.g. -n 4??? Like ARGC and ARGV...?
     MPI_Init(0, NULL);
 
+    //REV: need to start true, since they're all "kind of" working (waiting for READY)
+    _workingworkers.resize( world.size(), true );
     
     if( world.rank() != 0 )
       {
@@ -277,6 +281,7 @@ struct filesender
 	fprintf(stdout, "EXITING before destroying WORLD\n");
 	//REV: FORCE finalization of WORLD... (since we never complete the constructor before exiting)
 	~world;
+	//Destory workingworkers? Or will it happen automatically?
 	MPI_Finalize();
 	//~env;
 
@@ -294,6 +299,13 @@ struct filesender
 
   ~filesender()
   {
+    if(!world.rank() == 0)
+      {
+	fprintf(stderr, "# # # weird ERROR in ~FILESENDER destructor, only root should actually call the destructor. Something is wrong...?\n");
+      }
+    std::string contents="EXIT";
+    boost::mpi::broadcast(world, contents, 0);
+  
     MPI_Finalize();
     
     //destruct
@@ -1127,10 +1139,10 @@ struct filesender
   //{
     //This does everything necessary for it. So on other side, it will do all this. This will include the MPI guys?
     //List of workers, note it is indexed from 1...i.e. 0 is worker 1...
-  void comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, std::vector<bool>& workingworkers )
+  void comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist )
   {
-
-    work_progress wprog( pg, newlist, workingworkers.size() );
+    
+    work_progress wprog( pg, newlist, _workingworkers.size() );
 
     //REV: these should never happen at the same time, i.e. it shouldn't
     //be done if there are any workers working...
@@ -1143,12 +1155,12 @@ struct filesender
 	//If there is no available workers, but work to do, accept messages
 	//if( (wprog.avail_worker() == false && wprog.check_work_avail() == true) || (wprog.avail_worker() == true && wprog.check_work_avail() == false) )
 	//As long as there are not both available workers and available work...
-	if( !(wprog.avail_worker( workingworkers ) == true &&
+	if( !(wprog.avail_worker( _workingworkers ) == true &&
 	      wprog.check_work_avail() == true )
 	    )
 	  {
 	    fprintf(stdout, "CASE: Either there is a worker available, OR there is work available. I will receive a response from a worker\n");
-	    if( wprog.avail_worker( workingworkers ) == true )
+	    if( wprog.avail_worker( _workingworkers ) == true )
 	      {
 		fprintf(stdout, " NOTE: there ARE workers available\n");
 	      }
@@ -1200,14 +1212,14 @@ struct filesender
 
 
 		fprintf(stdout, "MASTER: Finished set done. Now setting workingworkers targ to false\n");
-		workingworkers[ pcmd.SRC ] = false;
+		_workingworkers[ pcmd.SRC ] = false;
 		fprintf(stdout, "MASTER: ALl done handling received DONE\n");
 	      }
 	    else if( is_ready_for_work( pcmd ) == true )
 	      {
 		fprintf(stdout, "NO, IT WAS JUST READY (setting worker [%d] to FALSE)\n", pcmd.SRC);
 		//Contains READY cmd, just mark to not working.
-		workingworkers[ pcmd.SRC ] = false;
+		_workingworkers[ pcmd.SRC ] = false;
 	      }
 	    else
 	      {
@@ -1221,7 +1233,7 @@ struct filesender
 	else
 	  {
 	    fprintf(stdout, "CASE: BOTH WORK AND A WORKER ARE AVAILABLE. WILL FARM\n");
-	    size_t farmedworker = wprog.farm_work(workingworkers);
+	    size_t farmedworker = wprog.farm_work(_workingworkers);
 
 	    fprintf(stdout, "FARMED IT LOCALLY. Now will send data to slave\n");
 	    parampoint_coord pc = wprog.farmed_status[ farmedworker ];
