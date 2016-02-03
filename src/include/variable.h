@@ -179,14 +179,14 @@ struct varlist
     std::ifstream f;
     open_ifstream( fname, f );
 
-    fprintf(stdout, "INPUTTING FROM FILE: [%s]\n", fname.c_str() );
+    //fprintf(stdout, "INPUTTING FROM FILE: [%s]\n", fname.c_str() );
 
     while( !f.eof() )
       {
 	std::string n="YOLOERRNAME", v="YOLOERRORVAL";
 	f >> n;
 
-	fprintf(stdout, "Read [%s] for name from file [%s]\n", n.c_str(), fname.c_str() );
+	//fprintf(stdout, "Read [%s] for name from file [%s]\n", n.c_str(), fname.c_str() );
 	//Check if there is anything at all. If nothing, just empty...
 	if( f.eof() )
 	  {
@@ -195,7 +195,7 @@ struct varlist
 	f >> v;
 
 
-	fprintf(stdout, "Read [%s] for val from file [%s]\n", v.c_str(), fname.c_str() );
+	//fprintf(stdout, "Read [%s] for val from file [%s]\n", v.c_str(), fname.c_str() );
 	//If it was EOF, means it was probably either 1) a new line or 2) a name wihtout a value. In either case ignore.
 	//Worst case is name without value followed by a newline...lol.
 	if( f.eof() )

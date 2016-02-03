@@ -39,9 +39,14 @@ psweep_cmd( const int srcr, const std::string& cm )
 struct filesender
 {
 
-  std::shared_ptr< boost::mpi::communicator > world;
-  std::shared_ptr< boost::mpi::environment > env;
+  //std::shared_ptr< boost::mpi::communicator > world;
+  //std::shared_ptr< boost::mpi::environment > env;
   
+  //boost::mpi::environment env;
+  boost::mpi::communicator world;
+  
+  //Where is filesender destructor? I don't want to try to "destroy" world or env...? Or should I? Ah, if there are no other pointers to it...I get it.
+  //Crap.
   
   struct mem_file
   {
@@ -248,56 +253,88 @@ struct filesender
     
   };
 
-
-  //REV: Now I'm getting lazy..lala
-  filesender( const std::shared_ptr<boost::mpi::environment>& tenv, const std::shared_ptr<boost::mpi::communicator>& tworld )
   
-  {
-    //gonna guess that references can't be dereferenced...
-    world = tworld;
-    env = tenv;
-  }
-
+  
   filesender()
   {
+    //Assume that world/env are automatically constructed?
+
+    //Wait, does this contain the info about everything e.g. -n 4??? Like ARGC and ARGV...?
+    MPI_Init(0, NULL);
+
+    
+    if( world.rank() != 0 )
+      {
+	
+	//REV: Only kind of OK because I expect that there are no other internal variables who will only be guaranteed to get their state
+	//after CTOR finishes returning...
+	execute_slave_loop();
+	//Exits after it finishes, i.e. never returns control to
+	//user...otherwise it will execute his "main program" stuff.
+	//In other words, this never constructs?
+
+
+	fprintf(stdout, "EXITING before destroying WORLD\n");
+	//REV: FORCE finalization of WORLD... (since we never complete the constructor before exiting)
+	~world;
+	MPI_Finalize();
+	//~env;
+
+	fprintf(stdout, "EXITING after destroying WORLD\n");
+	
+	//REV: call destructor here? And exit?
+	exit(0);
+      }
+    else
+      {
+	return;
+      }
+    
+  }
+
+  ~filesender()
+  {
+    MPI_Finalize();
+    
+    //destruct
   }
 
   void send_varlist(  const int& targrank, const varlist<std::string>& v ) //, boost::mpi::communicator& world )
   {
     //*world.send( targrank, boost::mpi::any_tag, v );
     //world->send( targrank, boost::mpi::any_tag, v );
-    world->send( targrank, 0, v );
+    world.send( targrank, 0, v );
   }
 
 
   void send_cmd( const std::string& cmd, const int& targrank ) //, boost::mpi::communicator& world )
   {
     //world->send( targrank, boost::mpi::any_tag, cmd );
-    world->send( targrank, 0, cmd );
+    world.send( targrank, 0, cmd );
   }
 
   void send_pitem( const pitem& mypitem, const int& targrank ) //, boost::mpi::communicator& world )
   {
     //world->send( targrank, boost::mpi::any_tag, mypitem ); //will serialize it for me.
-    world->send( targrank, 0, mypitem ); //will serialize it for me.
+    world.send( targrank, 0, mypitem ); //will serialize it for me.
   }
 
   varlist<std::string> receive_varlist( const int& targrank ) //, boost::mpi::communicator& world  )
   {
     varlist<std::string> tmpv;
-    world->recv( targrank, boost::mpi::any_tag, tmpv );
+    world.recv( targrank, boost::mpi::any_tag, tmpv );
     return tmpv;
   }
 
   //I want to block but I want to get message from target before handling others.
   psweep_cmd receive_cmd_from_any( ) //boost::mpi::communicator& world )
   {
-    boost::mpi::status msg = world->probe();
+    boost::mpi::status msg = world.probe();
   
     std::string data;
 
     
-    world->recv(msg.source(), boost::mpi::any_tag, data);
+    world.recv(msg.source(), boost::mpi::any_tag, data);
     
     psweep_cmd pc( msg.source(), data );
 
@@ -306,13 +343,13 @@ struct filesender
 
   psweep_cmd receive_cmd_from_root( ) //boost::mpi::communicator& world )
   {
-    boost::mpi::status msg = world->probe();
+    boost::mpi::status msg = world.probe();
   
     std::string data;
 
     if ( msg.source() == 0 )
       {
-	world->recv(msg.source(), boost::mpi::any_tag, data);
+	world.recv(msg.source(), boost::mpi::any_tag, data);
       }
     
     psweep_cmd pc( msg.source(), data );
@@ -323,22 +360,22 @@ struct filesender
   pitem receive_pitem( const int& targrank ) //, boost::mpi::communicator& world  )
   {
     pitem newpitem;
-    world->recv( targrank, boost::mpi::any_tag, newpitem );
+    world.recv( targrank, boost::mpi::any_tag, newpitem );
     return newpitem;
   }
 
   int receive_int( const int& targrank ) //, boost::mpi::communicator& world )
   {
     int newint;
-    world->recv( targrank, boost::mpi::any_tag, newint );
+    world.recv( targrank, boost::mpi::any_tag, newint );
     return newint;
   }
 
   void send_int( const int& targrank, const int& tosend ) //, boost::mpi::communicator& world )
   {
     int newint;
-    //world->send( targrank, boost::mpi::any_tag, tosend );
-    world->send( targrank, 0, tosend );
+    //world.send( targrank, boost::mpi::any_tag, tosend );
+    world.send( targrank, 0, tosend );
   
   }
 
@@ -381,7 +418,7 @@ struct filesender
 	//is which for the user haha... just have user reference certain file names specifically if he needs them. Yea...that works I guess. OK.
 	//So, now what he does, is he searches for that variable's value *now*???? Not by filename but by variable? Ugh, that's so ugly. I.e.
 	//print out INPUT FILE now... I.e. I need to re-work the command to replace any instances of OLD inputfile with NEW inputfile...meh.
-	fprintf(stdout, "IN WORKER [%d]: OUTPUTTING LOCAL FILE: [%s]\n", world->rank(), std::string(dir+"/"+myfname).c_str());
+	fprintf(stdout, "IN WORKER [%d]: OUTPUTTING LOCAL FILE: [%s]\n", world.rank(), std::string(dir+"/"+myfname).c_str());
 	
 	//write to file OK.
 	mf.tofile( dir, myfname );
@@ -404,8 +441,8 @@ struct filesender
   //void send_file( const int& targrank, const mem_file& memf )
   void send_file( const int& targrank, const mem_file& memf )
   {
-    //world->send( targrank, boost::mpi::any_tag, memf );
-    world->send( targrank, 0, memf );
+    //world.send( targrank, boost::mpi::any_tag, memf );
+    world.send( targrank, 0, memf );
   }
   
   void send_file_from_disk( const int& targrank, const std::string& fname )
@@ -421,7 +458,7 @@ struct filesender
     //std::vector<char> fname = receive_memory( targrank );
 
     mem_file mf;
-    world->recv( targrank, boost::mpi::any_tag, mf );
+    world.recv( targrank, boost::mpi::any_tag, mf );
     return mf;
   }
 
@@ -523,7 +560,7 @@ struct filesender
     //get the CMD from it, return...
     if( pcmd.SRC != 0 )
       {
-	fprintf(stderr, "ERROR worker [%d] got cmd from non-root rank...[%d]\n", world->rank(),  pcmd.SRC);
+	fprintf(stderr, "ERROR worker [%d] got cmd from non-root rank...[%d]\n", world.rank(),  pcmd.SRC);
 	exit(1); //EXIT more gracefully?
       }
 
@@ -531,7 +568,7 @@ struct filesender
     if( pcmd.CMD.compare("EXIT") == 0 )
       {
 	//exit
-	fprintf(stderr, "Worker [%d] received EXIT command from root rank\n", world->rank());
+	fprintf(stderr, "Worker [%d] received EXIT command from root rank\n", world.rank());
 	exit(1);
       }
     //else if( strcmp( pcmd.CMD, "PITEM") == 0 )
@@ -544,7 +581,7 @@ struct filesender
       }
     else
       {
-	fprintf(stderr, "ERROR, rank [%d] received unknown command [%s]\n", world->rank(), pcmd.CMD.c_str() );
+	fprintf(stderr, "ERROR, rank [%d] received unknown command [%s]\n", world.rank(), pcmd.CMD.c_str() );
 	exit(1);
       }
   }
@@ -681,7 +718,7 @@ struct filesender
   {
     //FINISHED? Destruct everything locally in TMP? I.e. remove PITEM's DIR?
     //Is there a better way to do this?
-    fprintf(stdout, "Worker [%d] removing recursively workspace [%s]\n", world->rank(), mypitem.mydir.c_str());
+    fprintf(stdout, "Worker [%d] removing recursively workspace [%s]\n", world.rank(), mypitem.mydir.c_str());
     boost::filesystem::path p( mypitem.mydir );
     uintmax_t removed = boost::filesystem::remove_all( p );
 
@@ -692,60 +729,62 @@ struct filesender
   void execute_slave_loop()
   {
     bool loopslave=true;
-    std::string LOCALDIR = "/tmp/scratch" + std::to_string( world->rank() ); //will execute in local scratch. Note, might need to check we have enough memory etc.
+    std::string LOCALDIR = "/tmp/scratch" + std::to_string( world.rank() ); //will execute in local scratch. Note, might need to check we have enough memory etc.
 
     //MKDIR HERE?
     
-    fprintf(stderr, "REV: WORKER [%d] is executing slave loop. Local work dir is: [%s]\n", world->rank(), LOCALDIR.c_str() );
+    fprintf(stderr, "REV: WORKER [%d] is executing slave loop. Local work dir is: [%s]\n", world.rank(), LOCALDIR.c_str() );
 
 
     //REV: need to send first guy to tell its ready
     std::string pcinit = "READY";
     send_cmd( pcinit, 0 );
 
-    fprintf(stdout, "WORKER [%d] send CMD READY to root\n", world->rank());
+    fprintf(stdout, "WORKER [%d] send CMD READY to root\n", world.rank());
     
     while( loopslave == true )
       {
 	make_directory( LOCALDIR );
 	
-	fprintf(stdout, "WORKER [%d]: waiting for cmd\n", world->rank() );
+	fprintf(stdout, "WORKER [%d]: waiting for cmd\n", world.rank() );
 	//WAIT for mesg from MASTER
 	//psweep_cmd cmd = receive_cmd_from_any();  //wait_for_cmd();
 	psweep_cmd cmd = receive_cmd_from_root();  //wait_for_cmd();
 	
-	fprintf(stdout, "WORKER [%d]: GOT CMD [%s]. Will handle.\n", world->rank(), cmd.CMD.c_str() );
+	fprintf(stdout, "WORKER [%d]: GOT CMD [%s]. Will handle.\n", world.rank(), cmd.CMD.c_str() );
 	
 	if( cmd_is_exit( cmd ) == true )
 	  {
-	    fprintf(stderr, "REV: WORKER [%d] received EXIT\n", world->rank() );
+	    fprintf(stderr, "REV: WORKER [%d] received EXIT\n", world.rank() );
 	    loopslave = false;
 	    break;
 	  }
 
 	//fprintf(stdout, "HANDLING CMD\n");
 	pitem mypitem = handle_cmd( cmd ); //REV: may EXIT, or contain a PITEM (to execute).
-	fprintf(stdout, "WORKER [%d]: received pitem\n", world->rank());
+	fprintf(stdout, "WORKER [%d]: received pitem\n", world.rank());
 	
 	handle_pitem( mypitem, LOCALDIR ); // This will do the receiving of all files and writing to LOCALDIR, it will also rename them and keep track
 	//of the correspondence. Note the SENDING side will do the error out if it is no in the __MY_DIR. Do that on PARENT side I guess. OK.
 
-	fprintf(stdout, "WORKER [%d]: handled PITEM\n", world->rank());
+	fprintf(stdout, "WORKER [%d]: handled PITEM\n", world.rank());
 
 	//We now have PITEM updated, we will now EXECUTE it (until it fails, keep checking success).
 
 	execute_work( mypitem );
 
-	fprintf(stdout, "WORKER [%d]: EXECUTED WORK\n", world->rank());
+	fprintf(stdout, "WORKER [%d]: EXECUTED WORK\n", world.rank());
 
 	//NEED TO SEND RESULTS
 	notify_finished( mypitem ); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
 
 
-	fprintf(stdout, "WORKER [%d]: sent finished notify\n", world->rank());
+	fprintf(stdout, "WORKER [%d]: sent finished notify\n", world.rank());
 	cleanup_workspace( mypitem );
-	fprintf(stdout, "WORKER [%d]: cleaned up\n", world->rank());
+	fprintf(stdout, "WORKER [%d]: cleaned up\n", world.rank());
       }
+
+    fprintf(stdout, "WORKER [%d]: SLAVE LOOP: RETURNING from slave loop\n", world.rank());
   }
 
 

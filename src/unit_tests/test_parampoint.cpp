@@ -72,46 +72,46 @@ void search_grid( const std::vector<std::string>& varnames,
 }
 
 
+//Do "execute", and what I do is I only define what happens? It automatically farms everything? Crap...
+//Pass callback? Meh, ughly.
+
+//REV: make it so that user is only ever writing loops in ROOTRANK.
+//All other (main) guys are fed off... i.e. it will loop and NEVER return control to the user. That seems much easier.
 
 int main()
 {
-  boost::mpi::environment env;
-  boost::mpi::communicator world;
+  //boost::mpi::environment env;
+  //boost::mpi::communicator world;
+
+  //REV: if we include loop in construcdtor, it will never actually be constructed...
+  //filesender fs = filesender( std::shared_ptr<boost::mpi::environment>(&env), std::shared_ptr<boost::mpi::communicator>(&world) );
+
+  filesender fs;
   
-  filesender fs = filesender( std::shared_ptr<boost::mpi::environment>(&env), std::shared_ptr<boost::mpi::communicator>(&world) );
-  
-  if( world.rank() == 0 )
-    {
-      std::string scriptfname = "../configs/test_parampoint.cfg";
-      std::string mydir = "./testdir";
+  std::string scriptfname = "../configs/test_parampoint.cfg";
+  std::string mydir = "./testdir";
       
-      parampoint_generator pg(scriptfname, mydir);
+  parampoint_generator pg(scriptfname, mydir);
       
       
 
-      size_t nworkers = world.size();
-      std::vector<bool> workingworkers( nworkers, true ); //they start out true by default...? OK go.
+  size_t nworkers = fs.world.size();
+  std::vector<bool> workingworkers( nworkers, true ); //they start out true by default...? OK go.
 
       
-      std::vector<std::string> varnames = {"VAR1", "VAR2"};
-      std::vector<double> varmins = {1.0, 100.0};
-      std::vector<double> varmaxes = {2.0, 200.0};
-      std::vector<double> varsteps = {0.5, 50.0};
-      //Need to determine "search". In our case, just do a grid search? Nah, do a couple generations...
-      search_grid( varnames, varmins, varmaxes, varsteps,
-		   pg, fs, workingworkers);
+  std::vector<std::string> varnames = {"VAR1", "VAR2"};
+  std::vector<double> varmins = {1.0, 100.0};
+  std::vector<double> varmaxes = {2.0, 200.0};
+  std::vector<double> varsteps = {0.5, 50.0};
+  //Need to determine "search". In our case, just do a grid search? Nah, do a couple generations...
+  search_grid( varnames, varmins, varmaxes, varsteps,
+	       pg, fs, workingworkers);
       
-      //Send exit command to each worker. I.e. broadcast.
-      fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
-      std::string contents="EXIT";
-      boost::mpi::broadcast(world, contents, 0);
-    }
-  else
-    {
-      //RUN WORKER LOOP.
-      //Tell it which slave I am etc.?
-      fs.execute_slave_loop();
-    }
+  //Send exit command to each worker. I.e. broadcast.
+  fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
+  std::string contents="EXIT";
+  boost::mpi::broadcast(fs.world, contents, 0);
+      
 
   
   
