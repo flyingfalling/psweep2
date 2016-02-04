@@ -2,7 +2,7 @@
 //User will call one of these, passing the appropriate inputs,
 //and it will automatically construct everything and run the sweep I guess....
 
-#include <filesender.h>
+
 
 
 //takes user options and runs corresponding search funct?
@@ -46,9 +46,107 @@
 //  1    1     2    1    2.5
 //  1    1     2    2    3.5
 
+//For now just pass MIN MAX etc.. Yea, way to handle 2d after all. It contains..? How about going from HDF5 to?
+
+#pragma once
+
+#include <filesender.h>
+#include <iterator>     // ostream_operator
+#include <boost/tokenizer.hpp>
+
+//GET CSV LINE?
+std::vector<std::vector<std::string>> parse_CSV_file( const std::string& fname )
+{
+  std::ifstream in;
+  open_ifstream( in, fname.c_str() );
+  
+  typedef tokenizer< boost::escaped_list_separator<char> > Tokenizer;
+
+  std::vector< std::vector< std::string > > retvec;
+  
+  std::string line;
+
+  while( getline(in,line) )
+    {
+      std::vector< std::string > vec;
+      Tokenizer tok(line);
+      vec.assign(tok.begin(),tok.end());
+      retvec.push_back( vec );
+    }
+
+
+  close_ifstream( in );
+  
+  return retvec;
+}
+
+//REV: this is basically growing-matrix...
+struct data_table
+{
+  std::vector< std::string > colnames;
+  
+  //row-first access I guess.
+  std::vector< std::vector< std::string > > dat;
+  //Are these guaranteed to be contiguous? Crap...
+
+  //We could do these by "name" as well. Easiest is 0, 0 of course.
+  size_t colnum_of_rownames;
+  size_t rownum_of_colnames;
+  
+  
+  //REV: Need unique key column? If not, make one?
+  data_table( const std::vector< std::vector< std::string> >& tbl, const bool& first_col_head=true )
+  {
+    if(first_col_head)
+      {
+	colnames = tbl[0];
+	dat = tbl; //REMOVE FIRST ONE? Need to shift them all...fuck...
+      }
+    else
+      {
+	colnames.resize( tbl[0].size(), "NOCOLNAME");
+      }
+    
+  }
+
+  //REV: wow, a lot of this stuff is already done by e.g. cv::MAT etc.?!!!
+  std::vector< std::string > get_col( const std::string& colname )
+  {
+    
+  }
+
+  std::vector< std::string > get_row( const size_t& rownum )
+  {
+    
+  }
+
+  std::vector< std::string > get_row_by_name( const std::string& rowname )
+  {
+    
+  }
+
+  std::vector< std::string> get_col_by_name( const size_t& colnum )
+  {
+    
+  }
+
+  std::string get_val( const size_t& colnum, const size_t& rownum )
+  {
+    
+  }
+
+  //Return a POD type? I.e. allow them to handle other things than strings after parsing into memory. Force user to specify type?
+  //I.e. how to "parse" files. I know what to expect (kind of).
+  std::string get_val( const std::string& colname, const std::string& rowname )
+  {
+    
+  }
+};
+
+
 void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, const varlist& params )
 {
-
+  
   parampoint_generator pg(scriptfname, mydir);
   
   filesender* fs = filesender::Create();
@@ -59,6 +157,10 @@ void run_search( const std::string& searchtype, const std::string& scriptfname, 
       //Construct required stuff from PARAMS. I.e. min and max of each param? Need N varlists? Have them named? Specific name? Have array type of
       //name PARAMS, etc.? Probably got from a file at beginning... Some special way of reading that...it should know varnames? 
       search_grid( );
+    }
+  else if( searchtype.compare( "ABC" ) == 0 )
+    {
+      
     }
   else
     {
