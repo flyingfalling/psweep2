@@ -13,7 +13,7 @@ void search_grid( const std::vector<std::string>& varnames,
 		  
 {
 
-
+  fprintf(stdout, "Inside search_grid algorithm\n");
   //Search_grid will give pg new std::vector<varlist> of vars to send.
   //PROBLEM: Varlists are going to be as varlist<string> (fuck...)
     

@@ -163,6 +163,8 @@ struct data_table
 	  }
 	fprintf(stdout, "\n");
       }
+
+    fprintf(stdout, "Finished enumerating\n");
   }
 
   data_table( const std::string& fname, const bool& hascolnames )
@@ -274,13 +276,13 @@ struct data_table
 	fprintf(stdout, "ERROR MORE THAN ONE OF NAME [%s]\n", colname.c_str());
 	exit(1);
       }
-
+    
     size_t colnum = locs[0];
     size_t skip = ncols;
     std::vector< std::string > ret( nrows );
     
     //for( size_t iter=colnum; iter<dat.size(); iter+=skip )
-    for( size_t iter=0; iter<ncols; ++iter )
+    for( size_t iter=0; iter<nrows; ++iter )
       {
 	size_t t= colnum + (ncols * iter);
 	ret[iter] = dat[iter];
@@ -340,7 +342,15 @@ struct data_table
 
   std::string get_val( const size_t& colnum, const size_t& rownum )
   {
+    
     size_t loc = rownum*ncols + colnum;
+    if( loc >= dat.size() )
+      {
+	fprintf(stdout, "Get val [%ld] [%ld] is mapping to [%ld]\n", colnum, rownum, loc);
+	fprintf(stderr, "ERROR, in get_val, outside of dat array size [%ld]\n", dat.size());
+	exit(1);
+      }
+	  
     return ( dat[loc] );
   }
 
@@ -388,15 +398,20 @@ void run_search( const std::string& searchtype, const std::string& scriptfname, 
       
       std::string varname = "GRID_MIN_MAX_STEP_FILE";
       std::string minmaxfname = params.getTvar( varname );
-
+      
       bool hascolnames = true;
       data_table dtable( minmaxfname, hascolnames );
-      
+
+      fprintf(stdout, "Trying to get VARNAMEs\n");
       std::vector<std::string> varnames = dtable.get_col( "NAME" );
+
+      fprintf(stdout, "Got varnames\n");
       std::vector<double> mins = data_table::to_float64( dtable.get_col( "MAX" ) );
+      fprintf(stdout, "Got mins\n");
       std::vector<double> maxes = data_table::to_float64( dtable.get_col( "MIN" ) );
       std::vector<double> steps = data_table::to_float64( dtable.get_col( "STEP" ) );
-      
+
+      fprintf(stdout, "Got STEP\n");
       
       //Construct required stuff from PARAMS. I.e. min and max of each param? Need N varlists? Have them named? Specific name? Have array type of
       //name PARAMS, etc.? Probably got from a file at beginning... Some special way of reading that...it should know varnames? 
