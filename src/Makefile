@@ -35,5 +35,8 @@ test_boostmpi.exe: $(UNITTESTDIR)/test_boostmpi.cpp
 test_parampoint.exe: $(UNITTESTDIR)/test_parampoint.cpp $(HEADERFILES)
 	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_parampoint.cpp -o test_parampoint.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
 
+test_searchalgo.exe: $(UNITTESTDIR)/test_searchalgo.cpp $(HEADERFILES)
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_searchalgo.cpp -o test_searchalgo.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
+
 clean:
 	rm *.exe *.o

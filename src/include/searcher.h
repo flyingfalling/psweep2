@@ -47,20 +47,28 @@
 //  1    1     2    2    3.5
 
 //For now just pass MIN MAX etc.. Yea, way to handle 2d after all. It contains..? How about going from HDF5 to?
+//Hm, this is kind of nasty...because when I "extracted" each column, I would need to appropriately have the return function return
+//the kind, or cast it manually each time -_-
 
 #pragma once
 
 #include <filesender.h>
+#include <searchalgos.h>
+
 #include <iterator>     // ostream_operator
 #include <boost/tokenizer.hpp>
+#include <math.h>
+
 
 //GET CSV LINE?
-std::vector<std::vector<std::string>> parse_CSV_file( const std::string& fname )
+std::vector<std::vector<std::string>> parse_CSV_file( const std::string& fname, const char& sepchar )
 {
   std::ifstream in;
   open_ifstream( in, fname.c_str() );
   
   typedef tokenizer< boost::escaped_list_separator<char> > Tokenizer;
+
+  boost::escaped_list_separator<char> sep('\\', sepchar, '\"');
 
   std::vector< std::vector< std::string > > retvec;
   
@@ -69,7 +77,7 @@ std::vector<std::vector<std::string>> parse_CSV_file( const std::string& fname )
   while( getline(in,line) )
     {
       std::vector< std::string > vec;
-      Tokenizer tok(line);
+      Tokenizer tok(line, sep);
       vec.assign(tok.begin(),tok.end());
       retvec.push_back( vec );
     }
@@ -81,18 +89,78 @@ std::vector<std::vector<std::string>> parse_CSV_file( const std::string& fname )
 }
 
 //REV: this is basically growing-matrix...
+
+//Columns must be of regular types? Tagged data types? Need pointers to them. Too complex, someone has done this before damnit.
+//Use the other people's stuff.
 struct data_table
 {
   std::vector< std::string > colnames;
-  
+  std::vector< std::string > rownames;
   //row-first access I guess.
-  std::vector< std::vector< std::string > > dat;
+  //If different types, we have a problem, because actually stored data may be different size. Note, allocated strings might exist
+  //ANYWHERE in memory -_-; Force them all to be doubles?
+  //Just do this for now haha.
+  //std::vector< std::vector< std::string > > dat;
+  std::vector< std::string > dat;
   //Are these guaranteed to be contiguous? Crap...
+  
+  size_t ncols;
+  size_t nrows;
 
+  bool has_colnames=false;
+  bool has_rownames=false;
+  
   //We could do these by "name" as well. Easiest is 0, 0 of course.
   size_t colnum_of_rownames;
   size_t rownum_of_colnames;
   
+
+  data_table( const std::string& fname )
+  {
+    //Call the other constructor
+    char sep = ' '; //REV: do more intelligent, e.g. any spaces.
+    data_table( parse_CSV_file( fname , sep), true );
+  }
+  
+  static std::vector<float64_t> to_float64( const std::vector<std::string>& vect )
+  {
+    std::vector<float64_t> ret( vect.size() );
+    for(size_t x=0; x<vect.size(); ++x)
+      {
+	ret[x] = std::stod(vect[x]);
+      }
+    return ret;
+  }
+
+  static std::vector<float32_t> to_float32( const std::vector<std::string>& vect )
+  {
+    std::vector<float32_t> ret( vect.size() );
+    for(size_t x=0; x<vect.size(); ++x)
+      {
+	ret[x] = std::stof(vect[x]);
+      }
+    return ret;
+  }
+
+  static std::vector<int32_t> to_int32( const std::vector<std::string>& vect )
+  {
+    std::vector<int32_t> ret( vect.size() );
+    for(size_t x=0; x<vect.size(); ++x)
+      {
+	ret[x] = std::stoi(vect[x]);
+      }
+    return ret;
+  }
+
+  static std::vector<int64_t> to_int64( const std::vector<std::string>& vect )
+  {
+    std::vector<int64_t> ret( vect.size() );
+    for(size_t x=0; x<vect.size(); ++x)
+      {
+	ret[x] = std::stol(vect[x]);
+      }
+    return ret;
+  }
   
   //REV: Need unique key column? If not, make one?
   data_table( const std::vector< std::vector< std::string> >& tbl, const bool& first_col_head=true )
@@ -100,11 +168,32 @@ struct data_table
     if(first_col_head)
       {
 	colnames = tbl[0];
-	dat = tbl; //REMOVE FIRST ONE? Need to shift them all...fuck...
+	rownum_of_colnames = 0;
+
+	nrows = tbl.size() - 1;
+	ncols = tbl[0].size();
+
+	for( size_t r=1; r<tbl.size(); ++r)
+	  {
+	    for(size_t x=0; x<tbl[r].size(); ++x)
+	      {
+		dat.push_back( tbl[r][x] );
+	      }
+	  }
       }
     else
       {
+	nrows = tbl.size();
+	ncols = tbl[0].size();
 	colnames.resize( tbl[0].size(), "NOCOLNAME");
+
+	for( size_t r=0; r<tbl.size(); ++r)
+	  {
+	    for(size_t x=0; x<tbl[r].size(); ++x)
+	      {
+		dat.push_back( tbl[r][x] );
+	      }
+	  }
       }
     
   }
@@ -112,51 +201,137 @@ struct data_table
   //REV: wow, a lot of this stuff is already done by e.g. cv::MAT etc.?!!!
   std::vector< std::string > get_col( const std::string& colname )
   {
+    if( !has_colnames )
+      {
+	exit(1);
+      }
     
+    std::vector<size_t> locs = find_string_in_vect( colname, colnames );
+    
+    if( locs != 1 )
+      {
+	exit(1);
+      }
+
+    size_t colnum = locs[0];
+    size_t skip = ncols;
+    std::vector< std::string > ret( nrows );
+    
+    //for( size_t iter=colnum; iter<dat.size(); iter+=skip )
+    for( size_t iter=0; iter<ncols; ++iter )
+      {
+	size_t t= colnum + (ncols * iter);
+	ret[iter] = dat[iter];
+      }
+    return ret;
   }
 
   std::vector< std::string > get_row( const size_t& rownum )
   {
     
+    size_t startloc = rownum * ncols;
+    size_t endloc = (rownum * ncols) + ncols;
+    std::vector<std::string> ret( dat.begin()+startloc, dat.begin()+endloc );
+
+    return ret;
   }
 
   std::vector< std::string > get_row_by_name( const std::string& rowname )
   {
+    if( !has_rownames )
+      {
+	exit(1);
+      }
     
+    std::vector<size_t> locs = find_string_in_vect( rowname, rownames );
+    
+    if( locs != 1 )
+      {
+	exit(1);
+      }
+
+    size_t rownum = locs[0];
+    
+    size_t startloc = rownum * ncols;
+    size_t endloc = (rownum * ncols) + ncols;
+    std::vector<std::string> ret( dat.begin()+startloc, dat.begin()+endloc );
+
+    return ret;
   }
 
-  std::vector< std::string> get_col_by_name( const size_t& colnum )
+  std::vector< std::string> get_col( const size_t& colnum )
   {
-    
+    size_t skip = ncols;
+    std::vector< std::string > ret( nrows );
+
+    //REV: is there a better copy iter?
+    //for( size_t iter=colnum; iter<dat.size(); iter+=skip )
+    for( size_t iter=0; iter<ncols; ++iter )
+      {
+	size_t t= colnum + (ncols * iter);
+	ret[iter] = dat[iter];
+      }
+    return ret;
   }
 
   std::string get_val( const size_t& colnum, const size_t& rownum )
   {
-    
+    size_t loc = rownum*ncols + colnum;
+    return ( dat[loc] );
   }
 
   //Return a POD type? I.e. allow them to handle other things than strings after parsing into memory. Force user to specify type?
   //I.e. how to "parse" files. I know what to expect (kind of).
   std::string get_val( const std::string& colname, const std::string& rowname )
   {
+    if( !has_rownames || !has_colnames )
+      {
+	exit(1);
+      }
     
+    std::vector<size_t> clocs = find_string_in_vect( colname, colnames );
+    std::vector<size_t> rlocs = find_string_in_vect( rowname, rownames );
+
+    if( clocs.size() != 1 || rlocs.size() != 1)
+      {
+	exit(1);
+      }
+
+    size_t colnum = clocs[0];
+    size_t rownum = rlocs[0];
+
+    return get_val( colnum, rownum );
   }
 };
 
 
-void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, const varlist& params )
+
+//varlist will contain required um, data files I guess?
+void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, const varlist<std::string>& params )
 {
   
   parampoint_generator pg(scriptfname, mydir);
   
   filesender* fs = filesender::Create();
   
+  fprintf(stdout, "RUNNING SEARCH ALGO: [%s]\n", searchtype.c_str() );
   
   if( searchtype.compare( "grid" ) == 0 )
     {
+
+      
+      std::string minmaxfname = params.getTvar( "GRID_MIN_MAX_STEP_FILE" );
+      data_table dtable( minmaxfname );
+
+      std::vector<std::string> varnames = dtable.get_col( "NAME" );
+      std::vector<double> mins = data_table::to_float64( dtable.get_col( "MAX" ) );
+      std::vector<double> maxes = data_table::to_float64( dtable.get_col( "MIN" ) );
+      std::vector<double> steps = data_table::to_float64( dtable.get_col( "STEP" ) );
+      
+      
       //Construct required stuff from PARAMS. I.e. min and max of each param? Need N varlists? Have them named? Specific name? Have array type of
       //name PARAMS, etc.? Probably got from a file at beginning... Some special way of reading that...it should know varnames? 
-      search_grid( );
+      search_grid( varnames, mins, maxes, steps, pg, *fs);
     }
   else if( searchtype.compare( "ABC" ) == 0 )
     {
@@ -166,64 +341,12 @@ void run_search( const std::string& searchtype, const std::string& scriptfname, 
     {
       fprintf(stderr, "REV: ERROR, search type [%s] not found\n", searchtype.c_str() );
     }
+  
+  fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
+  std::string contents="EXIT";
+  boost::mpi::broadcast(fs->world, contents, 0);
+  
+  delete(fs);
+  
 }
 
-
-void search_grid( const std::vector<std::string>& varnames,
-		  const std::vector<double>& mins,
-		  const std::vector<double>& maxes,
-		  const std::vector<double>& steps,
-		  parampoint_generator& pg,
-		  filesender& fs,
-		  std::vector<bool>& workingworkers )
-{
-
-
-  //Search_grid will give pg new std::vector<varlist> of vars to send.
-  //PROBLEM: Varlists are going to be as varlist<string> (fuck...)
-    
-  std::vector< std::vector< double > > list_of_permuted_lists;
-  std::vector< double > permuted_list_workspace; /* can't do this in parallel I guess... */
-
-  std::vector< std::vector< double > > list_to_permute;
-  for(int bin=0; bin<varnames.size(); ++bin)
-    {
-      std::vector< double > binvect;
-      float val=mins[bin];
-      while(val < maxes[bin])
-	{
-	  binvect.push_back(val);
-	  val += steps[bin];
-	}
-      binvect.push_back(val); //assume this is max.
-      
-      if(val != maxes[bin])
-	{
-	  fprintf(stdout, "WARNING: PARAM SWEEP GRID: PARAM [%s] STEP DOES NOT EVENLY DIVIDE MIN AND MAX (MIN=%lf MAX=%lf STEP=%lf, but final val is %lf)\n", 
-		  varnames[bin].c_str(), mins[bin], maxes[bin], steps[bin], val);
-	}
-      
-      list_to_permute.push_back( binvect );
-      
-    }
-  
-  recursive_permute_params(list_to_permute, 0, permuted_list_workspace, list_of_permuted_lists);
-
-  //We now have a list of lists...to run ;) Need to turn each one into a varlist
-  std::vector< varlist<std::string> > vls;
-
-  for(size_t x=0; x<list_of_permuted_lists.size(); ++x)
-    {
-      varlist<std::string> vl;
-      vl.add_to_varlist<double>( varnames, list_of_permuted_lists[x] );
-
-      vls.push_back(vl);
-    }
-
-  fprintf(stdout, "EXECUTING SEARCH GRID: Now doing COMP PP LIST\n");
-  
-  //Now, run on vls.
-  fs.comp_pp_list(pg, vls, workingworkers);
-
-  fprintf(stdout, "Finished comp PP list, leaving search grid\n");
-}

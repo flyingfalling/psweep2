@@ -17,8 +17,7 @@ void search_grid( const std::vector<std::string>& varnames,
 		  const std::vector<double>& maxes,
 		  const std::vector<double>& steps,
 		  parampoint_generator& pg,
-		  filesender& fs,
-		  std::vector<bool>& workingworkers )
+		  filesender& fs )
 {
   //Search_grid will give pg new std::vector<varlist> of vars to send.
   //PROBLEM: Varlists are going to be as varlist<string> (fuck...)
@@ -96,9 +95,7 @@ int main()
       
       
 
-  size_t nworkers = fs->world.size();
-  std::vector<bool> workingworkers( nworkers, true ); //they start out true by default...? OK go.
-
+  
       
   std::vector<std::string> varnames = {"VAR1", "VAR2"};
   std::vector<double> varmins = {1.0, 100.0};
@@ -106,7 +103,7 @@ int main()
   std::vector<double> varsteps = {0.5, 50.0};
   //Need to determine "search". In our case, just do a grid search? Nah, do a couple generations...
   search_grid( varnames, varmins, varmaxes, varsteps,
-	       pg, *fs, workingworkers);
+	       pg, *fs); 
       
   //Send exit command to each worker. I.e. broadcast.
   fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
