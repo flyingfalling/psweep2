@@ -1,4 +1,4 @@
-#include <searchalgo.h>
+#include <searchalgos.h>
 #include <variable.h>
 #include <searcher.h>
 
@@ -10,7 +10,7 @@ int main()
   std::string minmaxstepfile = "testminmaxstep.bounds";
 
   varlist<std::string> vl;
-  vl.add_var( variable<std::string>( "GRID_MIN_MAX_STEP_FILE", minmaxstepfile ) );
+  vl.addvar( variable<std::string>( "GRID_MIN_MAX_STEP_FILE", minmaxstepfile ) );
 
   //no other vars to set?
 

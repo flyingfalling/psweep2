@@ -7,7 +7,8 @@ UNITTESTDIR=./unit_tests
 
 #default: scriptparser2.exe
 #default: test_cmd_script_parser.exe
-default: test_parampoint.exe
+#default: test_parampoint.exe
+default: test_searchalgo.exe
 
 HEADERFILES=$(INCLUDEDIR)/$*
 

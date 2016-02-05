@@ -1,7 +1,8 @@
 
-#pramga once
+#pragma once
 
 #include <filesender.h>
+#include <test_parampoint.h>
 
 void search_grid( const std::vector<std::string>& varnames,
 		  const std::vector<double>& mins,
@@ -57,7 +58,7 @@ void search_grid( const std::vector<std::string>& varnames,
   fprintf(stdout, "EXECUTING SEARCH GRID: Now doing COMP PP LIST\n");
   
   //Now, run on vls.
-  fs.comp_pp_list(pg, vls, workingworkers);
+  fs.comp_pp_list(pg, vls); //, workingworkers);
 
   fprintf(stdout, "Finished comp PP list, leaving search grid\n");
 }

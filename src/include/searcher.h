@@ -58,15 +58,22 @@
 #include <iterator>     // ostream_operator
 #include <boost/tokenizer.hpp>
 #include <math.h>
+//#include <boost/cstdfloat.hpp>
+//#include <stdfloat.h>
+//#include <stdint.h>
 
+typedef float float32_t;
+typedef double float64_t;
+typedef int int32_t;
+typedef long int int64_t;
 
 //GET CSV LINE?
 std::vector<std::vector<std::string>> parse_CSV_file( const std::string& fname, const char& sepchar )
 {
   std::ifstream in;
-  open_ifstream( in, fname.c_str() );
+  open_ifstream(  fname.c_str() , in);
   
-  typedef tokenizer< boost::escaped_list_separator<char> > Tokenizer;
+  typedef boost::tokenizer< boost::escaped_list_separator<char> > Tokenizer;
 
   boost::escaped_list_separator<char> sep('\\', sepchar, '\"');
 
@@ -76,9 +83,17 @@ std::vector<std::vector<std::string>> parse_CSV_file( const std::string& fname, 
 
   while( getline(in,line) )
     {
+      fprintf(stdout, "Parsing line...[%s]\n", line.c_str());
       std::vector< std::string > vec;
       Tokenizer tok(line, sep);
       vec.assign(tok.begin(),tok.end());
+
+      fprintf(stdout, "Got vect: [%ld]\n", vec.size());
+      for(size_t x=0; x<vec.size(); ++x)
+	{
+	  fprintf(stdout, " %s", vec[x].c_str());
+	}
+      fprintf(stdout, "\n");
       retvec.push_back( vec );
     }
 
@@ -92,6 +107,23 @@ std::vector<std::vector<std::string>> parse_CSV_file( const std::string& fname, 
 
 //Columns must be of regular types? Tagged data types? Need pointers to them. Too complex, someone has done this before damnit.
 //Use the other people's stuff.
+
+
+std::vector<size_t> find_string_in_vect( const std::string& targ, const std::vector<std::string>& vect )
+{
+  std::vector<size_t> locs;
+  for(size_t x=0; x<vect.size(); ++x)
+    {
+      if( targ.compare( vect[x] ) == 0 )
+	{
+	  locs.push_back( x );
+	}
+    }
+
+  return locs;
+  
+}
+
 struct data_table
 {
   std::vector< std::string > colnames;
@@ -104,22 +136,43 @@ struct data_table
   std::vector< std::string > dat;
   //Are these guaranteed to be contiguous? Crap...
   
-  size_t ncols;
-  size_t nrows;
+  size_t ncols=666;
+  size_t nrows=666;
 
-  bool has_colnames=false;
-  bool has_rownames=false;
+  bool has_colnames;
+  bool has_rownames;
   
   //We could do these by "name" as well. Easiest is 0, 0 of course.
   size_t colnum_of_rownames;
   size_t rownum_of_colnames;
-  
 
-  data_table( const std::string& fname )
+
+  void enumerate()
+  {
+    for(size_t x=0; x<colnames.size(); ++x)
+      {
+	fprintf(stdout, "%20s ", colnames[x].c_str() );
+      }
+    fprintf(stdout, "\n");
+
+    for(size_t x=0; x<nrows; ++x)
+      {
+	for(size_t y=0; y<ncols; ++y)
+	  {
+	    fprintf(stdout, "%20s ", get_val( y, x ).c_str()); 
+	  }
+	fprintf(stdout, "\n");
+      }
+  }
+
+  data_table( const std::string& fname, const bool& hascolnames )
   {
     //Call the other constructor
     char sep = ' '; //REV: do more intelligent, e.g. any spaces.
-    data_table( parse_CSV_file( fname , sep), true );
+    construct( parse_CSV_file( fname , sep), hascolnames );
+    
+    fprintf(stdout, "CONSTRUCTED DATA TABLE: cols [%ld], rows [%ld]\n", ncols, nrows );
+    enumerate();
   }
   
   static std::vector<float64_t> to_float64( const std::vector<std::string>& vect )
@@ -163,16 +216,22 @@ struct data_table
   }
   
   //REV: Need unique key column? If not, make one?
-  data_table( const std::vector< std::vector< std::string> >& tbl, const bool& first_col_head=true )
+  void construct( const std::vector< std::vector< std::string> >& tbl, const bool& first_col_head )
   {
-    if(first_col_head)
+
+    fprintf(stdout, "data_table ctor, got table of size: nrows [%ld], ncols: [%ld]\n", tbl.size(), tbl[0].size() );
+    
+    if(first_col_head == true)
       {
+	has_colnames = true;
 	colnames = tbl[0];
 	rownum_of_colnames = 0;
 
 	nrows = tbl.size() - 1;
 	ncols = tbl[0].size();
 
+	
+	
 	for( size_t r=1; r<tbl.size(); ++r)
 	  {
 	    for(size_t x=0; x<tbl[r].size(); ++x)
@@ -183,6 +242,7 @@ struct data_table
       }
     else
       {
+	has_colnames = false;
 	nrows = tbl.size();
 	ncols = tbl[0].size();
 	colnames.resize( tbl[0].size(), "NOCOLNAME");
@@ -203,13 +263,15 @@ struct data_table
   {
     if( !has_colnames )
       {
+	fprintf(stdout, "ERROR HAS NO COLUMN NAMES (GET_COL colname)\n");
 	exit(1);
       }
     
     std::vector<size_t> locs = find_string_in_vect( colname, colnames );
     
-    if( locs != 1 )
+    if( locs.size() != 1 )
       {
+	fprintf(stdout, "ERROR MORE THAN ONE OF NAME [%s]\n", colname.c_str());
 	exit(1);
       }
 
@@ -240,13 +302,15 @@ struct data_table
   {
     if( !has_rownames )
       {
+	fprintf(stdout, "ERROR HAS NO ROW NAMES\n");
 	exit(1);
       }
     
     std::vector<size_t> locs = find_string_in_vect( rowname, rownames );
     
-    if( locs != 1 )
+    if( locs.size() != 1 )
       {
+	fprintf(stdout, "ERROR MORE THAN ONE OF NAME [%s]\n", rowname.c_str());
 	exit(1);
       }
 
@@ -286,6 +350,7 @@ struct data_table
   {
     if( !has_rownames || !has_colnames )
       {
+	fprintf(stdout, "ERROR HAS NO ROW OR COLUMN NAMES\n");
 	exit(1);
       }
     
@@ -294,6 +359,8 @@ struct data_table
 
     if( clocs.size() != 1 || rlocs.size() != 1)
       {
+	fprintf(stdout, "ERROR MORE THAN ONE OF NAME [%s]\n", colname.c_str());
+	fprintf(stdout, "ERROR MORE THAN ONE OF NAME [%s]\n", rowname.c_str());
 	exit(1);
       }
 
@@ -307,7 +374,7 @@ struct data_table
 
 
 //varlist will contain required um, data files I guess?
-void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, const varlist<std::string>& params )
+void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params )
 {
   
   parampoint_generator pg(scriptfname, mydir);
@@ -318,11 +385,13 @@ void run_search( const std::string& searchtype, const std::string& scriptfname, 
   
   if( searchtype.compare( "grid" ) == 0 )
     {
-
       
-      std::string minmaxfname = params.getTvar( "GRID_MIN_MAX_STEP_FILE" );
-      data_table dtable( minmaxfname );
+      std::string varname = "GRID_MIN_MAX_STEP_FILE";
+      std::string minmaxfname = params.getTvar( varname );
 
+      bool hascolnames = true;
+      data_table dtable( minmaxfname, hascolnames );
+      
       std::vector<std::string> varnames = dtable.get_col( "NAME" );
       std::vector<double> mins = data_table::to_float64( dtable.get_col( "MAX" ) );
       std::vector<double> maxes = data_table::to_float64( dtable.get_col( "MIN" ) );

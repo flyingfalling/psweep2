@@ -357,7 +357,7 @@ struct varlist
     return;
   }
 
-  variable<T> getvar( const std::string& _varname )
+   variable<T> getvar( const std::string& _varname )
   {
     std::vector<size_t> locs = getname( _varname );
     if(locs.size() < 1)
@@ -376,7 +376,7 @@ struct varlist
     
   }
 
-  T getTvar( const std::string& _varname )
+   T getTvar( const std::string& _varname )
   {
     std::vector<size_t> locs = getname( _varname );
     if(locs.size() < 1)
@@ -393,7 +393,7 @@ struct varlist
     return vars[ locs[0] ].get_s();
   }
 
-  std::vector<T> getArrayvar( const std::string& _varname )
+   std::vector<T> getArrayvar( const std::string& _varname )
   {
     std::vector<size_t> locs = getname( _varname );
     if(locs.size() < 1)
@@ -415,7 +415,7 @@ struct varlist
     std::vector<size_t> rlocs;
     for(size_t x=0; x<vars.size(); ++x)
       {
-	if( name == vars[x].name )
+	if( name.compare( vars[x].name ) == 0 )
 	  {
 	    rlocs.push_back(x);
 	  }
