@@ -10,6 +10,35 @@
 #include <H5Cpp.h>
 
 
+std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats);
+
+std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats)
+{
+  std::vector<std::string> res;
+  
+  /* REV: size_t is uint? */
+  size_t prev = 0;
+  size_t next = 0;
+
+  /* npos is -1 */
+  while ((next = source.find_first_of(delim, prev)) != std::string::npos)
+    {
+      if (include_empty_repeats || ((next-prev) != 0) )
+        {
+	  res.push_back(source.substr(prev, (next-prev)) );
+        }
+      prev = next + 1;
+    }
+
+  /* REV: push back remainder if there is anything left (i.e. after the last token?) */
+  if (prev < source.size())
+    {
+      res.push_back(source.substr(prev));
+    }
+
+  return res;
+}
+
 typedef struct hdf5_dirnames_t
 {
   std::vector<std::string> currpath;
@@ -415,10 +444,13 @@ struct matrix_props
   void load_matrix( const std::string& matname, const std::vector<std::string>& varnames, H5::H5File& f )
   {
 
-    name = matname;
+    //REV: Pain in the ass the name will start with root "/". Will it
+    //double up?
+    std::vector<std::string> tokenized = tokenize_string(matname, "/", false);
+    name = tokenized[tokenized.size()-1];
     
     //Load it from the existing file.
-    dataset = f.openDataSet( matname );
+    dataset = f.openDataSet( name );
 
     
     get_dset_size( my_nrows, my_ncols );
@@ -494,6 +526,7 @@ struct hdf5_collection
   {
     matrix_props mp1;
     mp1.load_matrix(matname, varnames, file);
+    matrices.push_back(mp1);
   }
 
   size_t get_num_rows( const std::string& matname )
@@ -555,8 +588,25 @@ struct hdf5_collection
   {
     file = H5::H5File( fname, H5F_ACC_RDWR );
     //Read all the datasets in there. That requires me enumerating them.
+
+    std::vector<std::string> toload = matrix_names_from_file();
+    for(size_t x=0; x<toload.size(); ++x)
+      {
+	//REV: TODO need to load varnames from file too. FOr now fudge it.
+	std::vector<std::string> a;
+	load_matrix( toload[x], a );
+      }
   }
 
+  std::vector<std::string> matrix_names_from_file()
+  {
+    std::vector<std::string> datnames = enumerate_hdf5_dir( file, "/" );
+    /*for(size_t x=0; x<datnames.size(); ++x)
+      {
+	fprintf(stdout, "DATASET [%ld]: [%s]\n", x, datnames[x].c_str() );
+	}*/
+    return datnames;
+  }
   void enumerate_matrix( const std::string& matname )
   {
     std::vector< size_t > locs = find_matrix( matname );

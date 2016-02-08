@@ -2,9 +2,47 @@
 
 
 
-int main()
+void dotest( hdf5_collection& col )
 {
-  std::string testfname = "test.h5";
+
+  std::string mat1n = "mat1";
+  std::string mat2n = "mat2";
+  
+  std::vector<std::vector<double> > ret = col.read_row_range( mat1n, 2, 3 );
+
+  fprintf(stdout, "Reading row range from 2 to 3 of matrix 1 (i.e. 3rd to 4th row)\n");
+  for(size_t x=0; x<ret.size(); ++x)
+    {
+      for(size_t y=0; y<ret[x].size(); ++y)
+	{
+	  fprintf(stdout, "%5.3lf ", ret[x][y]);
+	}
+      fprintf(stdout, "\n");
+    }
+
+
+  std::vector<double> ret2 = col.read_row( mat2n, 3 );
+
+  fprintf(stdout, "Reading row range 3 from matrix 2 (i.e. only 4th row)\n");
+  for(size_t x=0; x<ret.size(); ++x)
+    {
+      fprintf(stdout, "%5.3lf ", ret2[x]);
+    }
+  fprintf(stdout, "\n");
+  
+}
+
+
+void loadfile(const std::string& testfname)
+{
+  hdf5_collection col;
+  col.load_collection(testfname);
+  fprintf(stdout, "\n\n\n\n\n\n\n LOADED NOW!\n");
+  dotest( col );
+}
+  
+void buildfile(const std::string& testfname)
+{
   
   hdf5_collection col;
   col.new_collection(testfname);
@@ -50,29 +88,20 @@ int main()
   col.enumerate_matrix( mat1n );
   col.enumerate_matrix( mat2n );
 
-
-  std::vector<std::vector<double> > ret = col.read_row_range( mat1n, 2, 3 );
-
-  fprintf(stdout, "Reading row range from 2 to 3 of matrix 1 (i.e. 3rd to 4th row)\n");
-  for(size_t x=0; x<ret.size(); ++x)
-    {
-      for(size_t y=0; y<ret[x].size(); ++y)
-	{
-	  fprintf(stdout, "%5.3lf ", ret[x][y]);
-	}
-      fprintf(stdout, "\n");
-    }
-
-
-  std::vector<double> ret2 = col.read_row( mat2n, 3 );
-
-  fprintf(stdout, "Reading row range 3 from matrix 2 (i.e. only 4th row)\n");
-  for(size_t x=0; x<ret.size(); ++x)
-    {
-      fprintf(stdout, "%5.3lf ", ret2[x]);
-    }
-  fprintf(stdout, "\n");
+  dotest( col );
   
+}
+
+int main()
+{
+  std::string testfname = "test.h5";
+
+  buildfile(testfname);
+  //At end it should destruct it right?
+
+  loadfile(testfname);
+  
+  //auto a = col.matrix_names_from_file();
   
   //Close it and reload the file? First run it.
 }
