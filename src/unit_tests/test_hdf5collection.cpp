@@ -4,12 +4,16 @@
 //single small datasets that I can save arbitrary parameters of the sweep
 //so that I can load it quickly (do I need to? Params should be saved?)
 
+//For now hack it and store it as a "params" data set, with varnames and values that are all doubles... Some of them are ints though.
+//I.e. make the same one for ints, to store int-like guys. That's all I need I guess...
+//Have a string one store the type as well I guess. They are more like attributes...hmmm.
+//Note really want to store min/max of all vars etc.
 
-//Add the char name thing to save varnames so it doesnt mess up after I load.
+//#### Add the char name thing to save varnames so it doesnt mess up after I load.
 
 //Make it save the HDF5 stuff via the file saving thing in a separate HDF5 file
 
-//Make simple thing to output HDF5 to text file for simplicity of visualization
+//#### Make simple thing to output HDF5 to text file for simplicity of visualization
 
 //Make it call model from memory (via notes)
 

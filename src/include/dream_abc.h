@@ -10,13 +10,88 @@
 //REV: pass other specific variables, like numgens etc.
 //Need a way to do all of it.
 
+
+//REV: Would like to save all these things to HD5 file so we can restart at any time given this STATE and the PARAMS below.
+//Can do this, need to have int type and double type only, and store them as kind of "VAR" "VAL" type thing... Ugliest is to store them as strings haha.
+//REV: I will include a MATRIX of guys of history, and current guys, which will just be access functions I guess.
+
+//So much easier to save all VARIABLES and PARAMS together, although state is reset, params are not if we want to e.g. run the same one over again.
+struct mt_dream_z_state
+{
+  size_t t_current_gen;
+  size_t M_size_Z;
+  
+  std::vector<float64_t> pCR_CR_probs;
+  std::vector<float64_t> DeltaCR_norm_sq_jumpdists;
+  std::vector<size_t> CR_used_indices;
+  std::vector<size_t> CR_counts;
+  std::vector<size_t> GR_values;
+
+  std::vector<float64_t> pdelta_delta_probs;
+  std::vector<size_t> delta_used_probs;
+
+  std::vector<std::vector<size_t>> mt_CR_used_indices;
+  std::vector<std::vector<size_t>> mt_delta_used_indices;
+};
+
+struct mt_dream_z_params
+{
+  size_t T_max_gens;
+  size_t N_num_chains;
+  size_t d_num_dims;
+  size_t n_delta;
+  size_t M0_start_size_Z;
+  size_t K_thinning_factor_Z;
+  size_t k_num_mt;
+  float64_t b_uniform_noise_radius;
+  float64_t bstar_gauss_noise_std;
+  float64_t R_GR_thresh;
+  size_t GR_skip_gens;
+  size_t nCR_num_pairs;
+  size_t pCR_skip_gens;
+  size_t p_jump;
+  std::vector<std::string> dim_names;
+  std::vector<float64_t> dim_mins;
+  std::vector<float64_t> dim_mins;
+};
+
+struct mt_dream_z
+{
+  mt_dream_z_params params;
+  mt_dream_z_state state;
+
+  void run()
+  {
+    // 1 compute initial population M0
+
+    // 2 while not finished with max generations, compute the next generation
+    
+    
+  }
+  
+};
+
+
+void search_mt_dream_z( const std::vector<std::string>& varnames,
+			const std::vector<double>& mins,
+			const std::vector<double>& maxes,
+			parampoint_generator& pg,
+			filesender& fs )
+{
+  
+}
+
+
+//REV: First implement MT-DREAM-Z
 void search_dream_abc( const std::vector<std::string>& varnames,
 		       const std::vector<double>& mins,
 		       const std::vector<double>& maxes,
 		       parampoint_generator& pg,
 		       filesender& fs )
 {
-
+  
+  
+  
   
   
   

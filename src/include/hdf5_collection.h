@@ -482,6 +482,26 @@ struct matrix_props
       }
     fprintf(stdout, "\n");
   }
+
+  //Need to do this incrementally incase there is a problem
+  void enumerate_to_file( FILE* f, size_t skip=1 )
+  {
+    std::vector<std::vector<double> > ret = read_whole_dataset();
+    for(size_t x=0; x<my_colnames.size(); ++x)
+      {
+	fprintf(f, "%s ", my_colnames[x].c_str() );
+      }
+    fprintf(f, "\n");
+    
+    for( size_t x=1; x<ret.size(); x+=skip )
+      {
+	for(size_t y=0; y<ret[x].size(); ++y)
+	  {
+	    fprintf(f, "%lf ", ret[x][y]);
+	  }
+	fprintf(f, "\n");
+      }
+  }
     
   std::vector<std::string> read_string_dset( const std::string& dsname, H5::H5File& f )
   {
