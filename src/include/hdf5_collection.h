@@ -26,16 +26,9 @@
 //varlists from each I guess. Need to make sure they're in the "right order" for writing to file...? I guess alphabetical or something...?
 //All columns must have names I guess. String names. Note column names will be stored where? Keep it regularized? Like all must be of same shape?
 //Not necessarily true.
-struct hdf5_collection
-{
-  //H5std_string file_name; //( "SDS.h5" );
 
-  H5File file; //=NULL; //( FILE_NAME, H5F_ACC_TRUNC );
 
-  std::vector< matrix_props > matrices;
-    
-  
-  //We pass names.
+//We pass names.
   //Assume file exists, and is open.  
   struct matrix_props
   {
@@ -47,16 +40,12 @@ struct hdf5_collection
     //ACTUALLY allocated (with fill)
     //USED length (i.e. filled with my data)
     
-    DataSet dataset;
+    H5::DataSet dataset;
     //DataSpace dataspace;
     
-    void new_matrix( const std::string& dsetname, const std::vector<std::string>& _colnames )
+    void new_matrix( const std::string& dsetname, const std::vector<std::string>& _colnames, H5::H5File& f )
     {
-      if( file == NULL )
-	{
-	  fprintf(stderr, "ERROR, hdf5 file is null\n"); exit(1);
-	}
-      
+            
       const hsize_t ndims = 2;
       const hsize_t ncols = _colnames.size();
       const hsize_t nrows = 0; //start with zero rows.
@@ -65,10 +54,10 @@ struct hdf5_collection
       hsize_t  max_dims[ndims] = {H5S_UNLIMITED, ncols};
 
       //Create SPACE
-      DataSpace dataspace = DataSpace(ndims, dims, max_dims);
+      H5::DataSpace dataspace(ndims, dims, max_dims);
       
       //Create PROPERTIES
-      DSetCreatPropList prop;
+      H5::DSetCreatPropList prop;
       const hsize_t nrows_chunk = 100; //Need to mess with CACHE size too!
       hsize_t  chunk_dims[ndims] = { nrows_chunk, ncols};
       prop.setChunk(ndims, chunk_dims);
@@ -77,8 +66,8 @@ struct hdf5_collection
       
       //REV: assume its always native double..ugh. Sometimes I'll write ints though. Just do doubles for now...
       //Need to know type?
-      dataset =  file.createDataSet( dsetname, H5::PredType::NATIVE_DOUBLE,
-				     *dataspace, prop) ;
+      dataset =  f.createDataSet( dsetname, H5::PredType::NATIVE_DOUBLE,
+				     dataspace, prop) ;
       
     }
 
@@ -99,7 +88,7 @@ struct hdf5_collection
     {
       //Assume that order of colnames is same. Check that for sanity I guess.
       //Need to extend current dataset.
-      DataSpace origspace = dataset.getSpace();
+      H5::DataSpace origspace = dataset.getSpace();
 
       int rank = origspace.getSimpleExtentNdims();
       /*
@@ -109,13 +98,15 @@ struct hdf5_collection
       hsize_t dims_out[2];
       int ndims = origspace.getSimpleExtentDims( dims_out, NULL);
 
+      fprintf(stdout, "Got original data space (before extend). [%d] dims: [%lld] row [%lld] col\n", ndims, dims_out[0], dims_out[1] );
+      
       if( dims_out[1] != colnames.size() )
 	{
 	  fprintf(stdout, "ERROR, got #cols in hdf5 file datset != expected number trying to add\n");
 	  exit(1);
 	}
-
-            
+      
+      
       hsize_t     offset[2] = { dims_out[0], 0 }; //row offset, column offset. Row offset should be equal to current #rows right?
       hsize_t     dims_toadd[2] = { toadd.size(), colnames.size() };
       
@@ -130,42 +121,116 @@ struct hdf5_collection
       origspace.selectHyperslab( H5S_SELECT_SET, dims_toadd, offset );
 
       //Define the dataspace of the data to write.
-      DataSpace toaddspace( ndims, dims_toadd );
+      H5::DataSpace toaddspace( ndims, dims_toadd );
+
+      //REV: Make contiguous data...
+      //Row first (i.e. same rows data is grouped) order...
+
+      double vec[toadd.size()][toadd[0].size()];
       
-      dataset.write( toadd, H5::PRED_TYPE::NATIVE_DOUBLE, toaddspace, origspace );
+      //std::vector<double> vec( toadd.size() * toadd[0].size() );
+      for(size_t x=0; x<toadd.size(); ++x)
+	{
+	  for(size_t y=0; y<toadd[x].size(); ++y )
+	    {
+	      vec[x][y] = toadd[x][y];
+	      //vec[ x*toadd[0].size() + y] = toadd[x][y];
+	    }
+	}
       
+      //dataset.write( toadd.data(), H5::PredType::NATIVE_DOUBLE, toaddspace, origspace );
+      //dataset.write( vec.data(), H5::PredType::NATIVE_DOUBLE, toaddspace, origspace );
+      dataset.write( vec, H5::PredType::NATIVE_DOUBLE, toaddspace, origspace );
+
+      fprintf(stdout, "Finished writing\n");
     }
 
     std::vector< std::vector<double> > read_whole_dataset()
     {
-      DataSpace origspace = dataset.getSpace();
+      H5::DataSpace origspace = dataset.getSpace();
 
       int rank = origspace.getSimpleExtentNdims();
-
+      
       hsize_t dims_out[2];
-
+      
       int ndims = origspace.getSimpleExtentDims( dims_out, NULL);
       
-      if( dims_out[1] != colnames.size() )
+      /*if( dims_out[1] != colnames.size() )
 	{
-	  fprintf(stdout, "ERROR, got #cols in hdf5 file datset != expected number trying to add\n");
+	fprintf(stdout, "ERROR, got #cols in hdf5 file datset != expected number trying to add\n");
+	exit(1);
+	}*/
+
+      std::vector<std::vector<double> > retvect(dims_out[0], std::vector<double>(dims_out[1]) );
+      double vec[dims_out[0]][dims_out[1]];
+      //dataset.read( retvect.data(), H5::PredType::NATIVE_DOUBLE );
+      dataset.read( vec, H5::PredType::NATIVE_DOUBLE );
+
+      for(size_t x=0; x<retvect.size(); ++x)
+	{
+	  for(size_t y=0; y<retvect[x].size(); ++y)
+	    {
+	      retvect[x][y] = vec[x][y];
+	    }
+	}
+      
+      return retvect;
+    }
+    
+    std::vector< std::vector<double> > read_row_range( const size_t& startrow, const size_t& endrow)
+    {
+      
+      //Basically create hyperslab, and then just read that to a correct size local thing.
+      H5::DataSpace origspace = dataset.getSpace();
+      
+      int rank = origspace.getSimpleExtentNdims();
+      
+      hsize_t dims_out[2];
+      
+      int ndims = origspace.getSimpleExtentDims( dims_out, NULL);
+
+      size_t ncolread = dims_out[1];
+      
+      if( endrow >= dims_out[0] )
+	{
+	  fprintf(stderr, "SUPER ERROR, trying to read past end of matrix\n");
 	  exit(1);
 	}
 
-      std::vector<std::vector<double> > retvect(dims_out[0], std::vector<double>(dims_out[1]) );
-      dataset.read( retvect, H5::PredType::NATIVE_DOUBLE );
+      if( endrow < startrow)
+	{
+	  fprintf(stderr, "ERROR, endrow <= startrow [%ld] vs [%ld]\n", endrow, startrow);
+	  exit(1);
+	}
+      //If this is zero, we read only 1 row???
+      size_t nrowread = endrow-startrow+1; //+1 for reading single row
+      double vec[ nrowread ][ ncolread ];
+
+      hsize_t dimsmem[ndims] = {nrowread, ncolread};
+      
+      //Tells size of vect in mem to write to.
+      H5::DataSpace memspace(ndims, dimsmem);
+      
+      hsize_t offset[ndims] = { startrow, 0 };
+      
+      origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
+      
+      dataset.read( vec, H5::PredType::NATIVE_DOUBLE, memspace, origspace );
+
+      std::vector<std::vector<double>> retvect( nrowread, std::vector<double>(ncolread) );
+      
+      for(size_t x=0; x<retvect.size(); ++x)
+	{
+	  for(size_t y=0; y<retvect[x].size(); ++y)
+	    {
+	      retvect[x][y] = vec[x][y];
+	    }
+	}
 
       return retvect;
     }
     
-    std::vector<double> read_row()
-    {
-      
-      //dataset.read( data_out, PredType::NATIVE_INT );
-      
-    }
-    
-    void enum_dataset()
+    void enumerate()
     {
       fprintf(stdout, "Will enum data set:\n\n");
       std::vector<std::vector<double> > ret = read_whole_dataset();
@@ -181,7 +246,7 @@ struct hdf5_collection
     }
     
 
-    void load_matrix
+    void load_matrix()
     {
       
     }
@@ -199,7 +264,18 @@ struct hdf5_collection
     
   };
   
+
+struct hdf5_collection
+{
+  //H5std_string file_name; //( "SDS.h5" );
+
+  H5::H5File file; // =NULL; //( FILE_NAME, H5F_ACC_TRUNC );
+
   
+    
+  
+  
+  std::vector< matrix_props > matrices;
   //state. We keep all datasets "open".
   
   //Will either load from memory, or create a new one.
@@ -214,6 +290,8 @@ struct hdf5_collection
     file = H5::H5File( fname, H5F_ACC_TRUNC );
     
   }
+
+  
 
   //Opens existing as user specifies. Loads all the matrix_props etc. as user expects.
   void load_collection( const std::string& fname )
