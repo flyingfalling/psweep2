@@ -182,6 +182,7 @@ struct data_table
     std::vector<float64_t> ret( vect.size() );
     for(size_t x=0; x<vect.size(); ++x)
       {
+	fprintf(stdout, "Double-izing [%s]\n", vect[x].c_str());
 	ret[x] = std::stod(vect[x]);
       }
     return ret;
@@ -270,6 +271,8 @@ struct data_table
       }
     
     std::vector<size_t> locs = find_string_in_vect( colname, colnames );
+
+    fprintf(stdout, "I think that colname [%s] is colidx [%ld]\n", colname.c_str(), locs[0] );
     
     if( locs.size() != 1 )
       {
@@ -285,7 +288,7 @@ struct data_table
     for( size_t iter=0; iter<nrows; ++iter )
       {
 	size_t t= colnum + (ncols * iter);
-	ret[iter] = dat[iter];
+	ret[iter] = dat[t];
       }
     return ret;
   }
@@ -332,10 +335,10 @@ struct data_table
 
     //REV: is there a better copy iter?
     //for( size_t iter=colnum; iter<dat.size(); iter+=skip )
-    for( size_t iter=0; iter<ncols; ++iter )
+    for( size_t iter=0; iter<nrows; ++iter )
       {
 	size_t t= colnum + (ncols * iter);
-	ret[iter] = dat[iter];
+	ret[iter] = dat[t];
       }
     return ret;
   }
@@ -388,6 +391,10 @@ void run_search( const std::string& searchtype, const std::string& scriptfname, 
 {
   
   parampoint_generator pg(scriptfname, mydir);
+
+  //REV: PG contains the "results" of each... parampoint_results, of type parampoint_result.
+  //That is: list of pset results, each of which has list of pitem results (specifically, varlist).
+  //OK, I can access those however I wish, e.g. I know last is the only one I care about etc.
   
   filesender* fs = filesender::Create();
   
@@ -406,9 +413,9 @@ void run_search( const std::string& searchtype, const std::string& scriptfname, 
       std::vector<std::string> varnames = dtable.get_col( "NAME" );
 
       fprintf(stdout, "Got varnames\n");
-      std::vector<double> mins = data_table::to_float64( dtable.get_col( "MAX" ) );
+      std::vector<double> mins = data_table::to_float64( dtable.get_col( "MIN" ) );
       fprintf(stdout, "Got mins\n");
-      std::vector<double> maxes = data_table::to_float64( dtable.get_col( "MIN" ) );
+      std::vector<double> maxes = data_table::to_float64( dtable.get_col( "MAX" ) );
       std::vector<double> steps = data_table::to_float64( dtable.get_col( "STEP" ) );
 
       fprintf(stdout, "Got STEP\n");
@@ -417,7 +424,13 @@ void run_search( const std::string& searchtype, const std::string& scriptfname, 
       //name PARAMS, etc.? Probably got from a file at beginning... Some special way of reading that...it should know varnames? 
       search_grid( varnames, mins, maxes, steps, pg, *fs);
     }
-  else if( searchtype.compare( "ABC" ) == 0 )
+  else if( searchtype.compare( "DREAM-ABC" ) == 0 )
+    {
+      
+      
+      //Implement the algorithm...requires quite a bit of messing? Note, what is OUTPUT??? It's the passed PG
+    }
+  else if( searchtype.compare( "MT-DREAM-zs" ) == 0 )
     {
       
     }

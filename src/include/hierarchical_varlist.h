@@ -10,7 +10,7 @@ struct hierarchical_varlist
   std::vector< std::vector< size_t > > children;
   std::vector< size_t > parents; //who is the parent of root "0"? There is none.
   
-  const size_t get_parent( const size_t v )
+  const size_t get_parent( const size_t& v )
   {
     if(v == 0)
       {
@@ -30,7 +30,7 @@ struct hierarchical_varlist
   }
 
 
-  void tofile( const std::string& fname, const size_t starti )
+  void tofile( const std::string& fname, const size_t& starti )
   {
     if(starti==0)
       {
@@ -59,7 +59,7 @@ struct hierarchical_varlist
     
   } //end tofile.
   
-  const std::vector<size_t> get_children( const size_t v )
+  const std::vector<size_t> get_children( const size_t& v )
   {
     if( v < children.size() )
       {
@@ -94,7 +94,7 @@ struct hierarchical_varlist
 
 
   //Depth can actually be inferred by checking # jumps to root.
-  void recursively_enumerate(size_t node_idx, size_t depth) //need depth? For number of tabs?
+  void recursively_enumerate(const size_t& node_idx, const size_t& depth) //need depth? For number of tabs?
   {
     if(node_idx >= vl.size() )
       {
@@ -136,7 +136,7 @@ struct hierarchical_varlist
   
 
   
-  size_t find_var_in_hierarchy( const std::string& varname, const size_t startvl_idx, std::vector< size_t >& vl_indices, std::vector< size_t >& v_indices )
+  size_t find_var_in_hierarchy( const std::string& varname, const size_t& startvl_idx, std::vector< size_t >& vl_indices, std::vector< size_t >& v_indices )
   {
     size_t searchi=startvl_idx;
     //While not root.
@@ -151,7 +151,11 @@ struct hierarchical_varlist
 	    vl_indices.push_back(searchi);
 	    v_indices.push_back(namelocs[x]);
 	  }
+
+	//size_t tm=searchi;
+	
 	searchi = get_parent( searchi );
+	//fprintf(stdout, "Got parent! (%ld to %ld)\n", tm, searchi );
 	//fprintf(stdout, "Got parent of %ld: it is: %ld\n", searchi, get_parent(searchi));
       }
 
@@ -216,6 +220,7 @@ struct hierarchical_varlist
 	//fprintf(stderr, "REV: WARNING: get_array_var in hierarchical (while trying to set var): more than one instance found! (Var=[%s]). Will set leaf-most by default\n", targ.c_str());
 	//enumerate();
 	//exit(1);
+	//REV: what the heck? This should still grab the LEAF-most node!!!
 	vl[ vl_indices[0] ].setvar( targ, _v );
       }
     else if( nfound == 0 )

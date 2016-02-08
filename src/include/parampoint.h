@@ -430,8 +430,9 @@ struct pitem
     
     //ghetto hack. GLOBAL namespace doesn't exist.
     hv = hvl[0];
-
     
+
+    //Getting input file NAME to here.
     input_file = hv.get_val_var( "__MY_INPUT_FILE", my_hierarchical_idx );
     
     hv.add_to_var( "__MY_REQUIRED_FILES" , input_file, my_hierarchical_idx );
@@ -480,7 +481,11 @@ struct pitem
     
     //REV: here is the problem, it was outputting ALL local variables to the INPUT file of the user...crap.
     //hv.tofile( input_file, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
-    hv.tofile( input_file, 0); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
+
+    //REV: AH, I am outputting 0th HV index to input_file! This is why it is only the bottommost.
+    //Ideally I should do each, leaving "most leaf-most" values of same guys as the same?
+    
+    hv.tofile( input_file, 0 ); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
     
     //Input files are REQUIRED files (by default, might be checked twice oh well).
     //Furthermore, output files are SUCCESS files (fails and tries to re-run without their creation of course).
