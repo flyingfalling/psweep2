@@ -1,5 +1,25 @@
 #include <hdf5_collection.h>
 
+//REV: TODO now just create a status file or something, i.e.
+//single small datasets that I can save arbitrary parameters of the sweep
+//so that I can load it quickly (do I need to? Params should be saved?)
+
+
+//Add the char name thing to save varnames so it doesnt mess up after I load.
+
+//Make it save the HDF5 stuff via the file saving thing in a separate HDF5 file
+
+//Make simple thing to output HDF5 to text file for simplicity of visualization
+
+//Make it call model from memory (via notes)
+
+
+
+//Rewrite NSIM to use temporal data (expt file). I already output it so just
+//compare it right now.
+
+//Modify/rewrite NSIM to be better/run on GPU.
+
 
 
 void dotest( hdf5_collection& col )

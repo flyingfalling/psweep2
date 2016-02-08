@@ -200,7 +200,7 @@ struct matrix_props
   //USED length (i.e. filled with my data)
     
   H5::DataSet dataset;
-  H5::DataSet varnames_dataset;
+  //H5::DataSet colnames_dataset;
   //DataSpace dataspace;
 
   //Keep around local nrows and ncols, as well as var names.
@@ -208,7 +208,44 @@ struct matrix_props
 
   size_t my_nrows;
   size_t my_ncols;
-    
+
+  void write_varnames( const std::string& dsetname, const std::vector<std::string>& strings, H5::H5File& f)
+  {
+    H5::Exception::dontPrint();
+
+    try
+      {
+        // HDF5 only understands vector of char* :-(
+        std::vector<const char*> arr_c_str;
+        for (size_t ii = 0; ii < strings.size(); ++ii)
+	  {
+	    arr_c_str.push_back(strings[ii].c_str());
+	  }
+
+        //
+        //  one dimension
+        // 
+        hsize_t     str_dimsf[1] {arr_c_str.size()};
+        H5::DataSpace   dataspace(1, str_dimsf);
+
+        // Variable length string
+        H5::StrType datatype(H5::PredType::C_S1, H5T_VARIABLE); 
+        H5::DataSet str_dataset = f.createDataSet(dsetname, datatype, dataspace);
+
+        str_dataset.write(arr_c_str.data(), datatype);
+      }
+    catch (H5::Exception& err)
+      {
+        throw std::runtime_error(std::string("HDF5 Error in ")  
+				 + err.getFuncName()
+				 + ": "
+				 + err.getDetailMsg());
+	
+	
+      }
+  }
+  
+  
   void new_matrix( const std::string& dsetname, const std::vector<std::string>& _colnames, H5::H5File& f )
   {
     name = dsetname;
@@ -238,6 +275,12 @@ struct matrix_props
     //Need to know type?
     dataset =  f.createDataSet( dsetname, H5::PredType::NATIVE_DOUBLE,
 				dataspace, prop) ;
+
+    hsize_t vardim1=_colnames.size();
+
+    std::string col_dname = "__" + dsetname;
+    //colnames_dataset = f.createDataSet( col_dname, );
+    write_varnames(col_dname, _colnames, f);
     
   }
 
@@ -440,8 +483,40 @@ struct matrix_props
     fprintf(stdout, "\n");
   }
     
+  std::vector<std::string> read_string_dset( const std::string& dsname, H5::H5File& f )
+  {
+    H5::DataSet cdataset = f.openDataSet( dsname );
+    
 
-  void load_matrix( const std::string& matname, const std::vector<std::string>& varnames, H5::H5File& f )
+    H5::DataSpace space = cdataset.getSpace();
+      
+    int rank = space.getSimpleExtentNdims();
+
+    hsize_t dims_out[1];
+    
+    int ndims = space.getSimpleExtentDims( dims_out, NULL);
+    
+    size_t length = dims_out[0];
+
+    std::vector<const char*> tmpvect( length, NULL );
+
+    fprintf(stdout, "In read STRING dataset, got number of strings: [%ld]\n", length );
+
+    std::vector<std::string> strs(length);
+    H5::StrType datatype(H5::PredType::C_S1, H5T_VARIABLE); 
+    cdataset.read( tmpvect.data(), datatype); // H5::PredType::C_S1 ); //datatype );
+
+    for(size_t x=0; x<tmpvect.size(); ++x)
+      {
+	fprintf(stdout, "GOT STRING [%s]\n", tmpvect[x] );
+	strs[x] = tmpvect[x];
+      }
+    
+    return strs;
+  }
+  
+  //void load_matrix( const std::string& matname, const std::vector<std::string>& varnames, H5::H5File& f )
+  void load_matrix( const std::string& matname, H5::H5File& f )
   {
 
     //REV: Pain in the ass the name will start with root "/". Will it
@@ -456,7 +531,7 @@ struct matrix_props
     get_dset_size( my_nrows, my_ncols );
     
     //Until we get them saved to HDF5 file...
-    my_colnames = varnames;
+    //my_colnames = varnames;
     
     //Read, make sure to set properly:
     //VARNAMES, MYNCOLS, MYNROWS, and NAME.
@@ -465,6 +540,13 @@ struct matrix_props
     //Alternatively, I could rename them? Assume user will have to
     //match them anyway...order will always be same? Always alphebetize
     //them...
+    
+    //Load from it...
+    
+    std::string colnamesds = "__" + name;
+    //fprintf(stdout, "Will call colnameds with name [%s]?!\n", colnamesds.c_str());
+    //colnames_dataset = f.openDataSet( colnamesds );
+    my_colnames = read_string_dset( colnamesds, f );
   }
     
   matrix_props() // const std::vector<std::string>& _colnames )
@@ -522,10 +604,11 @@ struct hdf5_collection
     return ret;
   }
 
-  void load_matrix( const std::string& matname, const std::vector<std::string>& varnames )
+  //void load_matrix( const std::string& matname, const std::vector<std::string>& varnames )
+  void load_matrix( const std::string& matname )
   {
     matrix_props mp1;
-    mp1.load_matrix(matname, varnames, file);
+    mp1.load_matrix(matname, file);
     matrices.push_back(mp1);
   }
 
@@ -588,13 +671,14 @@ struct hdf5_collection
   {
     file = H5::H5File( fname, H5F_ACC_RDWR );
     //Read all the datasets in there. That requires me enumerating them.
-
+    
     std::vector<std::string> toload = matrix_names_from_file();
     for(size_t x=0; x<toload.size(); ++x)
       {
-	//REV: TODO need to load varnames from file too. FOr now fudge it.
-	std::vector<std::string> a;
-	load_matrix( toload[x], a );
+	if( toload[x][0] != '_' && toload[x][1] != '_' )
+	  {
+	    load_matrix( toload[x] );
+	  }
       }
   }
 
