@@ -5,65 +5,74 @@
 int main()
 {
   std::string testfname = "test.h5";
-  std::string dname = "dset1";
-
-  hdf5_collection collection;
-  collection.new_collection(testfname);
-
-  matrix_props mp1;
-  std::vector<std::string> varnames = { "Var1", "Var2", "Var3" };
-  std::vector<std::vector<double> > dat1= {{1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}};
-  std::vector<std::vector<double> > dat2= {{7.0, 8.0, 9.0}, {10.0, 11.0, 12.0}, {13.0, 14.0, 15.0}};
-  std::vector<std::vector<double> > dat3= {{16.0, 17.0, 18.0}};
   
-  mp1.new_matrix(dname, varnames, collection.file);
+  hdf5_collection col;
+  col.new_collection(testfname);
+  
+  std::vector<std::string> varnames1 = { "Var1", "Var2", "Var3" };
+  std::vector<std::string> varnames2 = { "Var1", "Var2" };
+  std::vector<std::vector<double> > dat1_1= {{1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}};
+  std::vector<std::vector<double> > dat1_2= {{7.0, 8.0, 9.0}, {10.0, 11.0, 12.0}, {13.0, 14.0, 15.0}};
+  std::vector<std::vector<double> > dat1_3= {{16.0, 17.0, 18.0}};
 
-  fprintf(stdout, "Adding data 1\n");
-  mp1.add_data(varnames, dat1);
-  mp1.enumerate();
+  std::vector<std::vector<double> > dat2_1= {{1.0, 2.0}, {4.0, 5.0}};
+  std::vector<std::vector<double> > dat2_2= {{6.0, 7.0}, {8.0, 9.0}};
 
-  fprintf(stdout, "Adding data 2\n");
-  mp1.add_data(varnames, dat2);
-  mp1.enumerate();
+  std::string mat1n = "mat1";
+  std::string mat2n = "mat2";
+  
+  col.add_new_matrix( mat1n, varnames1 );
+  col.add_new_matrix( mat2n, varnames2 );
 
-  fprintf(stdout, "Adding data 3\n");
-  mp1.add_data(varnames, dat3);
-  mp1.enumerate();
 
-  std::vector<std::vector<double> > ret = mp1.read_row_range( 2, 3 );
+  //add to mat1
+  col.add_to_matrix(mat1n, varnames1, dat1_1);
+  col.enumerate_matrix( mat1n );
+  col.enumerate_matrix( mat2n );
 
-  fprintf(stdout, "Reading row range from 2 to 3 (i.e. 3rd to 4th row)\n");
+  //add to mat2
+  col.add_to_matrix(mat2n, varnames2, dat2_1);
+  col.enumerate_matrix( mat1n );
+  col.enumerate_matrix( mat2n );
+
+  //add to mat1
+  col.add_to_matrix(mat1n, varnames1, dat1_2);
+  col.enumerate_matrix( mat1n );
+  col.enumerate_matrix( mat2n );
+
+  //add to mat2
+  col.add_to_matrix(mat2n, varnames2, dat2_2);
+  col.enumerate_matrix( mat1n );
+  col.enumerate_matrix( mat2n );
+
+  //add to mat1
+  col.add_to_matrix(mat1n, varnames1, dat1_3);
+  col.enumerate_matrix( mat1n );
+  col.enumerate_matrix( mat2n );
+
+
+  std::vector<std::vector<double> > ret = col.read_row_range( mat1n, 2, 3 );
+
+  fprintf(stdout, "Reading row range from 2 to 3 of matrix 1 (i.e. 3rd to 4th row)\n");
   for(size_t x=0; x<ret.size(); ++x)
     {
       for(size_t y=0; y<ret[x].size(); ++y)
 	{
-	  fprintf(stdout, "%5.3f ", ret[x][y]);
+	  fprintf(stdout, "%5.3lf ", ret[x][y]);
 	}
       fprintf(stdout, "\n");
     }
 
 
-  ret = mp1.read_row_range( 5, 5 );
+  std::vector<double> ret2 = col.read_row( mat2n, 3 );
 
-  fprintf(stdout, "Reading row range from 5 to 5 (i.e. only 6th row)\n");
+  fprintf(stdout, "Reading row range 3 from matrix 2 (i.e. only 4th row)\n");
   for(size_t x=0; x<ret.size(); ++x)
     {
-      for(size_t y=0; y<ret[x].size(); ++y)
-	{
-	  fprintf(stdout, "%5.3f ", ret[x][y]);
-	}
-      fprintf(stdout, "\n");
+      fprintf(stdout, "%5.3lf ", ret2[x]);
     }
-
-  ret = mp1.read_row_range( 7, 7 );
-
-  fprintf(stdout, "Reading row range from 7 to 7 (i.e. only 8th row) (This should error and exit due to out of bounds)\n");
-  for(size_t x=0; x<ret.size(); ++x)
-    {
-      for(size_t y=0; y<ret[x].size(); ++y)
-	{
-	  fprintf(stdout, "%5.3f ", ret[x][y]);
-	}
-      fprintf(stdout, "\n");
-    }
+  fprintf(stdout, "\n");
+  
+  
+  //Close it and reload the file? First run it.
 }
