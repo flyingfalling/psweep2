@@ -34,3 +34,9 @@
 //if he wishes to do system() that way, in other words he can call
 //other programming langauges, or just have main() call the program with
 //the string array equal to argc/argv.
+
+struct fake_system
+{
+  //Has a functor that user calls. Must take a fake FS/varlist (i.e. compile his code to overwrite typical system guys with my fake ones ). Whatever.
+  //How does user read in values? Via BINARY or via DOUBLE.
+};

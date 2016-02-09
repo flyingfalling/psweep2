@@ -1,5 +1,20 @@
 #pragma once
 
+#include <string>
+#include <sstream>
+
+#include <boost/mpi.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
+
+#include <boost/filesystem.hpp>
+#include <fstream>
+
+#include <utility_functs.h>
+#include <vector>
+
+#include <memory>
+
 //REV: memory file. Holds a file in memory for ghetto way of passing to user program via memory.
 
 //REV: Need to make it archivable, so we can easily do the stuff there.
@@ -8,18 +23,60 @@ struct mem_file
 {
   std::string filename;
   std::vector< char > filedata;
+    
+  //Tell it to read as stuff or as binary...
+  //Allow user to call sscanf( filedata.data()+offset, "FORMAT", inputs )
+  //I.e. I need to wrap it orz.
+  
+  //Give user way to check EOF? Or he might try to read past the end of vector. Nah.
+  //OK, let him read binary stuff too?
 
+  //Give functions to read it as binary data, or as string data.
+  //If string data, user can just call sscanf, or we can make an isstringstream.
+  
+  std::istringstream get_string_stream( const size_t& start_byte_offset, const size_t& end_byte_offset )
+  {
+    //REV: Haha memcopying.
+    std::istringstream _ss( std::string(filedata.begin()+start_byte_offset, filedata.begin()+end_byte_offset) );
+    return _ss;
+  }
+
+  //REV: Move an internal pointer? No point, I'm not actually consuming anything.
+  template <typename T>
+  T get_from_binary( const size_t& byte_offset )
+  {
+    if( (byte_offset + sizeof( T )) >= filedata.size() )
+      {
+	fprintf(stderr, "ERROR, trying to get from offset [%ld], a type, which exceeds size of array [%ld]\n", byte_offset, filedata.size());
+	exit(1);
+      }
+    return *((T*)(filedata.data() + byte_offset));
+  }
+
+  template <typename T>
+  std::vector<T> get_array_from_binary( const size_t& byte_offset, const size_t& num_items )
+  {
+    if( (byte_offset + (num_items*sizeof( T ))) >= filedata.size() )
+      {
+	fprintf(stderr, "ERROR, trying to get ARRAY from offset [%ld] plus [%ld], a type, which exceeds size of array [%ld]\n", byte_offset, (num_items*sizeof( T )), filedata.size());
+	exit(1);
+      }
+    std::vector<T> ret(num_items);
+    std::copy( ret.data(), ret.data() + (num_items * sizeof(T)), filedata.data()+byte_offset );
+    return ret;
+  }
+  
   mem_file( const std::string& memfname, const std::vector<char>& content )
   {
     filedata=content;
-    ilename = memfname;
+    filename = memfname;
   }
   
   mem_file( const std::string& fname )
   {
     // open the file:
     std::streampos fileSize;
-    std::ifstream file(fname, std::ios::binary);
+    std::ifstream file(fname, std::ifstream::in | std::ios::binary);
     
     // get its size:
     file.seekg(0, std::ios::end);
@@ -56,7 +113,7 @@ struct mem_file
 
       open_ofstream( fullfname, ofs );
     
-      ofs.write( contents.data(), contents.size() );
+      ofs.write( filedata.data(), filedata.size() );
 
       //REV: does it work? Need to check sanity before I go?
     }
@@ -72,6 +129,58 @@ struct mem_file
 };
 
 
+struct memfile_ptr
+{
+  //Need PTRS to the mem_filesystem so I know where to find the arrays.
+  size_t dataptr=0;
+  std::shared_ptr<mem_file> mfile;
+  
+  //If stringstream moves it, I won't know.
+  std::istringstream get_string_stream( const size_t& start=0)
+  {
+    return mfile->get_string_stream( start, mfile->filedata.size() );
+  }
+
+  template < typename T >
+  std::vector<T> consume_array_from_binary( const size_t& num_items )
+  {
+    std::vector<T> ret = mfile->get_array_from_binary<T>( dataptr, num_items );
+    dataptr += (num_items * sizeof(T) );
+    return ret;
+  }
+
+  template < typename T >
+  T consume_from_binary( )
+  {
+    T ret = mfile->get_from_binary<T>( dataptr );
+    dataptr += sizeof(T);
+    return ret;
+  }
+  
+  template < typename T >
+  T peek_from_binary( )
+  {
+    T ret = mfile->get_from_binary<T>( dataptr );
+    return ret;
+  }
+
+  template < typename T >
+  std::vector<T> peek_array_from_binary( const size_t& num_items )
+  {
+    std::vector<T> ret = mfile->get_array_from_binary<T>( dataptr, num_items );
+    return ret;
+  }
+  //Memfile ptr never "owns" the memory, simply points to it.
+  
+  //I will actually modify it!!! Ah, don't need a pointer?
+  //No...I do. Fuck.
+  memfile_ptr( mem_file& mf )
+  {
+    mfile = std::shared_ptr<mem_file>(&mf); //Will this work...? Probably not orz.
+    dataptr = 0;
+  }
+};
+
 
 //REV: I don't want to have to try to rebase this...ugh.
 //Ohwell. Just give it some "arbitrary" name here haha.
@@ -82,7 +191,7 @@ struct mem_filesystem
   //When user reads, he reads from mem_filesystem (first?)
 
   //REV: REQUIRED for boost serialization (to send over MPI)
-  friend class boost::serialization::access;
+friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version)
   {
@@ -91,11 +200,24 @@ struct mem_filesystem
   
   std::deque< mem_file > filelist;
 
-  //std::vector<size_t> find_string_in_vect( std::string&
-  
+  std::vector<size_t> find_string_in_memfile_vect( const std::string& targ )
+  {
+    std::vector<size_t> ret;
+    for(size_t x=0; x<filelist.size(); ++x)
+      {
+	if( filelist[x].filename.compare( targ ) == 0 )
+	  {
+	    ret.push_back( x);
+	  }
+      }
+    return ret;
+  }
+
+
+
   std::vector<char> read_file( const std::string& fname )
   {
-    std::vector<size_t> locs = find_string_in_vect( fname, filelist );
+    std::vector<size_t> locs = find_string_in_memfile_vect( fname );
     if( locs.size() == 0 )
       {
 	//(attempt to) Open file from actual disk, and read it into std::vector<char>, and return that. In other words, user ONLY uses this
@@ -124,7 +246,7 @@ struct mem_filesystem
   
   void write_file( const std::string& fname, const std::vector<char>& towrite, bool append=true )
   {
-    std::vector<size_t> locs = find_string_in_vect( fname, filelist );
+    std::vector<size_t> locs = find_string_in_memfile_vect( fname );
     if( locs.size() == 0 )
       {
 	//(attempt to) Open file from actual disk, and read it into std::vector<char>, and return that. In other words, user ONLY uses this
@@ -157,7 +279,19 @@ struct mem_filesystem
     filelist.push_back( mf );
   }
 
-  
+  memfile_ptr get_ptr( const std::string& fname )
+  {
+    std::vector<size_t> locs = find_string_in_memfile_vect( fname );
+    if( locs.size() != 1 )
+      {
+	fprintf(stderr, "ERROR in get_ptr in memfile, more than one or zero files of target name [%s]\n", fname.c_str());
+	exit(1);
+      }
+
+    size_t idx = locs[0];
+
+    return memfile_ptr( filelist[idx] );
+  } //end get_ptr
   
   
 };

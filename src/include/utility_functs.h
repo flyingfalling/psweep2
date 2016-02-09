@@ -32,6 +32,22 @@
 
 
 
+std::vector<size_t> find_string_in_vect( const std::string& targ, const std::vector<std::string>& vect )
+{
+  std::vector<size_t> locs;
+  for(size_t x=0; x<vect.size(); ++x)
+    {
+      if( targ.compare( vect[x] ) == 0 )
+	{
+	  locs.push_back( x );
+	}
+    }
+
+  return locs;
+  
+}
+
+
 bool check_file_existence( const std::string& fname )
 {
   //if( access( fname.c_str(), F_OK ) != -1 )

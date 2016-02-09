@@ -42,5 +42,8 @@ test_searchalgo.exe: $(UNITTESTDIR)/test_searchalgo.cpp $(HEADERFILES)
 test_hdf5collection.exe: $(UNITTESTDIR)/test_hdf5collection.cpp $(HEADERFILES)
 	h5c++ --verbose $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_hdf5collection.cpp -o test_hdf5collection.exe
 
+test_memfile.exe: $(UNITTESTDIR)/test_memfile.cpp $(HEADERFILES)
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_memfile.cpp -o test_memfile.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
+
 clean:
 	rm *.exe *.o
