@@ -39,4 +39,16 @@ struct fake_system
 {
   //Has a functor that user calls. Must take a fake FS/varlist (i.e. compile his code to overwrite typical system guys with my fake ones ). Whatever.
   //How does user read in values? Via BINARY or via DOUBLE.
+
+  //Must take some kind of "arglist"?, as well as the fake FS.
+
+
+
+  //Before calling system, I call function (check if it exists). This requires some nastiness.
+
+  //When I actually call, first I check the list of SYSTEM calls. If I find one that matches it, I use it first. User has to set it up appropriately to have that
+  //name.
+  //Furthermore, what it will do is take the current (global?) fake filesystem with it as well. When it is called, it will take the same CMD list of variables with it.
+  //And it will parse those just like a CMD? But it will automatically have stuff output to STDOUT etc. Problem is user program will print to normal STDOUT, I need
+  //to make sure everything is redirected to a user-function corresponding file/memfile. I.e. fprintf, but to a memory file? sprintf, basically haha.
 };
