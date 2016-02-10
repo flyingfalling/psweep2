@@ -12,8 +12,9 @@ int main()
   varlist<std::string> vl;
   vl.addvar( variable<std::string>( "GRID_MIN_MAX_STEP_FILE", minmaxstepfile ) );
 
+    
   //no other vars to set?
-
+  
   std::string scriptfname = "../configs/test_parampoint.cfg";
   std::string mydir = "./testdir";
   

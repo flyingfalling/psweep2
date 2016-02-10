@@ -1,6 +1,6 @@
 #pragma once
 
-
+#include <memfile.h>
 
 //REV: fake system() call struct thing.
 //Basically, takes a function (?) pointer? User implements it
@@ -35,13 +35,84 @@
 //other programming langauges, or just have main() call the program with
 //the string array equal to argc/argv.
 
+//Basically user makes one of these, passes his wrapper function to it (must be a basic function that takes only the mem_filesystem and arglist with it)
+//REV; Haha why not just do the stuff my way...
+
+
+typedef std::vector<std::string>                    arg_list;
+typedef std::function< void( const std::vector<std::string>&, mem_filesystem& ) > fake_system_funct_t;
+
+
+struct fake_sys_rep
+{
+  std::string name;
+  fake_system_funct_t funct;
+
+  fake_sys_rep( const std::string& s, const   fake_system_funct_t f )
+  {
+    name = s;
+    funct = f;
+  }
+
+};
+
 struct fake_system
 {
   //Has a functor that user calls. Must take a fake FS/varlist (i.e. compile his code to overwrite typical system guys with my fake ones ). Whatever.
   //How does user read in values? Via BINARY or via DOUBLE.
 
-  //Must take some kind of "arglist"?, as well as the fake FS.
+  mem_filesystem my_filesys;
+  std::vector< fake_sys_rep > sys_functs;
 
+  fake_system( )
+  {
+  }
+  
+  //Must take some kind of "arglist"?, as well as the fake FS.
+  fake_system( mem_filesystem& mf )
+  {
+    my_filesys = mf;
+  }
+
+  
+  
+  void register_funct( const std::string& name, const fake_system_funct_t& funct )
+  {
+    fake_sys_rep fsr( name, funct );
+    sys_functs.push_back( fsr );
+  }
+
+  bool call_funct( const std::string& name, const std::vector<std::string>& args )
+  {
+    std::vector<size_t> locs;
+    for(size_t x=0; x<sys_functs.size(); ++x)
+      {
+	if( name.compare( sys_functs[x].name ) == 0 )
+	  {
+	    locs.push_back(x);
+	    //Call it
+	    //sys_functs[x].funct( args, my_filesys );
+	  }
+	 
+      }
+    if(locs.size() == 1 )
+      {
+	sys_functs[ locs[0] ].funct( args, my_filesys );
+	return true;
+      }
+    else if( locs.size() > 1 )
+      {
+	fprintf(stderr, "WARNING ERROR!? In fake system, user you have registered more than one funct of same name [%s]\n", name.c_str());
+	sys_functs[ locs[0] ].funct( args, my_filesys );
+	return true;
+	//exit(1);
+      }
+    else
+      {
+	return false; //didn't call it. Assume user will do something with me...?  Crap user will need to handle crap like 1>stdout.out etc. in arg list?
+	//Couldn't find it, call it with system for real...
+      }
+  }
 
 
   //Before calling system, I call function (check if it exists). This requires some nastiness.

@@ -110,6 +110,11 @@ std::string get_file_contents(const std::string filename)
       in.close();
       return(contents);
     }
+  else
+    {
+      fprintf(stderr, "Could not open file stream to [%s]. Will probably throw an exception now...(REV: I will exit first)\n", filename.c_str() );
+      exit(1);
+    }
   throw(errno);
 }
 
