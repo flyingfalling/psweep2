@@ -179,6 +179,10 @@ struct memfile_ptr
   //No...I do. Fuck.
   memfile_ptr( mem_file& mf )
   {
+    //REV: I will leave it up to caller to handle that memory.
+    //If original MF dies out, this guy better not remain...
+    //I.e. much better to have SHARED PTRS to memfiles and dynamically allocate.
+    
     mfile = &mf; //std::shared_ptr<mem_file>(&mf); //Will this work...? Probably not orz.
     dataptr = 0;
   }
