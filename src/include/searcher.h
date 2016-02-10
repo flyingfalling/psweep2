@@ -110,7 +110,7 @@ std::vector<std::vector<std::string>> parse_CSV_file( const std::string& fname, 
 //Columns must be of regular types? Tagged data types? Need pointers to them. Too complex, someone has done this before damnit.
 //Use the other people's stuff.
 
-
+/*
 std::vector<size_t> find_string_in_vect( const std::string& targ, const std::vector<std::string>& vect )
 {
   std::vector<size_t> locs;
@@ -125,7 +125,7 @@ std::vector<size_t> find_string_in_vect( const std::string& targ, const std::vec
   return locs;
   
 }
-
+*/
 struct data_table
 {
   std::vector< std::string > colnames;
@@ -391,8 +391,9 @@ struct data_table
 //varlist will contain required um, data files I guess?
 void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params )
 {
-  
+  fprintf(stdout, "Calling runsearch\n");
   parampoint_generator pg(scriptfname, mydir);
+  fprintf(stdout, "made it?\n");
 
   //REV: PG contains the "results" of each... parampoint_results, of type parampoint_result.
   //That is: list of pset results, each of which has list of pitem results (specifically, varlist).

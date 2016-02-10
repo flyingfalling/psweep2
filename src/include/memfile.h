@@ -1,5 +1,7 @@
 #pragma once
 
+
+#include <cstdio>
 #include <string>
 #include <sstream>
 
@@ -41,6 +43,40 @@ struct mem_file
     return _ss;
   }
 
+  
+  template<typename... Args>
+  void printf(const char* fmt, Args... args )
+  {
+
+    size_t SPRINTF_BUFF_SIZE=1e3;
+    std::vector<char> buffer( SPRINTF_BUFF_SIZE );
+    
+    
+    int written = std::snprintf( buffer.data(), buffer.size(), fmt, args... );
+    while( written >= buffer.size() )
+      {
+	buffer.resize( buffer.size()*2 );
+	int written = std::snprintf( buffer.data(), buffer.size(), fmt, args... );
+      }
+    if( written < 0 )
+      {
+	//REV: some error
+      }
+    else
+      {
+	//we need to push back written characters from buffer to our location.
+	buffer.resize( written );
+	write( buffer );
+      }
+  }
+  
+  std::ostringstream get_out_string_stream( const size_t& start_byte_offset, const size_t& end_byte_offset )
+  {
+    //REV: Haha memcopying.
+    std::ostringstream _ss( std::string(filedata.begin()+start_byte_offset, filedata.begin()+end_byte_offset) );
+    return _ss;
+  }
+
   //REV: Move an internal pointer? No point, I'm not actually consuming anything.
   template <typename T>
   T get_from_binary( const size_t& byte_offset )
@@ -71,13 +107,22 @@ struct mem_file
     filedata=content;
     filename = memfname;
   }
-  
-  mem_file( const std::string& fname )
+
+
+  //REV: this is an INFILE!!!
+  mem_file( const std::string& fname, bool append=true )
   {
     // open the file:
     std::streampos fileSize;
-    std::ifstream file(fname, std::ifstream::in | std::ios::binary);
-    
+    std::fstream file;
+    if(append)
+      {
+	file = std::fstream(fname, std::fstream::in | std::ios::binary | std::fstream::out | std::fstream::app);
+      }
+    else
+      {
+	file = std::fstream(fname, std::fstream::in | std::ios::binary | std::fstream::out | std::fstream::trunc);
+      }
     // get its size:
     file.seekg(0, std::ios::end);
     fileSize = file.tellg();
@@ -90,7 +135,7 @@ struct mem_file
 
     filename = fname;
   }
-
+  
   void write( const std::vector<char>& towrite, const bool append=true )
   {
     if(append)
@@ -103,6 +148,24 @@ struct mem_file
       {
 	filedata.resize( towrite.size() );
 	std::copy( towrite.data(), towrite.data()+towrite.size(), filedata.begin() );
+      }
+  }
+
+  void print( const std::string& towrite, const bool append=true )
+  {
+    if(append)
+      {
+	size_t offset=filedata.size();
+	filedata.resize( filedata.size() + towrite.size() );
+	//std::copy( towrite.str(), towrite.data()+towrite.size(), filedata.begin()+offset );
+	towrite.copy( filedata.data()+offset, towrite.size(), 0);
+      }
+    else
+      {
+	//Either is larger?
+	filedata.resize( towrite.size() );
+	towrite.copy( filedata.data(), towrite.size(), 0);
+	//std::copy( towrite.data(), towrite.data()+towrite.size(), filedata.begin() );
       }
   }
 
@@ -131,6 +194,7 @@ struct mem_file
 };
 
 
+//Wrap SPRINTF..?
 struct memfile_ptr
 {
   //Need PTRS to the mem_filesystem so I know where to find the arrays.
@@ -143,7 +207,13 @@ struct memfile_ptr
   {
     return mfile->get_string_stream( start, mfile->filedata.size() );
   }
-
+  
+  template<typename... Args>
+  void printf(const char* fmt, Args... args )
+  {
+    mfile->printf( fmt, args...);
+  }
+  
   template < typename T >
   std::vector<T> consume_array_from_binary( const size_t& num_items )
   {
@@ -185,6 +255,17 @@ struct memfile_ptr
     
     mfile = &mf; //std::shared_ptr<mem_file>(&mf); //Will this work...? Probably not orz.
     dataptr = 0;
+  }
+
+  std::ostringstream get_out_string_stream(const size_t& start=0)
+  {
+    //REV: something tells me this won't work...it won't write to the underlying char vector?!
+    return mfile->get_out_string_stream( start, mfile->filedata.size() );
+  }
+  
+  void print( const std::string& str , bool append=true)
+  {
+    mfile->print( str );
   }
 };
 

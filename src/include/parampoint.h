@@ -12,6 +12,8 @@
 
 #include <string_manip.h>
 
+#include <fake_system.h>
+
 
 
 struct parampoint_coord
@@ -97,55 +99,69 @@ struct pitem
   }
   
   //In new version, this may call from memory to speed things up.
-  bool execute_cmd( )
+  bool execute_cmd( fake_system& fakesys )
   {
     std::vector< std::string > notready = check_ready();
 
-    std::string sep = " ";
-    //std::string execute_string = mycmd.CONCATENATE_STR_ARRAY( cmdarray, sep );
-    std::string execute_string = CONCATENATE_STR_ARRAY( mycmd, sep );
-    
-    if( notready.size() > 0 )
+    //FIRST, TRY TO CALL IT WITH USER THING.
+    //REV: user might be trying to call a script with python or something...? E.g. pythong SCRIPT go...? In which case we better not find it lol.
+    std::string ostensible_cmd = mycmd[0]; //Hopefully it doesn't start with a ./ etc.? We can correct that to check heh.
+    std::vector<std::string> args = std::vector<std::string>( mycmd.begin()+1, mycmd.end() );
+    bool calledfake = fakesys.call_funct( ostensible_cmd, args );
+
+    if( calledfake == false )
       {
-	fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", execute_string.c_str());
-	fprintf(stderr, "found [%ld] NON-EXISTENT REQUIRED FILES: ", notready.size() );
-	for(size_t f=0; f<notready.size(); ++f)
+	std::string stderrfile = mydir+"/stderr";
+	std::string stdoutfile = mydir+"/stdout";
+	mycmd.push_back( "1>"+stdoutfile );
+	mycmd.push_back( "2>"+stderrfile );
+    
+    
+	std::string sep = " ";
+	//std::string execute_string = mycmd.CONCATENATE_STR_ARRAY( cmdarray, sep );
+	std::string execute_string = CONCATENATE_STR_ARRAY( mycmd, sep );
+    
+	if( notready.size() > 0 )
 	  {
-	    fprintf(stderr, "FILE: [%s]\n", notready[f].c_str());
+	    fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", execute_string.c_str());
+	    fprintf(stderr, "found [%ld] NON-EXISTENT REQUIRED FILES: ", notready.size() );
+	    for(size_t f=0; f<notready.size(); ++f)
+	      {
+		fprintf(stderr, "FILE: [%s]\n", notready[f].c_str());
+	      }
+	    fprintf(stderr, "\n");
+	    exit(1);
 	  }
-	fprintf(stderr, "\n");
-	exit(1);
-      }
 
-    fprintf(stdout, "----EXECUTING [%s]\n", execute_string.c_str() );
+	fprintf(stdout, "----EXECUTING [%s]\n", execute_string.c_str() );
     
-    int sysret = system( execute_string.c_str() );
+	int sysret = system( execute_string.c_str() );
     
-    std::vector<std::string> notdone = checkdone();
+	std::vector<std::string> notdone = checkdone();
 
-    size_t tries=0;
-    size_t NTRIES=10;
-    while( notdone.size() > 0 && tries < NTRIES)
-      {
-	sysret = system( execute_string.c_str() ); //Delete/reset this pitem?
-	notdone = checkdone();
-	++NTRIES;
-      }
-
-    if(notdone.size() > 0)
-      {
-	fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", execute_string.c_str());
-	fprintf(stderr, "found [%ld] NON-EXISTENT SUCCESS FILES: ", notdone.size() );
-	for(size_t f=0; f<notdone.size(); ++f)
+	size_t tries=0;
+	size_t NTRIES=10;
+	while( notdone.size() > 0 && tries < NTRIES)
 	  {
-	    fprintf(stderr, "FILE: [%s]\n", notdone[f].c_str());
+	    sysret = system( execute_string.c_str() ); //Delete/reset this pitem?
+	    notdone = checkdone();
+	    ++NTRIES;
 	  }
-	exit(1); //Just exiting now...but meh.
-	return false;
-      }
 
-    //More elegantly exit. Note all guys should output to a certain specific output file!!! In their dir.
-    
+	if(notdone.size() > 0)
+	  {
+	    fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", execute_string.c_str());
+	    fprintf(stderr, "found [%ld] NON-EXISTENT SUCCESS FILES: ", notdone.size() );
+	    for(size_t f=0; f<notdone.size(); ++f)
+	      {
+		fprintf(stderr, "FILE: [%s]\n", notdone[f].c_str());
+	      }
+	    exit(1); //Just exiting now...but meh.
+	    return false;
+	  }
+
+	//More elegantly exit. Note all guys should output to a certain specific output file!!! In their dir.
+      }
     return true;
     //this only tells if it was SUCCESSFUL or not (?). For example we had problems before due to something failing for one reason or another. In this way
     //we can automatically restart it...?
@@ -453,15 +469,14 @@ struct pitem
     mycmd = hv.get_array_var( "__MY_CMD", my_hierarchical_idx );
     
     //Add output to correct file.
-    std::string stderrfile = mydir+"/stderr";
-    std::string stdoutfile = mydir+"/stdout";
+    
 
 
     //REV: this was error, this should have been cmdarray before changing mycmd to be vector of strings.
 
-    //mycmd.push_back( "1>"+stdoutfile );
-    //mycmd.push_back( "2>"+stderrfile );
     
+    
+        
     //std::string sep = " "; //spaces. Make user specify "cmd sep" if it exists or something?
 
     //mycmd = CONCATENATE_STR_ARRAY( cmdarray, sep ); //hv.get_val_var( "__MY_CMD", my_hierarchical_idx );
@@ -832,12 +847,19 @@ struct executable_representation
   
   //build the exec rep using config file(s) passed by user.
   //For now, force it to be a single file...
-  executable_representation( std::string script_filename )
+  executable_representation( const std::string& script_filename )
   {
     //constructor. Constructs all the stuff, based on input script FILENAME?
 
+    fprintf(stdout, "trying to get contents from file [%s]\n", script_filename.c_str());
     std::string input = get_file_contents( script_filename  );
 
+    fprintf(stdout, "GOT FILE CONTENTS FROM file [%s]; [%s]\n", script_filename.c_str(), input.c_str());
+    if( input.compare("") == 0 )
+      {
+	fprintf(stderr, "Huh whacko error in reading of script in creating executable_representation: script is empty/script file didn't exist? [%s]\n", script_filename.c_str() );
+	exit(1);
+      }
 
     //construct the actual PARAMPOINT (config file representation?)
     ppscript = parse_psweep_script( input );
@@ -1040,7 +1062,10 @@ struct parampoint_generator
   
   parampoint_generator( const std::string& scriptfname, const std::string& bdir )
   {
+    fprintf(stdout, "Making exec rep\n");
     exec_rep = executable_representation( scriptfname );
+
+    fprintf(stdout, "FINISHED Making exec rep\n");
     
     basedir = bdir;
     make_directory( basedir ); //better already exist...

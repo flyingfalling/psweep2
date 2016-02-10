@@ -20,6 +20,8 @@
 
 
 
+#include <fake_system.h>
+
 
 
 struct psweep_cmd
@@ -42,7 +44,7 @@ struct filesender
   //std::shared_ptr< boost::mpi::communicator > world;
   //std::shared_ptr< boost::mpi::environment > env;
   
-  
+  fake_system fakesys;
 
   std::vector<bool> _workingworkers;
 
@@ -283,7 +285,11 @@ struct filesender
     fprintf(stderr, "REV: MASSIVE ERROR in filesender CREATOR: I reached end of function, which NEVER SHOULD HAPPEN\n");
     //REV: the other one should naturally delete it here.
   }
-  
+
+  //REV; TODO: at some point, build the fake MEM_FILESYSTEM, and furthermore, populate the FAKE_SYSTEM_CALLS if we want to...
+  //Note when we construct and send PITEM, then we are writing to target, but we don't want to actually write out to local one unless we are executing
+  //the stuff. In other words. only do it right before execute? Only if execute returns false? Execute takes the stuff. Hmm, we will be writing large numbers
+  //of files possibly still, massive waste. So, I need a way to stop it from doing that...
   filesender()
   {
     MPI_Init(0, NULL);
@@ -772,7 +778,7 @@ struct filesender
   bool execute_work( pitem& mypitem )
   {
     //This should do all checks (locally?) and check satisfactory output too.
-    bool success = mypitem.execute_cmd();
+    bool success = mypitem.execute_cmd( fakesys );
     return success;
   }
 

@@ -47,6 +47,7 @@ int main()
   memfile_ptr txtptr = fs.get_ptr( tname );
 
   
+  
   xd=binptr.consume_from_binary<double>(), yd=binptr.consume_from_binary<double>(), zd=binptr.consume_from_binary<double>(), xi=binptr.consume_from_binary<int>(), yi=binptr.consume_from_binary<int>(), zi=binptr.consume_from_binary<int>(), xl=binptr.consume_from_binary<long int>(), yl=binptr.consume_from_binary<long int>(), zl=binptr.consume_from_binary<long int>();
   //REV: HOLY SHIT, fprintf optional args are read in opposite order (maybe)!!!!!!!!!!
   
@@ -64,5 +65,19 @@ int main()
 
   fprintf(stdout, "FROM TXT:\n");
   std::cout << xd << " " << yd << " " << zd << " " << xi << " " << yi << " " << zi << " " << xl << " " << yl << " " << zl << std::endl;
+
+
+  fs.add_file( mem_file("testout.out", false) );
+  memfile_ptr outptr = fs.get_ptr( "testout.out" );
+
+  outptr.print( "HERE IS THE DATA:\n" );
+
+  //std::ostringstream ss = outptr.get_out_string_stream();
+  //ss << xd << " " << yd << " " << zd << " " << xi << " " << yi << " " << zi << " " << xl << " " << yl << " " << zl << std::endl;
+
+  outptr.printf("%lf %lf %lf %d %d %d %ld %ld %ld\n", xd,yd,zd,xi,yi,zi,xl,yl,zl);
+  
+  outptr.mfile->tofile( ".", outptr.mfile->filename );
+  
   
 }
