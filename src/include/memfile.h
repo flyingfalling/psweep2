@@ -45,7 +45,7 @@ struct mem_file
   template <typename T>
   T get_from_binary( const size_t& byte_offset )
   {
-    if( (byte_offset + sizeof( T )) >= filedata.size() )
+    if( (byte_offset + sizeof( T )) > filedata.size() )
       {
 	fprintf(stderr, "ERROR, trying to get from offset [%ld], a type, which exceeds size of array [%ld]\n", byte_offset, filedata.size());
 	exit(1);
@@ -56,7 +56,7 @@ struct mem_file
   template <typename T>
   std::vector<T> get_array_from_binary( const size_t& byte_offset, const size_t& num_items )
   {
-    if( (byte_offset + (num_items*sizeof( T ))) >= filedata.size() )
+    if( (byte_offset + (num_items*sizeof( T ))) > filedata.size() )
       {
 	fprintf(stderr, "ERROR, trying to get ARRAY from offset [%ld] plus [%ld], a type, which exceeds size of array [%ld]\n", byte_offset, (num_items*sizeof( T )), filedata.size());
 	exit(1);
@@ -87,6 +87,8 @@ struct mem_file
     //std::vector<char> fileData(fileSize);
     filedata.resize(fileSize);
     file.read(filedata.data(), fileSize);
+
+    filename = fname;
   }
 
   void write( const std::vector<char>& towrite, const bool append=true )
@@ -133,7 +135,8 @@ struct memfile_ptr
 {
   //Need PTRS to the mem_filesystem so I know where to find the arrays.
   size_t dataptr=0;
-  std::shared_ptr<mem_file> mfile;
+  //std::shared_ptr<mem_file> mfile;
+  mem_file* mfile;
   
   //If stringstream moves it, I won't know.
   std::istringstream get_string_stream( const size_t& start=0)
@@ -176,7 +179,7 @@ struct memfile_ptr
   //No...I do. Fuck.
   memfile_ptr( mem_file& mf )
   {
-    mfile = std::shared_ptr<mem_file>(&mf); //Will this work...? Probably not orz.
+    mfile = &mf; //std::shared_ptr<mem_file>(&mf); //Will this work...? Probably not orz.
     dataptr = 0;
   }
 };
@@ -191,7 +194,7 @@ struct mem_filesystem
   //When user reads, he reads from mem_filesystem (first?)
 
   //REV: REQUIRED for boost serialization (to send over MPI)
-friend class boost::serialization::access;
+  friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version)
   {
@@ -284,7 +287,11 @@ friend class boost::serialization::access;
     std::vector<size_t> locs = find_string_in_memfile_vect( fname );
     if( locs.size() != 1 )
       {
-	fprintf(stderr, "ERROR in get_ptr in memfile, more than one or zero files of target name [%s]\n", fname.c_str());
+	fprintf(stderr, "ERROR in get_ptr in memfile, more than one or zero files of target name [%s] (%ld) (files size: [%ld])\n", fname.c_str(), locs.size(), filelist.size());
+	for(size_t x=0; x<filelist.size(); ++x)
+	  {
+	    fprintf(stdout, "[%s]\n", filelist[x].filename.c_str());
+	  }
 	exit(1);
       }
 
