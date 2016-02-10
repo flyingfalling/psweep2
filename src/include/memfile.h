@@ -101,7 +101,12 @@ struct mem_file
     std::copy( ret.data(), ret.data() + (num_items * sizeof(T)), filedata.data()+byte_offset );
     return ret;
   }
-  
+
+
+  mem_file()
+  {
+    filename = "__REV:ERRORNOFNAME";
+  }
   mem_file( const std::string& memfname, const std::vector<char>& content )
   {
     filedata=content;

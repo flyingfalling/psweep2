@@ -55,7 +55,7 @@ struct filesender
   //Where is filesender destructor? I don't want to try to "destroy" world or env...? Or should I? Ah, if there are no other pointers to it...I get it.
   //Crap.
   
-  struct mem_file
+  /*struct mem_file
   {
     std::string fname;
     std::vector<char> contents;
@@ -117,7 +117,7 @@ struct filesender
       ar & contents;
     }
   };
-
+  */
 
   struct pitem_rep
   {  
@@ -475,7 +475,7 @@ struct filesender
 	mfs.push_back( mf );
 	std::string myfname = fnamebase + std::to_string( f );
 	newfnames.push_back( myfname );
-	oldfnames.push_back( mf.fname ); //this is old fname, I guess I could get it elsewhere... myfname is the NEW one...
+	oldfnames.push_back( mf.filename ); //this is old fname, I guess I could get it elsewhere... myfname is the NEW one...
 	
 	//now mfs and newfnames contain orig and new fnames.
 	//REV: make something to check base of file and make sure that it
@@ -740,7 +740,7 @@ struct filesender
 	fprintf(stdout, "MASTER: will rename file to origdir: [%s]\n", origdir.c_str() );
 	
 	std::string fname="ERRORFNAME";
-	std::string dirofreceived = get_canonical_dir_of_fname( mf.fname, fname );
+	std::string dirofreceived = get_canonical_dir_of_fname( mf.filename, fname );
 	std::string newlocal = origdir + "/" + fname;
 	//This had sure has hell better exist in original SUCCESS too haha.
 	//Check for sanity.
