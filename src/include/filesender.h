@@ -19,7 +19,7 @@
 #include <string_manip.h>
 
 
-
+#include <mem_filesys.h>
 #include <fake_system.h>
 
 
@@ -464,14 +464,14 @@ struct filesender
   {
     //First, get an INT, number of files.
     int numfiles = receive_int( 0 ); //get_int( 0 );
-    std::vector< mem_file > mfs;
+    std::vector< memfile > mfs;
     std::vector< std::string > newfnames;
     std::vector< std::string > oldfnames;
     
     std::string fnamebase= "reqfile";
     for(size_t f=0; f<numfiles; ++f)
       {
-	mem_file mf = receive_file( 0 );
+	memfile mf = receive_file( 0 );
 	mfs.push_back( mf );
 	std::string myfname = fnamebase + std::to_string( f );
 	newfnames.push_back( myfname );
@@ -507,7 +507,7 @@ struct filesender
 
   
   //void send_file( const int& targrank, const mem_file& memf )
-  void send_file( const int& targrank, const mem_file& memf )
+  void send_file( const int& targrank, const memfile& memf )
   {
     //world.send( targrank, boost::mpi::any_tag, memf );
     world.send( targrank, 0, memf );
@@ -515,17 +515,18 @@ struct filesender
   
   void send_file_from_disk( const int& targrank, const std::string& fname )
   {
-    mem_file mf( fname );
+    bool readfromdisk=true;
+    memfile mf( fname, readfromdisk );
     send_file( targrank, mf );
   }
   
   
-  mem_file receive_file( const int& targrank )
+  memfile receive_file( const int& targrank )
   {
     //REV: crap I can't just cast to a string, I need to CONSTRUCT it.
     //std::vector<char> fname = receive_memory( targrank );
 
-    mem_file mf;
+    memfile mf;
     world.recv( targrank, boost::mpi::any_tag, mf );
     return mf;
   }
@@ -724,7 +725,7 @@ struct filesender
     for(size_t x=0; x<nfiles; ++x)
       {
 	fprintf(stdout, "MASTER: receiving file from WORKER [%d]\n", targrank);
-	mem_file mf = receive_file( targrank );
+	memfile mf = receive_file( targrank );
 
 	fprintf(stdout, "MASTER Received file from WORKER [%d]\n", targrank);
 	//mfs.push_back( mf );

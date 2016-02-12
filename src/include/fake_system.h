@@ -1,6 +1,6 @@
 #pragma once
 
-#include <memfile.h>
+#include <memfile3.h>
 
 //REV: fake system() call struct thing.
 //Basically, takes a function (?) pointer? User implements it
@@ -40,7 +40,7 @@
 
 
 typedef std::vector<std::string>                    arg_list;
-typedef std::function< void( const std::vector<std::string>&, mem_filesystem& ) > fake_system_funct_t;
+typedef std::function< void( const std::vector<std::string>&, mem_filesys& ) > fake_system_funct_t;
 
 
 struct fake_sys_rep
@@ -61,7 +61,7 @@ struct fake_system
   //Has a functor that user calls. Must take a fake FS/varlist (i.e. compile his code to overwrite typical system guys with my fake ones ). Whatever.
   //How does user read in values? Via BINARY or via DOUBLE.
 
-  mem_filesystem my_filesys;
+  mem_filesys my_filesys;
   std::vector< fake_sys_rep > sys_functs;
 
   fake_system( )
@@ -69,11 +69,11 @@ struct fake_system
   }
   
   //Must take some kind of "arglist"?, as well as the fake FS.
-  fake_system( mem_filesystem& mf )
+  fake_system( mem_filesys& mf )
   {
     my_filesys = mf;
   }
-
+  
   
   
   void register_funct( const std::string& name, const fake_system_funct_t& funct )
@@ -93,7 +93,7 @@ struct fake_system
 	    //Call it
 	    //sys_functs[x].funct( args, my_filesys );
 	  }
-	 
+	
       }
     if(locs.size() == 1 )
       {

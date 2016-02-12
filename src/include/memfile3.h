@@ -120,6 +120,9 @@ memfile()
 	// read the data:
 	filedata.resize(fileSize);
 	file.read(filedata.data(), fileSize);
+
+	//REV: what the heck, close it since I shouldn't need it anymore. I will synch/overwrite it later if I want.
+	file.close();
       }
   }
   
@@ -253,7 +256,7 @@ struct memfile_ptr
 
     //Is default to append, or to overwrite?
     //REV: CHANGE TO OVERWRITE JUST IN CASE?!?!
-    open_ofstream( fname, ofs );
+    open_ofstream( fname, ofs, std::ios::binary | std::ios::trunc ); //Will this write binary properly?
     
     ofs.write( mfile->filedata.data(), mfile->filedata.size() );
 
