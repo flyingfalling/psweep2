@@ -21,6 +21,55 @@
 
 //REV: Need to make it archivable, so we can easily do the stuff there.
 
+struct mfile
+{
+  bool writethrough=false;
+  std::string filename="ERRORNOFNAME";
+  std::vector<char> filedata;
+  
+};
+
+//All memfile stuff will be done via memfile_ptr...
+//Overload this so I can use >> and <<.
+/*struct mfile_ptr : public std::streambuf
+{
+  size_t dataptr=0;
+  memfile* mfile=NULL;
+
+  mfile_ptr()
+    : std::basic_iostream(this)
+    {
+    }
+
+  template <typename T>
+    T overflow( T c )
+    {
+      //push back to my thingy...
+      
+    }
+  
+  //Create a stringstream, output to it, no just convert it to string and push it back to char vector lol.
+
+  //REV: store it as a stringstream, not as a vector<char>?!?!?!?!
+  //Otherwise, problem.
+  
+  //Wait, I don't want to overload THIS being the one, I want to overload me begin the LHS haha.
+  //I.e. I don't want to 
+  template <typename T>
+    std::basic_ostream& operator<<( T obj )
+    {
+      //If it's a string it just does it...ugh.
+      //Make a string stream? Push it to it, then make stringstream into string?
+      std::ostringstream ss; //should be empty
+      ss << obj;
+      std::string 
+    }
+  
+};*/
+
+
+
+
 struct mem_file
 {
   std::string filename;
@@ -115,29 +164,31 @@ struct mem_file
 
 
   //REV: this is an INFILE!!!
-  mem_file( const std::string& fname, bool append=true )
+  mem_file( const std::string& fname, bool append=true, bool readthrough=true )
   {
-    // open the file:
-    std::streampos fileSize;
-    std::fstream file;
-    if(append)
+    if(readthrough)
       {
-	file = std::fstream(fname, std::fstream::in | std::ios::binary | std::fstream::out | std::fstream::app);
-      }
-    else
-      {
-	file = std::fstream(fname, std::fstream::in | std::ios::binary | std::fstream::out | std::fstream::trunc);
-      }
-    // get its size:
-    file.seekg(0, std::ios::end);
-    fileSize = file.tellg();
-    file.seekg(0, std::ios::beg);
+	// open the file:
+	std::streampos fileSize;
+	std::fstream file;
+	if(append)
+	  {
+	    file = std::fstream(fname, std::fstream::in | std::ios::binary | std::fstream::out | std::fstream::app);
+	  }
+	else
+	  {
+	    file = std::fstream(fname, std::fstream::in | std::ios::binary | std::fstream::out | std::fstream::trunc);
+	  }
+	// get its size:
+	file.seekg(0, std::ios::end);
+	fileSize = file.tellg();
+	file.seekg(0, std::ios::beg);
     
-    // read the data:
-    //std::vector<char> fileData(fileSize);
-    filedata.resize(fileSize);
-    file.read(filedata.data(), fileSize);
-
+	// read the data:
+	//std::vector<char> fileData(fileSize);
+	filedata.resize(fileSize);
+	file.read(filedata.data(), fileSize);
+      }
     filename = fname;
   }
   
@@ -206,6 +257,18 @@ struct memfile_ptr
   size_t dataptr=0;
   //std::shared_ptr<mem_file> mfile;
   mem_file* mfile;
+
+  //REV: Overload >> and << etc.?!?!?! Holy shit amazing ;) Need to do it for type t? Dayum that would be AMAZING! Would need to be known at compile time
+  //though... I.e. can't read from file then blah?
+  
+  bool eof()
+  {
+    if( dataptr >= mfile.filedata.size() )
+      {
+	return true;
+      }
+    return false;
+  }
   
   //If stringstream moves it, I won't know.
   std::istringstream get_string_stream( const size_t& start=0)
@@ -282,7 +345,9 @@ struct mem_filesystem
   //Just have linear, there should not be many files.
   //When user writes, he writes to mem_filesystem (first?)
   //When user reads, he reads from mem_filesystem (first?)
-
+  
+  std::deque< mem_file > filelist;
+  
   //REV: REQUIRED for boost serialization (to send over MPI)
   friend class boost::serialization::access;
   template<class Archive>
@@ -290,9 +355,8 @@ struct mem_filesystem
   {
     ar & filelist;
   }
-  
-  std::deque< mem_file > filelist;
 
+  
   std::vector<size_t> find_string_in_memfile_vect( const std::string& targ )
   {
     std::vector<size_t> ret;
@@ -372,24 +436,36 @@ struct mem_filesystem
     filelist.push_back( mf );
   }
 
-  memfile_ptr get_ptr( const std::string& fname )
+  memfile_ptr get_ptr( const std::string& fname, const bool& readthrough=false )
   {
     std::vector<size_t> locs = find_string_in_memfile_vect( fname );
-    if( locs.size() != 1 )
+    if( locs.size() > 1 )
       {
-	fprintf(stderr, "ERROR in get_ptr in memfile, more than one or zero files of target name [%s] (%ld) (files size: [%ld])\n", fname.c_str(), locs.size(), filelist.size());
+	fprintf(stderr, "ERROR in get_ptr in memfile, more than one files of target name [%s] (%ld) (files size: [%ld])\n", fname.c_str(), locs.size(), filelist.size());
 	for(size_t x=0; x<filelist.size(); ++x)
 	  {
 	    fprintf(stdout, "[%s]\n", filelist[x].filename.c_str());
 	  }
 	exit(1);
       }
-
-    size_t idx = locs[0];
-
-    return memfile_ptr( filelist[idx] );
+    else if( locs.size() == 0 )
+      {
+	//Add a new one...but read-through to file name (outside?) or just create an empty one?
+	//Don't readthrough..I assume?
+	mem_file mf( fname, false, readthrough ); //Doesn't read through...
+	add_file( mf );
+	return memfile_ptr( filelist[ filelist.size()-1] );
+      }
+    else
+      {
+	size_t idx = locs[0];
+	
+	return memfile_ptr( filelist[idx] );
+      }
   } //end get_ptr
   
-  
+
+  //Open file (as if it exists?). If it does, read it in, If it doesn't, nothing? Checking is a pain in the ass though, lots of fs checks). We can turn it
+  //off.
 };
 

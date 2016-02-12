@@ -45,5 +45,17 @@ test_hdf5collection.exe: $(UNITTESTDIR)/test_hdf5collection.cpp $(HEADERFILES)
 test_memfile.exe: $(UNITTESTDIR)/test_memfile.cpp $(HEADERFILES)
 	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_memfile.cpp -o test_memfile.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
 
+test_boostio.exe: $(UNITTESTDIR)/test_memfile.cpp $(HEADERFILES)
+	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_boostio.cpp -o test_boostio.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
+
+test_memfile2.exe: $(UNITTESTDIR)/test_memfile2.cpp $(HEADERFILES)
+	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_memfile2.cpp -o test_memfile2.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
+
+
+test_memfile3.exe: $(UNITTESTDIR)/test_memfile3.cpp $(HEADERFILES)
+	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_memfile3.cpp -o test_memfile3.exe
+
+
+
 clean:
 	rm *.exe *.o

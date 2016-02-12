@@ -106,8 +106,10 @@ struct pitem
     //FIRST, TRY TO CALL IT WITH USER THING.
     //REV: user might be trying to call a script with python or something...? E.g. pythong SCRIPT go...? In which case we better not find it lol.
     std::string ostensible_cmd = mycmd[0]; //Hopefully it doesn't start with a ./ etc.? We can correct that to check heh.
-    std::vector<std::string> args = std::vector<std::string>( mycmd.begin()+1, mycmd.end() );
-    bool calledfake = fakesys.call_funct( ostensible_cmd, args );
+    //std::vector<std::string> args = std::vector<std::string>( mycmd.begin()+1, mycmd.end() );
+    //bool calledfake = fakesys.call_funct( ostensible_cmd, args );
+    //REV: 10 Feb 2016 -- make it same as ARGV so user doesn't have to change much...
+    bool calledfake = fakesys.call_funct( ostensible_cmd, mycmd );
 
     if( calledfake == false )
       {
