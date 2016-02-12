@@ -56,6 +56,9 @@ test_memfile3.exe: $(UNITTESTDIR)/test_memfile3.cpp $(HEADERFILES)
 	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_memfile3.cpp -o test_memfile3.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
 
 
+test_fakesys.exe:  $(UNITTESTDIR)/test_fakesys.cpp $(HEADERFILES)
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_fakesys.cpp -o test_fakesys.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
+
 
 clean:
 	rm *.exe *.o

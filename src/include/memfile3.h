@@ -221,6 +221,15 @@ struct memfile_ptr
 
   bool eof()
   {
+    if( readpos == mfile->filedata.size() )
+      {
+	return true;
+      }
+    else
+      {
+	return false;
+      }
+    
     if(eofstate)
       {
 	return true;
@@ -554,6 +563,8 @@ struct memfile_ptr
       {
 	readpos += ncharswritten;
       }
+
+    
     
     //REV: This won't work if it goes past EOF, so  need to handle how many were written if conspos wasn't filled becuase
     //it hit EOF partway through...

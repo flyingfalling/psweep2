@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memfile3.h>
+#include <memfsys.h>
 
 //REV: fake system() call struct thing.
 //Basically, takes a function (?) pointer? User implements it

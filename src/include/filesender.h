@@ -19,7 +19,7 @@
 #include <string_manip.h>
 
 
-#include <mem_filesys.h>
+#include <memfsys.h>
 #include <fake_system.h>
 
 
@@ -489,7 +489,10 @@ struct filesender
 	fprintf(stdout, "IN WORKER [%d]: OUTPUTTING LOCAL FILE: [%s]\n", world.rank(), std::string(dir+"/"+myfname).c_str());
 	
 	//write to file OK.
-	mf.tofile( dir, myfname );
+	//REV: Add to filesystem and/or push back...heh
+	//mf.tofile( dir, myfname );
+	memfile_ptr mfp( mf );
+	mfp.tofile( dir + "/" + myfname );
       
 	//REV: so I now need to MODIFY mypitem for the required files,
 	//and I also need to MODIFY for success, output, etc.
@@ -765,7 +768,10 @@ struct filesender
 	  }
 
 	fprintf(stdout, "MASTER: Will attempt to write file to filename [%s]\n", newlocal.c_str());
-	mf.tofile( origdir, fname );
+	
+	memfile_ptr mfp(mf);
+	//mf.tofile( origdir, fname );
+	mfp.tofile( origdir+"/"+fname );
 	fprintf(stdout, "MASTER: wrote file\n");
       }
 

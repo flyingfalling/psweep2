@@ -16,8 +16,9 @@
 
 #include <new> //need this for variant in construcor type things? Maybe not, was doing it for unions with non-POD
 
-#include <memfile.h>
+#include <memfile3.h>
 
+#include <memfsys.h>
 //REV: includes...
 
 //REV: well I fucked up. I can't use union. Need to use boost variant, or do my own thing with inhereitance and pointers.
@@ -145,12 +146,13 @@ struct varlist
   
   
   //append? or overwrite? Default is APPEND to end.
-  void tofile( const std::string& fname, mem_filesystem& mf )
+  void tofile( const std::string& fname, mem_filesys& mf )
   {
     //std::ofstream f;
     //open_ofstream( fname, f );
 
-    memfile_ptr mfp = mf.get_ptr( fname );
+    //memfile_ptr mfp = mf.get_ptr( fname );
+    memfile_ptr mfp = mf.open( fname );
     
     //Only prints out vars if they are strings, not if they are arrays.
     //Should allow to print out arrays too? What types of things might
@@ -161,7 +163,7 @@ struct varlist
 	//OVERLOAD variable so that it appropriately outputs it if it is an array.
 	//f << vars[v].name << " " << vars[v].get_s() << std::endl;
 	//f << vars[v].name << " " << vars[v].get_s() << std::endl;
-	mf.printf( "%s %s\n", vars[v].name.c_str(), vars[v].get_s().c_str() );
+	mfp.printf( "%s %s\n", vars[v].name.c_str(), vars[v].get_s().c_str() );
       }
     
     //close_ofstream( f );
@@ -184,58 +186,46 @@ struct varlist
 	//f << vars[v].name << " " << vars[v].get_s() << std::endl;
 	f << vars[v].name << " " << vars[v].get_s() << std::endl;
       }
-
+    
     close_ofstream( f );
 
     return;
   }
 
 
-  void inputfromfile( const std::string& fname, mem_filesystem& mf )
+  void inputfromfile( const std::string& fname, mem_filesys& mf, const bool& readthrough=false )
   {
     //No read through...to actual FS. I.e. everything done through memory.
     //This is really a problem, I need to organize this better. I.e.
     //tell switch of MEM_FILESYSTEM to turn on or off reading/writing to
     //actual files...
-    memfile_ptr mfp = mf.get_ptr( fname, false );
+    fprintf(stdout, "In inputfromfile (from mem fsys), opening...\n");
+    memfile_ptr mfp = mf.open(fname, readthrough);
+    fprintf(stdout, "In inputfromfile (from mem fsys), OPENED...\n");
 
     //fprintf(stdout, "INPUTTING FROM FILE: [%s]\n", fname.c_str() );
     
     while( !mfp.eof() )
       {
-	std::string n="YOLOERRNAME", v="YOLOERRORVAL";
-	std::istringstream f = mfp.get_string_stream();
-	f >> n;
-	
+	std::string n="YOLOERRNAME",
+	  v="YOLOERRORVAL";
+
+	//Wow that's ghetto lolol...
+	//mfp.scanf( "%s %s\n", n.data(), v.data());
+	mfp >> n >> v;
 	
 	//fprintf(stdout, "Read [%s] for name from file [%s]\n", n.c_str(), fname.c_str() );
 	//Check if there is anything at all. If nothing, just empty...
-	if( mfp.eof() )
-	  {
-	    break;
-	  }
-	f >> v;
 
 
-	//fprintf(stdout, "Read [%s] for val from file [%s]\n", v.c_str(), fname.c_str() );
-	//If it was EOF, means it was probably either 1) a new line or 2) a name wihtout a value. In either case ignore.
-	//Worst case is name without value followed by a newline...lol.
-	if( f.eof() )
+	if( !mfp.bad() )
 	  {
-	    break;
+	    variable<std::string> var( n, v );
+	    addvar( var );
 	  }
-	variable<std::string> var( n, v );
-	addvar( var );
-	
       }
 
 
-    
-    for( std::string n, v; f >> n >> v; )
-      {
-	variable<std::string> var( n, v );
-	addvar( var );
-      }
     
     return;
   }
