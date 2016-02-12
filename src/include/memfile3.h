@@ -183,6 +183,7 @@ struct memfile_ptr
     mf.waccess();
     mf.raccess();
     mfile = &mf;
+    reset();
     //Sets all flags
   }
 
