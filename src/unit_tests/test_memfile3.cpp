@@ -2,7 +2,9 @@
 
 int main()
 {
-  ssfile sf;
+  //ssfile sf;
+  memfile mf;
+  memfile_ptr sf( mf );
 
   int myint=2;
   double mydouble=32.3;

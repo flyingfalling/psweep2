@@ -53,7 +53,7 @@ test_memfile2.exe: $(UNITTESTDIR)/test_memfile2.cpp $(HEADERFILES)
 
 
 test_memfile3.exe: $(UNITTESTDIR)/test_memfile3.cpp $(HEADERFILES)
-	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_memfile3.cpp -o test_memfile3.exe
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_memfile3.cpp -o test_memfile3.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
 
 
 
