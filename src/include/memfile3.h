@@ -177,12 +177,21 @@ struct memfile_ptr
 
   void open( memfile& mf )
   {
+    mf.waccess();
+    mf.raccess();
     mfile = &mf;
     //Sets all flags
+  }
+
+  ~memfile_ptr()
+  {
+    close();
   }
   
   void close()
   {
+    mfile->wclosed();
+    mfile->rclosed();
     //Close doesn't really do anything, just reset pointer to NULL.
     //There should be no buffered changes.
     mfile = NULL;
@@ -518,21 +527,42 @@ struct memfile_ptr
 
 
   //REV: Better way??
-  /*
-    template <typename...Ts>
-    int my_sscanf( int& ncharswritten, const char* str, const char* fmt, Ts&&...ts )
-    {
-    return sscanf(std,
-    (fmt + std::string("%n")).c_str(),
-    std::forward<Ts>(ts)...,
-    &ncharswritten);
-    }
-   */
+  
+  template <typename...Ts>
+  int scanf( const char* fmt, Ts&&...ts )
+  {
+    std::string fmtstr = std::string(fmt);
+    fmtstr+="%n";
+    int ncharswritten = -1;
+    std::string buffer = getnextdata();
+    
+    int nargswritten = std::sscanf(buffer.c_str() ,
+				   fmtstr.c_str() ,
+				   std::forward<Ts>(ts)... ,
+				   &ncharswritten );
+
+    if( ncharswritten < 0 )
+      {
+	//Huh, something is wrong. User should check how many he "should" have written heh. Oh well.
+	badstate = true;
+	failstate = true;
+      }
+    else
+      {
+	readpos += ncharswritten;
+      }
+    
+    //REV: This won't work if it goes past EOF, so  need to handle how many were written if conspos wasn't filled becuase
+    //it hit EOF partway through...
+    return (nargswritten-1);
+    
+  }
+  
 
   //REV: What should happen if it fails to fill one of the guys, e.g. it tries to get a DOUBLE from a STR or something?
   //REV: Scan from start, if it tries to go past, it returns number anyway?
   template<typename... Args>
-  int scanf(const char* fmt, Args... args )
+  int scanf2_REV(const char* fmt, Args... args )
   {
 
     std::string fmtstr = std::string(fmt);

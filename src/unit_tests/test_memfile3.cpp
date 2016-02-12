@@ -40,7 +40,9 @@ int main()
 
   int i3, i4;
   std::string s3("NOTA");
-  sf.scanf("%ld %ld %s\n", &i3, &i4, s3.data() );
+  sf.scanf("%d %d %s\n", &i3, &i4, s3.data() );
+
+  fprintf(stdout, "Got (=222) [%d] (=233) [%d] (=CHAR) [%s]\n", i3, i4, s3.c_str() );
 
   fprintf(stdout, "Current unprocessed portion of file: [%s]\n", sf.getnextdata().c_str() );
 
