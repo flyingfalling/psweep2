@@ -153,22 +153,29 @@ struct varlist
 
     //memfile_ptr mfp = mf.get_ptr( fname );
     //Doesn't matter at first, we're making a new one anyways...truncating? Yes. Not "append to file" or some shit.
+    //REV: There is no writethrough! I need to APPEND!!! FUCKKKKKKKK (same with FROMFILE)
+    //fprintf(stdout, "Opening file for output (var): [%s]\n", fname.c_str());
     memfile_ptr mfp = mf.open( fname, false );
     
     //Only prints out vars if they are strings, not if they are arrays.
     //Should allow to print out arrays too? What types of things might
     //be arrays?
+    
     for(size_t v=0; v<vars.size(); ++v)
       {
+	//fprintf(stdout, "Attempting to print out to file [%ld]th var: %s %s\n", v, vars[v].name.c_str(), vars[v].get_s().c_str() );
 	//REV: It's trying to write CMD array variable to the file which is fucked up. I don't want that. I only want the root parameters I think? Crap.
 	//OVERLOAD variable so that it appropriately outputs it if it is an array.
+	mfp << vars[v].name << " " << vars[v].get_s() << std::endl;
 	//f << vars[v].name << " " << vars[v].get_s() << std::endl;
-	//f << vars[v].name << " " << vars[v].get_s() << std::endl;
-	mfp.printf( "%s %s\n", vars[v].name.c_str(), vars[v].get_s().c_str() );
+	//mfp.printf( "%s %s\n", vars[v].name.c_str(), vars[v].get_s().c_str() );
+	
       }
 
+    
     if( usefile == true )
       {
+	fprintf(stdout, "Attempting to print out to actual files...\n");
 	//print to the disk for real...
 	mfp.tofile( fname );
       }
@@ -233,6 +240,8 @@ struct varlist
 	    addvar( var );
 	  }
       }
+
+    mfp.close();
 
 
     

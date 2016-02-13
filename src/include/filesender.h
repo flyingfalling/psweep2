@@ -517,7 +517,7 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
     std::vector< memfile > mfs;
     std::vector< std::string > newfnames;
     std::vector< std::string > oldfnames;
-
+    
     memfsys myfsys;
     
     std::string fnamebase= "reqfile";
@@ -526,6 +526,8 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	memfile mf = receive_file( 0 );
 	//mfs.push_back( mf );
 
+	fprintf(stdout, "WORKER [%d]: Received file with fname [%s]\n", world.rank(), mf.filename.c_str() );
+	
 	myfsys.add_file( mf );
 	
 	std::string myfname = fnamebase + std::to_string( f );
@@ -569,7 +571,8 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
     mypitem.mydir = dir;
     //mypitem will now be rebased appropriately, although hierarchical varlists etc. are not carried with it of course.
     
-    
+
+    return myfsys;
   }
 
   
@@ -758,6 +761,7 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	//REV: This is where a problem could happen...
 	//Send from disk if todisk is true...
 	send_file( 0, mfp.get_memfile() );
+	mfp.close();
       }
     
     varlist<std::string> resvar = mypitem.get_output( myfsys, todisk );
@@ -850,6 +854,7 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	  {
 	    memfile_ptr mfp(mf);
 	    mfp.tofile( origdir+"/"+fname );
+	    mfp.close();
 	  }
 	fprintf(stdout, "MASTER: wrote file\n");
       }
@@ -864,7 +869,9 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
   bool execute_work( pitem& mypitem, memfsys& myfsys )
   {
     //This should do all checks (locally?) and check satisfactory output too.
+    fprintf(stdout, "WORKER [%d] : Attempting to execute work...\n", world.rank());
     bool success = mypitem.execute_cmd( fakesys, myfsys );
+    fprintf(stdout, "WORKER [%d] : Finished execute work...?\n", world.rank());
     return success;
   }
 
@@ -923,6 +930,8 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	
 	//REV: BUILD FAKE FYSYS HERE! (for example, we might not want to have written to disk, but rather received to the fake FS)
 
+
+	myfsys.enumerate();
 	
 	
 	fprintf(stdout, "WORKER [%d]: handled PITEM\n", world.rank());
@@ -1115,6 +1124,7 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	
 	//send_file_from_disk( workeridx, mypitem.required_files[f] );
 	send_file( workeridx, mfp.get_memfile() );
+	mfp.close();
       }
 
     //REV: And that is it, return

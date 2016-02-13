@@ -99,7 +99,9 @@ struct pitem
   //In new version, this may call from memory to speed things up.
   bool execute_cmd( fake_system& fakesys, memfsys& myfsys )
   {
-    std::vector< std::string > notready = check_ready();
+    fprintf(stdout, "Attempting to check ready in execute cmd\n");
+    std::vector< std::string > notready = check_ready( myfsys );
+    fprintf(stdout, "FINISHED to check ready in execute cmd\n");
 
     //FIRST, TRY TO CALL IT WITH USER THING.
     //REV: user might be trying to call a script with python or something...? E.g. pythong SCRIPT go...? In which case we better not find it lol.
@@ -107,8 +109,10 @@ struct pitem
     //std::vector<std::string> args = std::vector<std::string>( mycmd.begin()+1, mycmd.end() );
     //bool calledfake = fakesys.call_funct( ostensible_cmd, args );
     //REV: 10 Feb 2016 -- make it same as ARGV so user doesn't have to change much...
+    fprintf(stdout, "Attempting to call FAKESYS mycmd\n");
     bool calledfake = fakesys.call_funct( ostensible_cmd, mycmd, myfsys );
-
+    fprintf(stdout, "SUCCESSFULLY to call FAKESYS mycmd\n");
+    
     if( calledfake == false )
       {
 	std::string stderrfile = mydir+"/stderr";
@@ -137,14 +141,14 @@ struct pitem
     
 	int sysret = system( execute_string.c_str() );
     
-	std::vector<std::string> notdone = checkdone();
+	std::vector<std::string> notdone = checkdone( myfsys );
 
 	size_t tries=0;
 	size_t NTRIES=10;
 	while( notdone.size() > 0 && tries < NTRIES)
 	  {
 	    sysret = system( execute_string.c_str() ); //Delete/reset this pitem?
-	    notdone = checkdone();
+	    notdone = checkdone( myfsys );
 	    ++NTRIES;
 	  }
 
@@ -492,7 +496,7 @@ struct pitem
     //REV: ANOTHER OPTION, automatically copy it to desired filename in a dir?
     
 
-    fprintf(stdout, "XXXXXXX In PITEM const -- Set input_file to [%s]\n", input_file.c_str());
+    //fprintf(stdout, "XXXXXXX In PITEM const -- Set input_file to [%s]\n", input_file.c_str());
     
     //REV: here is the problem, it was outputting ALL local variables to the INPUT file of the user...crap.
     //hv.tofile( input_file, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
@@ -507,7 +511,8 @@ struct pitem
 
     //Zeroth is the base, i.e. root...the varlist that was passed that I built off of haha.
     hv.tofile( input_file, 0, myfsys, usedisk ); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
-    
+
+    //fprintf(stdout, "YYYYYY Succeeded in setting (wrote to file?)\n");
     //Input files are REQUIRED files (by default, might be checked twice oh well).
     //Furthermore, output files are SUCCESS files (fails and tries to re-run without their creation of course).
     //required_files.push_back( input_file );
@@ -541,32 +546,43 @@ struct pitem
     //We need ways of finding inside GLOBAL vars named var etc.
   }
   
- 
-  std::vector<std::string> check_ready()
+  //REV: HERE, need to make them appropriately check!
+  std::vector<std::string> check_ready( memfsys& myfsys )
   {
     std::vector<std::string> notreadylist;
     //bool ready=true;
     //Strings must be FULL filename? Or are they relative? Assume full...
+
+    //REV: Check existence in memfsys!!
     for(size_t f=0; f<required_files.size(); ++f)
       {
 	fprintf(stdout, " # # # CHECKING FOR EXISTENCE OF REQUIRED FILE: [%s]\n", required_files[f].c_str());
-	if( check_file_existence( required_files[f] ) == false )
+	bool checkdisk=true;
+	bool rdy= myfsys.check_existence( required_files[f], checkdisk );
+	fprintf(stdout, " X X X checked done\n");
+	  
+	if (rdy == false )
+	  /*if( check_file_existence( required_files[f] ) == false ) */
 	  {
 	    notreadylist.push_back( required_files[f] );
 	  }
+	
       }
     return notreadylist;
     
     //checks if all required files are present?? etc.
   }
   
-  std::vector<std::string> checkdone()
+  std::vector<std::string> checkdone( memfsys& myfsys )
   {
     std::vector<std::string> notdonelist;
     //Strings must be FULL filename? Or are they relative? Assume full...
     for(size_t f=0; f<success_files.size(); ++f)
       {
-	if( check_file_existence( success_files[f] ) == false )
+	//REV: Check existence in memfsys!!
+	bool checkdisk=true;
+	if( myfsys.check_existence( success_files[f], checkdisk ) == false)
+	  //if( check_file_existence( success_files[f] ) == false )
 	  {
 	    //ready = false;
 	    notdonelist.push_back( success_files[f] );
@@ -1107,8 +1123,8 @@ struct parampoint_generator
 
     parampoint_results.push_back( parampoint_result( retp ) );
     
-    fprintf(stdout, "Finished, now GENERATE pg, will enumerate.\n");
-    hv.enumerate();
+    //fprintf(stdout, "Finished, now GENERATE pg, will enumerate.\n");
+    //hv.enumerate();
     
     parampoint_memfsystems.push_back( myfsys );
     

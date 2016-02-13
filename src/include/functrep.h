@@ -227,7 +227,7 @@ FUNCTDEF( ADD_REQUIRED_FILE )
 FUNCTDEF( ADD_CMD_ITEM )
 {
   //REV: adds one at a time?
-  fprintf(stdout, "((( ADD CMD ))) ADDING TO CMD: [%s]\n", args[0].get_s().c_str() );
+  //fprintf(stdout, "((( ADD CMD ))) ADDING TO CMD: [%s]\n", args[0].get_s().c_str() );
   hvl[0].add_to_var( "__MY_CMD", args[0].get_s(), hvi[0] );
   return variable<std::string>("__ADDEDTOCMDNAME", "__ADDEDTOCMDVAL"); 
   

@@ -1,13 +1,13 @@
 #pragma once
 
 #include <memfile3.h>
-
+#include <utility_functs.h>
 
 //struct mem_filesys
 struct memfsys
 {
   std::vector< memfile > filelist;
-
+  
   //REV: REQUIRED for boost serialization (to send over MPI)
   friend class boost::serialization::access;
   template<class Archive>
@@ -17,11 +17,41 @@ struct memfsys
   }
 
 
+  void enumerate()
+  {
+    fprintf(stdout, "ENUMERATING FILE LIST OF MEMFSYS\n");
+    for(size_t x=0; x<filelist.size(); ++x)
+      {
+	fprintf(stdout, "[%s]\n", filelist[x].filename.c_str() );
+      }
+    return;
+  }
+  
+  bool check_existence( const std::string& fname, const bool& checkdisk=false )
+  {
+    fprintf(stdout, "Checking in memfile vect for [%s]\n", fname.c_str() );
+    std::vector<size_t> locs = find_string_in_memfile_vect( fname );
+    fprintf(stdout, "DONE Checking in memfile vect for [%s]\n", fname.c_str() );
+    if( locs.size() < 1 )
+      {	
+	fprintf(stdout, "Couldn't find it, checking in FILE SYSTEM\n");
+	bool found = check_file_existence( fname );
+	fprintf(stdout, "FINISHED checking in FILE SYSTEM\n");
+	return found;
+	
+      }
+    else
+      {
+	return true;
+      }
+  }
+  
   std::vector<size_t> find_string_in_memfile_vect( const std::string& targ )
   {
     std::vector<size_t> ret;
     for(size_t x=0; x<filelist.size(); ++x)
       {
+	fprintf(stdout, "Comparing [%s] to target [%s]\n", filelist[x].filename.c_str(), targ.c_str());
 	if( filelist[x].filename.compare( targ ) == 0 )
 	  {
 	    ret.push_back( x);
@@ -54,7 +84,7 @@ struct memfsys
 	exit(1);
       }
   }
-
+  
   memfile_ptr open_from_disk( const std::string& fname )
   {
     return open( fname, true );

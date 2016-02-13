@@ -75,10 +75,13 @@ struct memfile
 
   ~memfile()
   {
+
+    return;
+    
     //Do all the natural stuff, delete the vector etc.? Need to do otherwise?
     if( raccesses != 0 )
       {
-	fprintf(stderr, "REV: Massive error, I'm in desctructor of memfile, but there is still a readaccess pointer to me...\n");
+	fprintf(stderr, "REV: Massive error, I'm in desctructor of memfile, but there is still a readaccess pointer to me fname: [%s], [%ld] accesses\n", filename.c_str(), raccesses);
 	exit(1);
       }
     //Do all the natural stuff, delete the vector etc.? Need to do otherwise?
@@ -196,7 +199,7 @@ struct memfile_ptr
 
   memfile_ptr( memfile& mf )
   {
-    reset();
+    //reset();
     open( mf );
   }
 
@@ -211,7 +214,10 @@ struct memfile_ptr
 
   ~memfile_ptr()
   {
-    close();
+    if( mfile != NULL )
+      {
+	close();
+      }
   }
   
   void close()
@@ -519,7 +525,7 @@ struct memfile_ptr
   template<typename... Args>
   void printf(const char* fmt, Args... args )
   {
-
+    
     size_t SPRINTF_BUFF_SIZE=1e3;
     std::vector<char> buffer( SPRINTF_BUFF_SIZE );
     
