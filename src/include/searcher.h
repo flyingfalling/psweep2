@@ -396,13 +396,18 @@ struct searcher
   //Has a fake memsystem in there too hahaha...
   fake_system fakesys;
 
+  searcher()
+  {
+    //REV: nothing todo
+  }
+  
   void register_fake_funct( const std::string& name, const fake_system_funct_t& funct)
   {
     fakesys.register_funct( name, funct );
   }
   
   //varlist will contain required um, data files I guess?
-  void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params )
+  void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const bool& writefiles=false )
 		   
   {
     fprintf(stdout, "Calling runsearch\n");
@@ -415,8 +420,13 @@ struct searcher
 
     //REV: User must have created his FAKESYSTEM calls before this point. In other words, in user program, he makes his main, he has his funct,
     //he registers his funct, then when he calls this, he calls it with his list of his FAKE_SYSTEM stuff. OK.
-  
-    filesender* fs = filesender::Create();
+
+
+    //Can a static funct take an argument...? I guess so.
+    filesender* fs = filesender::Create( fakesys, writefiles );
+    //REV: Oh crap, on this side, it might need to read them in the first place...hm.
+    
+    //Calls to e.g. SEARCH_GRID etc. will call it. All calls to FS that master will make, I need to make sure to handle them properly...
   
     fprintf(stdout, "RUNNING SEARCH ALGO: [%s]\n", searchtype.c_str() );
   

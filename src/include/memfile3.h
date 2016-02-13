@@ -151,6 +151,11 @@ struct memfile_ptr
   bool goodstate=true;
 
   bool fromfile=false; //was it originally read from a file (locally?). We might want to write it back to close it...?
+
+  memfile get_memfile() const
+  {
+    return *mfile;
+  }
   
   void clear()
   {

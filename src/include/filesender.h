@@ -70,6 +70,8 @@ struct filesender
   //REV: This CONTAINS the memfile system thing. So...on other side, I need to re-construct it? Note, user will need to "construct" on this side
   //in real time?
   fake_system fakesys;
+
+  bool todisk=false;
   
   std::vector<bool> _workingworkers;
 
@@ -287,9 +289,9 @@ struct filesender
 
 
   //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
-  static filesender* Create( fake_system& _fakesys )
+  static filesender* Create( fake_system& _fakesys, const bool& _todisk=false )
   {
-    filesender* fs = new filesender(_fakesys);
+    filesender* fs = new filesender(_fakesys, _todisk);
     
     if( fs->world.rank() == 0 )
       {
@@ -331,13 +333,14 @@ struct filesender
     
   }
 
-  filesender(fake_system& _fakesys)
-  : fakesys( _fakesys )
+filesender(fake_system& _fakesys, const bool& _todisk = false)
+: fakesys( _fakesys ), todisk(_todisk)
   {
     MPI_Init(0, NULL);
-    
+
+    bool currworking=true;
     //Assume that world/env are automatically constructed?
-    _workingworkers.resize( world.size(), true );
+    _workingworkers.resize( world.size(), currworking );
     //Wait, does this contain the info about everything e.g. -n 4??? Like ARGC and ARGV...?
     
     
@@ -502,19 +505,24 @@ struct filesender
 
   //REV: BIG PROBLEM, I need to check whether it starts with a / or not.
 
-  void handle_pitem( pitem& mypitem, const std::string& dir )
+  memfsys handle_pitem( pitem& mypitem, const std::string& dir )
   {
     //First, get an INT, number of files.
     int numfiles = receive_int( 0 ); //get_int( 0 );
     std::vector< memfile > mfs;
     std::vector< std::string > newfnames;
     std::vector< std::string > oldfnames;
+
+    memfsys myfsys;
     
     std::string fnamebase= "reqfile";
     for(size_t f=0; f<numfiles; ++f)
       {
 	memfile mf = receive_file( 0 );
-	mfs.push_back( mf );
+	//mfs.push_back( mf );
+
+	myfsys.add_file( mf );
+	
 	std::string myfname = fnamebase + std::to_string( f );
 	newfnames.push_back( myfname );
 	oldfnames.push_back( mf.filename ); //this is old fname, I guess I could get it elsewhere... myfname is the NEW one...
@@ -528,13 +536,21 @@ struct filesender
 	//is which for the user haha... just have user reference certain file names specifically if he needs them. Yea...that works I guess. OK.
 	//So, now what he does, is he searches for that variable's value *now*???? Not by filename but by variable? Ugh, that's so ugly. I.e.
 	//print out INPUT FILE now... I.e. I need to re-work the command to replace any instances of OLD inputfile with NEW inputfile...meh.
-	fprintf(stdout, "IN WORKER [%d]: OUTPUTTING LOCAL FILE: [%s]\n", world.rank(), std::string(dir+"/"+myfname).c_str());
+	fprintf(stdout, "IN WORKER [%d]: GOT LOCAL MEM FILE: [%s]\n", world.rank(), std::string(dir+"/"+myfname).c_str());
+	
+	if( todisk == true)
+	  {
+	    fprintf(stdout, "IN WORKER [%d]: PRINTING TO DISK LOCAL MEM FILE: [%s]\n", world.rank(), std::string(dir+"/"+myfname).c_str());
+	    mf.tofile( dir + "/" + myfname );
+	  }
 	
 	//write to file OK.
 	//REV: Add to filesystem and/or push back...heh
-	//mf.tofile( dir, myfname );
-	memfile_ptr mfp( mf );
-	mfp.tofile( dir + "/" + myfname );
+	
+	
+	
+	//memfile_ptr mfp( mf );
+	//mfp.tofile( dir + "/" + myfname );
       
 	//REV: so I now need to MODIFY mypitem for the required files,
 	//and I also need to MODIFY for success, output, etc.
@@ -543,11 +559,12 @@ struct filesender
       }
     
     mypitem.re_base_directory( mypitem.mydir, dir, oldfnames, newfnames);
+    //REV: I will now create memfsys using that array as the thing...I will write them out if necessary.
+        
     mypitem.mydir = dir;
     //mypitem will now be rebased appropriately, although hierarchical varlists etc. are not carried with it of course.
-
-  
-  
+    
+    
   }
 
   
@@ -704,7 +721,7 @@ struct filesender
 
 
 
-  void notify_finished( pitem& mypitem )
+  void notify_finished( pitem& mypitem, memfsys& myfsys )
   {
     //REV: this needs to notify master, wait for it, then send back
     //any results. Master needs to wait for this too (i.e. handle a "finished"
@@ -730,15 +747,18 @@ struct filesender
 
     for(size_t x=0; x<nsuccess; ++x)
       {
-	send_file( 0, mypitem.success_files[x] );
+	std::string mfname = mypitem.success_files[x];
+
+	memfile_ptr mfp = myfsys.open( mfname, todisk );
+	//REV: This is where a problem could happen...
+	//Send from disk if todisk is true...
+	send_file( 0, mfp.get_memfile() );
       }
-
-    varlist<std::string> resvar = mypitem.get_output();
-
+    
+    varlist<std::string> resvar = mypitem.get_output( myfsys, todisk );
+    
     send_varlist( 0, resvar );
-
-
-  
+    
     return;
     
   }
@@ -747,7 +767,7 @@ struct filesender
   
 
   //REV: this needs to "find" which PITEM was allocated to that worker/ thread.
-  varlist<std::string> handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem )
+  varlist<std::string> handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem, memfsys& myfsys )
   {
     int targrank = pc.SRC;
     std::string cmd = pc.CMD;
@@ -771,7 +791,8 @@ struct filesender
       {
 	fprintf(stdout, "MASTER: receiving file from WORKER [%d]\n", targrank);
 	memfile mf = receive_file( targrank );
-
+	myfsys.add_file( mf );
+	
 	fprintf(stdout, "MASTER Received file from WORKER [%d]\n", targrank);
 	//mfs.push_back( mf );
 	//REV: need to figure out how to output these
@@ -782,7 +803,7 @@ struct filesender
 	//executed worker, and just use that.
 	
 	std::string origdir = corresp_pitem.mydir;
-
+	
 	fprintf(stdout, "MASTER: will rename file to origdir: [%s]\n", origdir.c_str() );
 	
 	std::string fname="ERRORFNAME";
@@ -811,9 +832,17 @@ struct filesender
 
 	fprintf(stdout, "MASTER: Will attempt to write file to filename [%s]\n", newlocal.c_str());
 	
-	memfile_ptr mfp(mf);
+	
 	//mf.tofile( origdir, fname );
-	mfp.tofile( origdir+"/"+fname );
+	
+	//REV: ONLY OUTPUT ON MASTER SIDE IF WE NEED?!?!?!
+	//Whatever, output it for safety...
+
+	if( todisk )
+	  {
+	    memfile_ptr mfp(mf);
+	    mfp.tofile( origdir+"/"+fname );
+	  }
 	fprintf(stdout, "MASTER: wrote file\n");
       }
 
@@ -824,10 +853,10 @@ struct filesender
     return outputvlist;
   }
 
-  bool execute_work( pitem& mypitem )
+  bool execute_work( pitem& mypitem, memfsys& myfsys )
   {
     //This should do all checks (locally?) and check satisfactory output too.
-    bool success = mypitem.execute_cmd( fakesys );
+    bool success = mypitem.execute_cmd( fakesys, myfsys );
     return success;
   }
 
@@ -881,19 +910,24 @@ struct filesender
 	pitem mypitem = handle_cmd( cmd ); //REV: may EXIT, or contain a PITEM (to execute).
 	fprintf(stdout, "WORKER [%d]: received pitem\n", world.rank());
 	
-	handle_pitem( mypitem, LOCALDIR ); // This will do the receiving of all files and writing to LOCALDIR, it will also rename them and keep track
+	memfsys myfsys = handle_pitem( mypitem, LOCALDIR ); // This will do the receiving of all files and writing to LOCALDIR, it will also rename them and keep track
 	//of the correspondence. Note the SENDING side will do the error out if it is no in the __MY_DIR. Do that on PARENT side I guess. OK.
+	
+	//REV: BUILD FAKE FYSYS HERE! (for example, we might not want to have written to disk, but rather received to the fake FS)
 
+	
+	
 	fprintf(stdout, "WORKER [%d]: handled PITEM\n", world.rank());
-
+	
 	//We now have PITEM updated, we will now EXECUTE it (until it fails, keep checking success).
-
-	execute_work( mypitem );
+	
+	
+	execute_work( mypitem, myfsys );
 
 	fprintf(stdout, "WORKER [%d]: EXECUTED WORK\n", world.rank());
 
 	//NEED TO SEND RESULTS
-	notify_finished( mypitem ); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
+	notify_finished( mypitem, myfsys ); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
 
 
 	fprintf(stdout, "WORKER [%d]: sent finished notify\n", world.rank());
@@ -1048,8 +1082,9 @@ struct filesender
   };
 
 
-  
-  void master_to_slave( const pitem& mypitem, const size_t& workeridx )
+
+  //REV: Always read from files here...assume there will be none shared.
+  void master_to_slave( const pitem& mypitem, const size_t& workeridx, memfsys& myfsys )
   {
     send_cmd( "PITEM", workeridx );
 
@@ -1058,11 +1093,20 @@ struct filesender
     int nfiles = mypitem.required_files.size();
     
     send_int( workeridx, nfiles );
-  
+
+    //REV: Read all required files into memory (?). Note, they may already be there haha... Note, if it already exists, just leave as is.
+    
+    
+    
     //Then, send the files.
     for(size_t f=0; f<mypitem.required_files.size(); ++f)
       {
-	send_file_from_disk( workeridx, mypitem.required_files[f] );
+	//REV: Yea...just send files from here. Problem is, some of them might not be in MEMFSYS??? We should load them all at some point (required,
+	//and input)
+	memfile_ptr mfp = myfsys.open( mypitem.required_files[f], true ); //will attempt to read through if it does not exist. Note may be empty?
+	
+	//send_file_from_disk( workeridx, mypitem.required_files[f] );
+	send_file( workeridx, mfp.get_memfile() );
       }
 
     //REV: And that is it, return
@@ -1108,16 +1152,17 @@ struct filesender
       fprintf(stderr, "REV: this get next worker should only happen if available!\n");
       exit(1);
     }
-  
-    work_progress( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, const size_t& nworkers )
+
+    //REV: This is a CONSTRUCTOR. I need to keep around all my memfsys? OK.
+    work_progress( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, const size_t& nworkers, const bool& usedisk=false )
     {
       farmed_status.resize( nworkers );
     
       for( size_t n=0; n<newlist.size(); ++n )
 	{
 	  //make the parampoint (i.e. generate the hierarchical varlists etc. locally).
-	  size_t idx = pg.generate( newlist[n] );
-	
+	  size_t idx = pg.generate( newlist[n], usedisk );
+	  
 	  add_parampoint( pg, idx );
 	}
 
@@ -1244,10 +1289,24 @@ struct filesender
   //{
     //This does everything necessary for it. So on other side, it will do all this. This will include the MPI guys?
     //List of workers, note it is indexed from 1...i.e. 0 is worker 1...
-  void comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist )
+  
+  //REV: This is the entry point for MASTER
+  //Need to modify for MEMFILE use:
+  //1 ) Master to slave
+  //2 ) Handle finished work
+  //3 ) pitem creation (making input_file)
+  //Question is what to do with this stuff.
+  //Easiest to just have a memfsys for each parampoint, problem is with
+  //things that will be needed by future guys...they must exist.
+  //Easiest solution is to have a memfsys for each PARAMPOINT. Ah, that is
+  //the best situation... But, then I need to (when I create things)
+  //have access to that from PITEM. I.e. I need to know my PSET and PPOINT.
+  //At any rate, at PITEM creation time (construction), I would like a
+  //pointer to it...
+  void comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, const bool& usedisk=false )
   {
     
-    work_progress wprog( pg, newlist, _workingworkers.size() );
+    work_progress wprog( pg, newlist, _workingworkers.size(), usedisk );
 
     //REV: these should never happen at the same time, i.e. it shouldn't
     //be done if there are any workers working...
@@ -1300,22 +1359,25 @@ struct filesender
 		
 		//farmed_status[workernum] should tell us where
 		parampoint_coord pc = wprog.farmed_status[workernum];
-
+		
 		fprintf(stdout, "&&& Recevied finished cmd from worker [%ld]. The received was coordinate: PPOINT [%ld], PSET [%ld], PITEM [%ld]\n", workernum,  pc.parampointn, pc.psetn, pc.pitemn );
 		
 		pitem handledpitem = wprog.get_corresponding_pitem_from_workernum( pg, workernum );
 		fprintf(stdout, "Got handled pitem from that coordinate\n");
-		
-		varlist<std::string> result = handle_finished_work( pcmd, handledpitem );
 
+
+		//Specifically, call it on the parampoint#, from pg.parampoint_memfsystems[ pc.parampointn ].
+		//REV: THIS will write to files! Modify to use a local (temporary) memfsys
+		varlist<std::string> result = handle_finished_work( pcmd, handledpitem, pg.parampoint_memfsystems[ pc.parampointn ] );
+		
 		fprintf(stdout, "MASTER: got result from worker [%ld]. Now marking done...\n", workernum);
 		//need to mark it DONE in pitem representation.
 		wprog.mark_done( pc );
-
+		
 		fprintf(stdout, "MASTER: Marked done! Will now set result in PPOINT list\n");
 		pg.set_result( pc, result );
-
-
+		
+		
 		fprintf(stdout, "MASTER: Finished set done. Now setting workingworkers targ to false\n");
 		_workingworkers[ pcmd.SRC ] = false;
 		fprintf(stdout, "MASTER: ALl done handling received DONE\n");
@@ -1338,13 +1400,27 @@ struct filesender
 	else
 	  {
 	    fprintf(stdout, "CASE: BOTH WORK AND A WORKER ARE AVAILABLE. WILL FARM\n");
+
+	    //REV: This will only modify local worker-tabulating structs,
+	    //it will not do any actual work or communicate over MPI.
 	    size_t farmedworker = wprog.farm_work(_workingworkers);
 
 	    fprintf(stdout, "FARMED IT LOCALLY. Now will send data to slave\n");
 	    parampoint_coord pc = wprog.farmed_status[ farmedworker ];
+
 	    //FARM TO THAT WORKER, i.e. send message to that rank.
+	    //REV: This actually does the reading from files and sending. Modify to use (local) memfsys. Uses SEND_FILE_FROM_DISK.
+
+	    //Finally, at PITEM construction time, it may have written
+	    //INPUT. I really should create the (local) pitem memfile
+	    //system at that point...mmm I kind of like that.
+	    //OK, final thing to do is to make sure that I delete
+	    //memfsys after theyre done (perhaps logging them).
+	    //Or else they may grow VERY large...
+	    //For example, after a whole PP is finished, how do I know what to do with it?
 	    master_to_slave( wprog.get_corresponding_pitem( pg, pc),
-			     farmedworker );
+			     farmedworker,
+			     pg.parampoint_memfsystems[pc.parampointn] );
 	    fprintf(stdout, "DONE master to slave.\n");
 	  }
       }

@@ -30,12 +30,12 @@ struct hierarchical_varlist
   }
 
 
-  void tofile( const std::string& fname, const size_t& starti )
+  void tofile( const std::string& fname, const size_t& starti, memfsys& myfsys, const bool& usedisk=false)
   {
     if(starti==0)
       {
 	//it is root.
-	vl[starti].tofile( fname );
+	vl[starti].tofile( fname, myfsys, usedisk );
       }
     else
       {
@@ -43,7 +43,7 @@ struct hierarchical_varlist
 	while( idx > 0 )
 	  {
 	    //fprintf(stdout, "WRITING TO FILE IDX=%ld\n", idx);
-	    vl[idx].tofile( fname ); //wow this will open and close it again, definitely not worth it. It's appending recall. OK.
+	    vl[idx].tofile( fname, myfsys, usedisk ); //wow this will open and close it again, definitely not worth it. It's appending recall. OK.
 	    //fprintf(stdout, "FINISHED WRITING\n");
 	    idx = get_parent( idx );
 	    //fprintf(stdout, "GOT PARENT AFTER WRITING...\n");
@@ -53,7 +53,7 @@ struct hierarchical_varlist
 	    fprintf(stderr, "BIG ERROR, failed to end up at root while walking through hierarchical varlist\n");
 	    exit(1);
 	  }
-	vl[idx].tofile( fname ); //finally, this should be root.
+	vl[idx].tofile( fname, myfsys, usedisk ); //finally, this should be root.
 	
       }
     

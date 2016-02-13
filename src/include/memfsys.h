@@ -29,6 +29,11 @@ struct mem_filesys
     return ret;
   }
 
+  void add_file( const memfile& m )
+  {
+    filelist.push_back( m );
+  }
+  
   memfile_ptr open( const std::string& fname, const bool& readthrough=false )
   {
     std::vector<size_t> locs = find_string_in_memfile_vect( fname );
@@ -38,7 +43,7 @@ struct mem_filesys
 	filelist.push_back( mf );
 	return memfile_ptr( filelist[ filelist.size()-1 ] );
       }
-    else if( locs.size() == 1 )
+    else if( locs.size() == 1 ) //REV: Huh, doesn't bother reading through if it already exists? This seems bad???
       {
 	return memfile_ptr( filelist[ locs[0] ] );
       }
@@ -52,6 +57,18 @@ struct mem_filesys
   memfile_ptr open_from_disk( const std::string& fname )
   {
     return open( fname, true );
+  }
+  
+  memfile get_memfile( const std::string& fname )
+  {
+    std::vector<size_t> locs = find_string_in_memfile_vect( fname );
+    if(locs.size() != 1)
+      {
+	fprintf(stderr, "ERROR, getting memfile, either not found or more than one! [%s], [%ld] copies\n", fname.c_str(), locs.size() );
+	exit(1);
+      }
+
+    return filelist[ locs[0] ];
   }
 
   

@@ -146,13 +146,14 @@ struct varlist
   
   
   //append? or overwrite? Default is APPEND to end.
-  void tofile( const std::string& fname, mem_filesys& mf )
+  void tofile( const std::string& fname, mem_filesys& mf, const bool& usefile=false )
   {
     //std::ofstream f;
     //open_ofstream( fname, f );
 
     //memfile_ptr mfp = mf.get_ptr( fname );
-    memfile_ptr mfp = mf.open( fname );
+    //Doesn't matter at first, we're making a new one anyways...truncating? Yes. Not "append to file" or some shit.
+    memfile_ptr mfp = mf.open( fname, false );
     
     //Only prints out vars if they are strings, not if they are arrays.
     //Should allow to print out arrays too? What types of things might
@@ -165,6 +166,14 @@ struct varlist
 	//f << vars[v].name << " " << vars[v].get_s() << std::endl;
 	mfp.printf( "%s %s\n", vars[v].name.c_str(), vars[v].get_s().c_str() );
       }
+
+    if( usefile == true )
+      {
+	//print to the disk for real...
+	mfp.tofile( fname );
+      }
+    
+    mfp.close();
     
     //close_ofstream( f );
 
@@ -199,9 +208,9 @@ struct varlist
     //This is really a problem, I need to organize this better. I.e.
     //tell switch of MEM_FILESYSTEM to turn on or off reading/writing to
     //actual files...
-    fprintf(stdout, "In inputfromfile (from mem fsys), opening...\n");
+    //fprintf(stdout, "In inputfromfile (from mem fsys), opening...\n");
     memfile_ptr mfp = mf.open(fname, readthrough);
-    fprintf(stdout, "In inputfromfile (from mem fsys), OPENED...\n");
+    //fprintf(stdout, "In inputfromfile (from mem fsys), OPENED...\n");
 
     //fprintf(stdout, "INPUTTING FROM FILE: [%s]\n", fname.c_str() );
     

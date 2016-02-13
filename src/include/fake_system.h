@@ -150,7 +150,7 @@ struct fake_system
   //Has a functor that user calls. Must take a fake FS/varlist (i.e. compile his code to overwrite typical system guys with my fake ones ). Whatever.
   //How does user read in values? Via BINARY or via DOUBLE.
   
-  mem_filesys my_filesys;
+  //mem_filesys my_filesys;
   std::vector< fake_sys_rep > sys_functs;
 
   fake_system( )
@@ -158,10 +158,10 @@ struct fake_system
   }
   
   //Must take some kind of "arglist"?, as well as the fake FS.
-  fake_system( mem_filesys& mf )
+  /*fake_system( mem_filesys& mf )
   {
     my_filesys = mf;
-  }
+    }*/
   
   
   
@@ -171,7 +171,7 @@ struct fake_system
     sys_functs.push_back( fsr );
   }
 
-  bool call_funct( const std::string& name, const std::vector<std::string>& args )
+  bool call_funct( const std::string& name, const std::vector<std::string>& args, memfsys& my_filesys )
   {
     std::vector<size_t> locs;
     for(size_t x=0; x<sys_functs.size(); ++x)
@@ -179,8 +179,6 @@ struct fake_system
 	if( name.compare( sys_functs[x].name ) == 0 )
 	  {
 	    locs.push_back(x);
-	    //Call it
-	    //sys_functs[x].funct( args, my_filesys );
 	  }
 	
       }

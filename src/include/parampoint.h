@@ -97,7 +97,7 @@ struct pitem
   }
   
   //In new version, this may call from memory to speed things up.
-  bool execute_cmd( fake_system& fakesys )
+  bool execute_cmd( fake_system& fakesys, memfsys& myfsys )
   {
     std::vector< std::string > notready = check_ready();
 
@@ -107,7 +107,7 @@ struct pitem
     //std::vector<std::string> args = std::vector<std::string>( mycmd.begin()+1, mycmd.end() );
     //bool calledfake = fakesys.call_funct( ostensible_cmd, args );
     //REV: 10 Feb 2016 -- make it same as ARGV so user doesn't have to change much...
-    bool calledfake = fakesys.call_funct( ostensible_cmd, mycmd );
+    bool calledfake = fakesys.call_funct( ostensible_cmd, mycmd, myfsys );
 
     if( calledfake == false )
       {
@@ -386,7 +386,7 @@ struct pitem
   {
   }
   
-  pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv)
+  pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv, memfsys& myfsys, const bool& usedisk=false )
   {
     //Need to add to the most recent pset a child...
     std::vector<size_t> rootchildren = hv.get_children( 0 );
@@ -499,8 +499,14 @@ struct pitem
 
     //REV: AH, I am outputting 0th HV index to input_file! This is why it is only the bottommost.
     //Ideally I should do each, leaving "most leaf-most" values of same guys as the same?
+
     
-    hv.tofile( input_file, 0 ); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
+    //REV: HERE is final place to modify TODISK filesystem from filesystem. I need to set at creation time whether it should actually write
+    //to something? I should store a memfsys internal to each, problem is that each PITEM will need to communicate with previous ones, which
+    //will cause problems?
+
+    //Zeroth is the base, i.e. root...the varlist that was passed that I built off of haha.
+    hv.tofile( input_file, 0, myfsys, usedisk ); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
     
     //Input files are REQUIRED files (by default, might be checked twice oh well).
     //Furthermore, output files are SUCCESS files (fails and tries to re-run without their creation of course).
@@ -577,14 +583,14 @@ struct pitem
   }
 
   
-  varlist<std::string> get_output()
+  varlist<std::string> get_output( memfsys& myfsys, const bool& usedisk=false )
   {
     varlist<std::string> retvarlist;
     
     //REV: I could read this some other way? Some number of (named) varlists? A list of them? OK.
     for(size_t f=0; f<output_files.size(); ++f)
       {
-	retvarlist.inputfromfile( output_files[f] );
+	retvarlist.inputfromfile( output_files[f], myfsys, usedisk );
       }
     return retvarlist;
   }
@@ -872,7 +878,7 @@ struct executable_representation
 	enum_pset( ppscript.psets[a] );
       }
 #endif
-
+    
     //construct the executable representations based on that. I.e. construct for all PSETs inside it, the actual PSET things.
     fscript = functional_representation( ppscript );
     
@@ -893,7 +899,7 @@ struct executable_representation
   //etc.
 
   //Builds and returns a parampoint. Which can then be executed in its own way.
-  parampoint build_parampoint( hierarchical_varlist<std::string>& hv, const std::string& dir )
+  parampoint build_parampoint( hierarchical_varlist<std::string>& hv, const std::string& dir, memfsys& myfsys, const bool& usedisk=false )
   {
     //REV: this will not work lol, I need one of my own?!??!!
     parampoint mypp( hv, dir );
@@ -929,7 +935,8 @@ struct executable_representation
 	    //PITEM CONSTRUCTOR WILL EXECUTE THE GUYS IN ORDER TO
 	    //GENERATE CMD?
 	    //Constructor does the modification of HV?!?!!! OK.
-	    pitem mypitem( fscript.pset_list[p], w, hv );
+	    //REV: This is where memfsys comes in.
+	    pitem mypitem( fscript.pset_list[p], w, hv, myfsys, usedisk);
 	    mypset.add_pitem(mypitem);
 	  }
 
@@ -1035,6 +1042,8 @@ struct parampoint_generator
   std::vector< parampoint > parampoints;
 
   std::vector< parampoint_result > parampoint_results; //make sure these are same shape as the actual parampoint...
+
+  std::vector< memfsys > parampoint_memfsystems;
   
   std::string basedir="./";
 
@@ -1081,7 +1090,7 @@ struct parampoint_generator
   //I.e. control passes to that to farm out that "set" of paramthings at a time? May be a generation, may not be?
   //We pass a set of varlists to execute, and it does everything for me.
   
-  size_t generate( const varlist<std::string>& vl )
+  size_t generate( const varlist<std::string>& vl, const bool& usedisk=false )
   {
     //Takes the varlist...
     hierarchical_varlist<std::string> hv( vl );
@@ -1089,14 +1098,19 @@ struct parampoint_generator
     parampoint_vars.push_back( hv );
     
     std::string dirname = basedir + "/" + std::to_string( parampoints.size() );
-    parampoint retp = exec_rep.build_parampoint( hv, dirname );
+    
+    memfsys myfsys;
+    
+    parampoint retp = exec_rep.build_parampoint( hv, dirname, myfsys, usedisk );
     
     parampoints.push_back ( retp );
 
     parampoint_results.push_back( parampoint_result( retp ) );
-
+    
     fprintf(stdout, "Finished, now GENERATE pg, will enumerate.\n");
     hv.enumerate();
+    
+    parampoint_myfsystems.push_back( myfsys );
     
     return (parampoints.size() - 1);
   }
