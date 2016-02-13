@@ -76,9 +76,7 @@ struct pitem
   
   std::vector< std::string > required_files;
   std::vector< std::string > success_files;
-  
   std::vector< std::string > output_files;
-
   std::string input_file;
   
   std::string mydir;

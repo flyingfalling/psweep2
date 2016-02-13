@@ -1,4 +1,27 @@
 
+//REV: Modify this so I can specify WHICH files are actually read/written to file and which aren't. Of course initially all are read in (on master side).
+//However some might be purely memory-files, so we go through there anyway.
+
+//On client side, we can specify which to write out to actual files.
+//on client side, we want to read-back in data, we need to know which ones to read files with.
+
+//Finally, we need to be able to specify that when building CMD.
+
+//We also want to use FAKE_SYSTEM to call user function.
+
+//So, I need to redo everything pretty much to make sure it works with fake_system.
+
+//really necessary to re-base the filesystem? Sending the list of files kind of pointless? It is read out from user side...add them all to file system
+//on that side?
+
+//REV: OK, this is filesender.
+//We have one of these (a single one for a sweep). Problem is, this has a fakesys in it. Which has a memfsys in it. That means that all MEMFILES
+//will REMAIN, even after I'm done with them? At least on global side? Crap. Ah, but "close" will close it? I can keep it open though....
+//When user tries to read from it? Each worker will have the fakesys() over on that side too? Yea, but problem is that memfsys won't be updated...
+//fakesys() is sent over? It's created ONLY ON USER SIDE (crap). But user funct is there... No, FAKESYS is created on all workers? It's not related
+//at all to script we read etc. We obviously can't send the pointer... 
+
+//Shit, this is a problem. Because, remember, filesender when constructed, it calls the worker on each side without host.
 
 #pragma once
 
@@ -43,9 +66,11 @@ struct filesender
 
   //std::shared_ptr< boost::mpi::communicator > world;
   //std::shared_ptr< boost::mpi::environment > env;
-  
-  fake_system fakesys;
 
+  //REV: This CONTAINS the memfile system thing. So...on other side, I need to re-construct it? Note, user will need to "construct" on this side
+  //in real time?
+  fake_system fakesys;
+  
   std::vector<bool> _workingworkers;
 
   boost::mpi::communicator world;
@@ -260,10 +285,11 @@ struct filesender
     
   };
 
-  
-  static filesender* Create()
+
+  //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
+  static filesender* Create( fake_system& _fakesys )
   {
-    filesender* fs = new filesender;
+    filesender* fs = new filesender(_fakesys);
     
     if( fs->world.rank() == 0 )
       {
@@ -291,6 +317,22 @@ struct filesender
   //the stuff. In other words. only do it right before execute? Only if execute returns false? Execute takes the stuff. Hmm, we will be writing large numbers
   //of files possibly still, massive waste. So, I need a way to stop it from doing that...
   filesender()
+  {
+    MPI_Init(0, NULL);
+    
+    //Assume that world/env are automatically constructed?
+    _workingworkers.resize( world.size(), true );
+    //Wait, does this contain the info about everything e.g. -n 4??? Like ARGC and ARGV...?
+    
+    
+
+    //REV: need to start true, since they're all "kind of" working (waiting for READY)
+    
+    
+  }
+
+  filesender(fake_system& _fakesys)
+  : fakesys( _fakesys )
   {
     MPI_Init(0, NULL);
     

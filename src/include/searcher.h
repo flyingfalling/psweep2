@@ -387,66 +387,85 @@ struct data_table
 };
 
 
+//Globally, I want to have some struct to call it with? Like REGISTER_FUCNT. I don't want user to have to do stuff. I.e. make a "searcher" struct,
+//much nicer. Then call run-search. OK.
 
-//varlist will contain required um, data files I guess?
-void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params )
+struct searcher
 {
-  fprintf(stdout, "Calling runsearch\n");
-  parampoint_generator pg(scriptfname, mydir);
-  fprintf(stdout, "made it?\n");
 
-  //REV: PG contains the "results" of each... parampoint_results, of type parampoint_result.
-  //That is: list of pset results, each of which has list of pitem results (specifically, varlist).
-  //OK, I can access those however I wish, e.g. I know last is the only one I care about etc.
-  
-  filesender* fs = filesender::Create();
-  
-  fprintf(stdout, "RUNNING SEARCH ALGO: [%s]\n", searchtype.c_str() );
-  
-  if( searchtype.compare( "grid" ) == 0 )
-    {
-      
-      std::string varname = "GRID_MIN_MAX_STEP_FILE";
-      std::string minmaxfname = params.getTvar( varname );
-      
-      bool hascolnames = true;
-      data_table dtable( minmaxfname, hascolnames );
+  //Has a fake memsystem in there too hahaha...
+  fake_system fakesys;
 
-      fprintf(stdout, "Trying to get VARNAMEs\n");
-      std::vector<std::string> varnames = dtable.get_col( "NAME" );
+  void register_fake_funct( const std::string& name, const fake_system_funct_t& funct)
+  {
+    fakesys.register_funct( name, funct );
+  }
+  
+  //varlist will contain required um, data files I guess?
+  void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params )
+		   
+  {
+    fprintf(stdout, "Calling runsearch\n");
+    parampoint_generator pg(scriptfname, mydir);
+    fprintf(stdout, "made it?\n");
 
-      fprintf(stdout, "Got varnames\n");
-      std::vector<double> mins = data_table::to_float64( dtable.get_col( "MIN" ) );
-      fprintf(stdout, "Got mins\n");
-      std::vector<double> maxes = data_table::to_float64( dtable.get_col( "MAX" ) );
-      std::vector<double> steps = data_table::to_float64( dtable.get_col( "STEP" ) );
+    //REV: PG contains the "results" of each... parampoint_results, of type parampoint_result.
+    //That is: list of pset results, each of which has list of pitem results (specifically, varlist).
+    //OK, I can access those however I wish, e.g. I know last is the only one I care about etc.
 
-      fprintf(stdout, "Got STEP\n");
-      
-      //Construct required stuff from PARAMS. I.e. min and max of each param? Need N varlists? Have them named? Specific name? Have array type of
-      //name PARAMS, etc.? Probably got from a file at beginning... Some special way of reading that...it should know varnames? 
-      search_grid( varnames, mins, maxes, steps, pg, *fs);
-    }
-  else if( searchtype.compare( "DREAM-ABC" ) == 0 )
-    {
-      
-      
-      //Implement the algorithm...requires quite a bit of messing? Note, what is OUTPUT??? It's the passed PG
-    }
-  else if( searchtype.compare( "MT-DREAM-zs" ) == 0 )
-    {
-      
-    }
-  else
-    {
-      fprintf(stderr, "REV: ERROR, search type [%s] not found\n", searchtype.c_str() );
-    }
+    //REV: User must have created his FAKESYSTEM calls before this point. In other words, in user program, he makes his main, he has his funct,
+    //he registers his funct, then when he calls this, he calls it with his list of his FAKE_SYSTEM stuff. OK.
   
-  fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
-  std::string contents="EXIT";
-  boost::mpi::broadcast(fs->world, contents, 0);
+    filesender* fs = filesender::Create();
   
-  delete(fs);
+    fprintf(stdout, "RUNNING SEARCH ALGO: [%s]\n", searchtype.c_str() );
   
+    if( searchtype.compare( "grid" ) == 0 )
+      {
+      
+	std::string varname = "GRID_MIN_MAX_STEP_FILE";
+	std::string minmaxfname = params.getTvar( varname );
+      
+	bool hascolnames = true;
+	data_table dtable( minmaxfname, hascolnames );
+
+	fprintf(stdout, "Trying to get VARNAMEs\n");
+	std::vector<std::string> varnames = dtable.get_col( "NAME" );
+
+	fprintf(stdout, "Got varnames\n");
+	std::vector<double> mins = data_table::to_float64( dtable.get_col( "MIN" ) );
+	fprintf(stdout, "Got mins\n");
+	std::vector<double> maxes = data_table::to_float64( dtable.get_col( "MAX" ) );
+	std::vector<double> steps = data_table::to_float64( dtable.get_col( "STEP" ) );
+
+	fprintf(stdout, "Got STEP\n");
+      
+	//Construct required stuff from PARAMS. I.e. min and max of each param? Need N varlists? Have them named? Specific name? Have array type of
+	//name PARAMS, etc.? Probably got from a file at beginning... Some special way of reading that...it should know varnames? 
+	search_grid( varnames, mins, maxes, steps, pg, *fs);
+      }
+    else if( searchtype.compare( "DREAM-ABC" ) == 0 )
+      {
+      
+      
+	//Implement the algorithm...requires quite a bit of messing? Note, what is OUTPUT??? It's the passed PG
+      }
+    else if( searchtype.compare( "MT-DREAM-zs" ) == 0 )
+      {
+      
+      }
+    else
+      {
+	fprintf(stderr, "REV: ERROR, search type [%s] not found\n", searchtype.c_str() );
+      }
+  
+    fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
+    std::string contents="EXIT";
+    boost::mpi::broadcast(fs->world, contents, 0);
+  
+    delete(fs);
+  
+  }
+
+
 }
-
