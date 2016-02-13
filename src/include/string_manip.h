@@ -228,7 +228,7 @@ void replace_old_fnames_with_new( std::vector<std::string>& fvect, const std::st
 {
   for(size_t x=0; x<replace_locs.size(); ++x)
     {
-      fprintf(stdout, "Replacing OLD: [%s] with NEW [%s]\n", fvect[ replace_locs[ x ] ].c_str(), newfname.c_str());
+      //fprintf(stdout, "Replacing OLD: [%s] with NEW [%s]\n", fvect[ replace_locs[ x ] ].c_str(), newfname.c_str());
       fvect[ replace_locs[ x ] ] = newfname;
     }
   

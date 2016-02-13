@@ -29,14 +29,14 @@ struct memfsys
   
   bool check_existence( const std::string& fname, const bool& checkdisk=false )
   {
-    fprintf(stdout, "Checking in memfile vect for [%s]\n", fname.c_str() );
+    //fprintf(stdout, "Checking in memfile vect for [%s]\n", fname.c_str() );
     std::vector<size_t> locs = find_string_in_memfile_vect( fname );
-    fprintf(stdout, "DONE Checking in memfile vect for [%s]\n", fname.c_str() );
+    //fprintf(stdout, "DONE Checking in memfile vect for [%s]\n", fname.c_str() );
     if( locs.size() < 1 )
       {	
-	fprintf(stdout, "Couldn't find it, checking in FILE SYSTEM\n");
+	//fprintf(stdout, "Couldn't find it, checking in FILE SYSTEM\n");
 	bool found = check_file_existence( fname );
-	fprintf(stdout, "FINISHED checking in FILE SYSTEM\n");
+	//fprintf(stdout, "FINISHED checking in FILE SYSTEM\n");
 	return found;
 	
       }
@@ -51,7 +51,7 @@ struct memfsys
     std::vector<size_t> ret;
     for(size_t x=0; x<filelist.size(); ++x)
       {
-	fprintf(stdout, "Comparing [%s] to target [%s]\n", filelist[x].filename.c_str(), targ.c_str());
+	//fprintf(stdout, "Comparing [%s] to target [%s]\n", filelist[x].filename.c_str(), targ.c_str());
 	if( filelist[x].filename.compare( targ ) == 0 )
 	  {
 	    ret.push_back( x);

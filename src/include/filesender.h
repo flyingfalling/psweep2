@@ -526,9 +526,13 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	memfile mf = receive_file( 0 );
 	//mfs.push_back( mf );
 
+#ifdef PRINTWORKER
 	fprintf(stdout, "WORKER [%d]: Received file with fname [%s]\n", world.rank(), mf.filename.c_str() );
+#endif
 	
-	myfsys.add_file( mf );
+	//mfs.push_back( mf );
+	//
+
 	
 	std::string myfname = fnamebase + std::to_string( f );
 	newfnames.push_back( myfname );
@@ -543,14 +547,21 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	//is which for the user haha... just have user reference certain file names specifically if he needs them. Yea...that works I guess. OK.
 	//So, now what he does, is he searches for that variable's value *now*???? Not by filename but by variable? Ugh, that's so ugly. I.e.
 	//print out INPUT FILE now... I.e. I need to re-work the command to replace any instances of OLD inputfile with NEW inputfile...meh.
+#ifdef PRINTWORKER
 	fprintf(stdout, "IN WORKER [%d]: GOT LOCAL MEM FILE: [%s]\n", world.rank(), std::string(dir+"/"+myfname).c_str());
+#endif
+	mf.filename = dir + "/" + myfname;
 	
 	if( todisk == true)
 	  {
+#ifdef PRINTWORKER
 	    fprintf(stdout, "IN WORKER [%d]: PRINTING TO DISK LOCAL MEM FILE: [%s]\n", world.rank(), std::string(dir+"/"+myfname).c_str());
+#endif
 	    mf.tofile( dir + "/" + myfname );
 	  }
-	
+
+
+	myfsys.add_file( mf );
 	//write to file OK.
 	//REV: Add to filesystem and/or push back...heh
 	
@@ -869,9 +880,10 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
   bool execute_work( pitem& mypitem, memfsys& myfsys )
   {
     //This should do all checks (locally?) and check satisfactory output too.
-    fprintf(stdout, "WORKER [%d] : Attempting to execute work...\n", world.rank());
+    
+    //fprintf(stdout, "WORKER [%d] : Attempting to execute work...\n", world.rank());
     bool success = mypitem.execute_cmd( fakesys, myfsys );
-    fprintf(stdout, "WORKER [%d] : Finished execute work...?\n", world.rank());
+    //fprintf(stdout, "WORKER [%d] : Finished execute work...?\n", world.rank());
     return success;
   }
 
@@ -879,7 +891,7 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
   {
     //FINISHED? Destruct everything locally in TMP? I.e. remove PITEM's DIR?
     //Is there a better way to do this?
-    fprintf(stdout, "Worker [%d] removing recursively workspace [%s]\n", world.rank(), mypitem.mydir.c_str());
+    //fprintf(stdout, "Worker [%d] removing recursively workspace [%s]\n", world.rank(), mypitem.mydir.c_str());
     boost::filesystem::path p( mypitem.mydir );
     uintmax_t removed = boost::filesystem::remove_all( p );
 
@@ -894,25 +906,25 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 
     //MKDIR HERE?
     
-    fprintf(stderr, "REV: WORKER [%d] is executing slave loop. Local work dir is: [%s]\n", world.rank(), LOCALDIR.c_str() );
+    //fprintf(stderr, "REV: WORKER [%d] is executing slave loop. Local work dir is: [%s]\n", world.rank(), LOCALDIR.c_str() );
 
 
     //REV: need to send first guy to tell its ready
     std::string pcinit = "READY";
     send_cmd( pcinit, 0 );
 
-    fprintf(stdout, "WORKER [%d] send CMD READY to root\n", world.rank());
+    //fprintf(stdout, "WORKER [%d] send CMD READY to root\n", world.rank());
     
     while( loopslave == true )
       {
 	make_directory( LOCALDIR );
 	
-	fprintf(stdout, "WORKER [%d]: waiting for cmd\n", world.rank() );
+	//fprintf(stdout, "WORKER [%d]: waiting for cmd\n", world.rank() );
 	//WAIT for mesg from MASTER
 	//psweep_cmd cmd = receive_cmd_from_any();  //wait_for_cmd();
 	psweep_cmd cmd = receive_cmd_from_root();  //wait_for_cmd();
 	
-	fprintf(stdout, "WORKER [%d]: GOT CMD [%s]. Will handle.\n", world.rank(), cmd.CMD.c_str() );
+	//fprintf(stdout, "WORKER [%d]: GOT CMD [%s]. Will handle.\n", world.rank(), cmd.CMD.c_str() );
 	
 	if( cmd_is_exit( cmd ) == true )
 	  {
@@ -923,36 +935,37 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 
 	//fprintf(stdout, "HANDLING CMD\n");
 	pitem mypitem = handle_cmd( cmd ); //REV: may EXIT, or contain a PITEM (to execute).
-	fprintf(stdout, "WORKER [%d]: received pitem\n", world.rank());
+	//fprintf(stdout, "WORKER [%d]: received pitem\n", world.rank());
 	
 	memfsys myfsys = handle_pitem( mypitem, LOCALDIR ); // This will do the receiving of all files and writing to LOCALDIR, it will also rename them and keep track
 	//of the correspondence. Note the SENDING side will do the error out if it is no in the __MY_DIR. Do that on PARENT side I guess. OK.
 	
 	//REV: BUILD FAKE FYSYS HERE! (for example, we might not want to have written to disk, but rather received to the fake FS)
 
-
-	myfsys.enumerate();
+	
+	//myfsys.enumerate();
 	
 	
-	fprintf(stdout, "WORKER [%d]: handled PITEM\n", world.rank());
+	//	fprintf(stdout, "WORKER [%d]: handled PITEM\n", world.rank());
 	
 	//We now have PITEM updated, we will now EXECUTE it (until it fails, keep checking success).
 	
 	
-	execute_work( mypitem, myfsys );
+	bool blah = execute_work( mypitem, myfsys );
 
-	fprintf(stdout, "WORKER [%d]: EXECUTED WORK\n", world.rank());
+	//fprintf(stdout, "WORKER [%d]: EXECUTED WORK\n", world.rank());
 
+	//myfsys.enumerate();
 	//NEED TO SEND RESULTS
 	notify_finished( mypitem, myfsys ); //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
 
-
-	fprintf(stdout, "WORKER [%d]: sent finished notify\n", world.rank());
+	
+	//fprintf(stdout, "WORKER [%d]: sent finished notify\n", world.rank());
 	cleanup_workspace( mypitem );
-	fprintf(stdout, "WORKER [%d]: cleaned up\n", world.rank());
+	//fprintf(stdout, "WORKER [%d]: cleaned up\n", world.rank());
       }
 
-    fprintf(stdout, "WORKER [%d]: SLAVE LOOP: RETURNING from slave loop\n", world.rank());
+    //fprintf(stdout, "WORKER [%d]: SLAVE LOOP: RETURNING from slave loop\n", world.rank());
   }
 
 
@@ -1442,7 +1455,7 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	    fprintf(stdout, "DONE master to slave.\n");
 	  }
       }
-    fprintf(stdout, "ALL DONE WITH WPROG!!! WOW!\n");
+    fprintf(stdout, "$ $ $ $ $ $ YOLOLOLOLO ALL DONE WITH WPROG!!! WOW!\n");
   }
 
   

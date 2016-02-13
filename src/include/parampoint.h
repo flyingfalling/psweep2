@@ -115,16 +115,17 @@ struct pitem
     
     if( calledfake == false )
       {
+	fprintf(stdout, "THINK I **DIDNT** call a fakesystem, i.e. will attempt real system()\n");
 	std::string stderrfile = mydir+"/stderr";
 	std::string stdoutfile = mydir+"/stdout";
 	mycmd.push_back( "1>"+stdoutfile );
 	mycmd.push_back( "2>"+stderrfile );
-    
-    
+	
+	
 	std::string sep = " ";
 	//std::string execute_string = mycmd.CONCATENATE_STR_ARRAY( cmdarray, sep );
 	std::string execute_string = CONCATENATE_STR_ARRAY( mycmd, sep );
-    
+	
 	if( notready.size() > 0 )
 	  {
 	    fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", execute_string.c_str());
@@ -138,9 +139,9 @@ struct pitem
 	  }
 
 	fprintf(stdout, "----EXECUTING [%s]\n", execute_string.c_str() );
-    
+	
 	int sysret = system( execute_string.c_str() );
-    
+	
 	std::vector<std::string> notdone = checkdone( myfsys );
 
 	size_t tries=0;

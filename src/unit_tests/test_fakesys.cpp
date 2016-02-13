@@ -11,7 +11,7 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
   std::string ftoparse="SUPERERROR";
   std::string outputf="ERROROUTPUT";
 
-  if(argv.size() != 4 )
+  if(argv.size() != 5 )
     {
       fprintf(stderr, "REV: In user funct, error, argv length is not 4\n");
       exit(1);
@@ -19,17 +19,17 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
   //REV: treat it same as argv, where 0 is called function name??? OK. Which way to do it? Meh, ignore it.
   if( argv[0].compare( "-c" ) != 0 )
     {
-      fprintf(stderr, "ERROR, unrecognized option [%s]\n", argv[0].c_str());
+      fprintf(stderr, "ERROR, unrecognized option [%s]\n", argv[1].c_str());
     }
-  ftoparse = std::string(argv[1]);
+  ftoparse = std::string(argv[2]);
   fprintf(stdout, "TEST PROGRAM: USING VAR FILE [%s]\n", ftoparse.c_str());
 
   if( argv[2].compare( "-o" ) != 0 )
     {
-      fprintf(stderr, "ERROR, unrecognized option [%s]\n", argv[2].c_str());
+      fprintf(stderr, "ERROR, unrecognized option [%s]\n", argv[3].c_str());
     }
 
-  outputf = std::string(argv[3]);
+  outputf = std::string(argv[4]);
   fprintf(stdout, "TEST PROGRAM: USING OUTPUT FILE [%s]\n", outputf.c_str());
   
   
@@ -50,7 +50,8 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
       //vl.vars[x].val = std::to_string( std::stod( vl.vars[x].get_s() ) * 5 );
     }
 
-  vl.tofile( outputf );
+  //Writing not to memfile? How to figure it out.
+  vl.tofile( outputf, fsys, false );
 }
 
 
@@ -66,7 +67,7 @@ int main()
   paramsvl.addvar( variable<std::string>( "GRID_MIN_MAX_STEP_FILE", minmaxstepfile ) );
 
   std::string searchalg = "grid";
-  std::string scriptfname = "../configs/test_parampoint.cfg";
+  std::string scriptfname = "../configs/test_fakesystem.cfg";
   std::string mydir = "./testdir2";
 
   
