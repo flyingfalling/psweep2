@@ -146,7 +146,7 @@ struct varlist
   
   
   //append? or overwrite? Default is APPEND to end.
-  void tofile( const std::string& fname, mem_filesys& mf, const bool& usefile=false )
+  void tofile( const std::string& fname, memfsys& mf, const bool& usefile=false )
   {
     //std::ofstream f;
     //open_ofstream( fname, f );
@@ -202,7 +202,7 @@ struct varlist
   }
 
 
-  void inputfromfile( const std::string& fname, mem_filesys& mf, const bool& readthrough=false )
+  void inputfromfile( const std::string& fname, memfsys& mf, const bool& readthrough=false )
   {
     //No read through...to actual FS. I.e. everything done through memory.
     //This is really a problem, I need to organize this better. I.e.

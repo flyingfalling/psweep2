@@ -26,6 +26,8 @@
 //I want to ignore cases where it might have \0 in it if it is e.g. binary right? It won't break stringstream...?
 //In case where I am accessing it with binary, I want access to the original stream...super wasteful copying.
 
+struct memfile_ptr;
+
 //Problem is that I want all the user accesses on ssfile to modify ME, not it??! Haha yea, whatever though. Works.
 //REV: WHat if I want to append at the end? Do I want to overwrite it (I assume so).
 struct memfile
@@ -88,7 +90,22 @@ struct memfile
 
     //~filedata();
     //~filename();
+    
   }
+  void tofile( const std::string& fname )
+    {
+      std::ofstream ofs;
+      
+      //Is default to append, or to overwrite?
+      //REV: CHANGE TO OVERWRITE JUST IN CASE?!?!
+      open_ofstream( fname, ofs, std::ios::binary | std::ios::trunc ); //Will this write binary properly?
+      
+      ofs.write( filedata.data(), filedata.size() );
+      
+      close_ofstream( ofs );
+      
+      return;
+    }
 
 memfile()
 : filename("ERRORFNAME")
@@ -267,17 +284,7 @@ struct memfile_ptr
   
   void tofile( const std::string& fname )
   {
-    std::ofstream ofs;
-
-    //Is default to append, or to overwrite?
-    //REV: CHANGE TO OVERWRITE JUST IN CASE?!?!
-    open_ofstream( fname, ofs, std::ios::binary | std::ios::trunc ); //Will this write binary properly?
-    
-    ofs.write( mfile->filedata.data(), mfile->filedata.size() );
-
-    close_ofstream( ofs );
-    
-    return;
+    mfile->tofile( fname );
   }
   
   //REV: This returns everything. I want to get "from now" type thing?

@@ -129,7 +129,7 @@
 //Everything needs to work with FAKE_SYSTEM cmds, user can specify. Wait idea was to turn it all off?
 
 typedef std::vector<std::string>                    arg_list;
-typedef std::function< void( const std::vector<std::string>&, mem_filesys& ) > fake_system_funct_t;
+typedef std::function< void( const std::vector<std::string>&, memfsys& ) > fake_system_funct_t;
 
 
 struct fake_sys_rep

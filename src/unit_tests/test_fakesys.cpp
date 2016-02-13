@@ -1,12 +1,12 @@
 
-#include <filesender.h>
-
-#include <fake_system.h>
+//#include <filesender.h>
+//#include <fake_system.h>
+#include <searcher.h>
 //REV: Testing fake system. Will do same sweep, but this time, with fake system.
 
 //void user_funct( const std::vector<std::string>& argv, mem_filesys& fsys );
 
-void user_funct( const std::vector<std::string>& argv, mem_filesys& fsys )
+void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
 {
   std::string ftoparse="SUPERERROR";
   std::string outputf="ERROROUTPUT";
@@ -51,18 +51,33 @@ void user_funct( const std::vector<std::string>& argv, mem_filesys& fsys )
     }
 
   vl.tofile( outputf );
-  
-  
 }
+
+
 
 int main()
 {
-  std::vector<std::string> arglist = {"-c", "testin.var", "-o", "testout.var" };
+  //Register everything.
+  searcher srch;
+  srch.register_funct( "./userfunct", user_funct );
+
+  std::string minmaxstepfile = "testminmaxstep.bounds";
+  varlist<std::string> paramsvl;
+  paramsvl.addvar( variable<std::string>( "GRID_MIN_MAX_STEP_FILE", minmaxstepfile ) );
+
+  std::string searchalg = "grid";
+  std::string scriptfname = "../configs/test_parampoint.cfg";
+  std::string mydir = "./testdir2";
+
+  
+  bool writefiles=false;
+  
+  srch.run_search( searchalg, scriptfname, mydir, paramsvl, writefiles);
   
   
-  
+  /*std::vector<std::string> arglist = {"-c", "testin.var", "-o", "testout.var" };
   mem_filesys mf;
   user_funct( arglist, mf );
-
+  */
   return 0;
 }

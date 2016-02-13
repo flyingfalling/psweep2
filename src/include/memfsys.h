@@ -3,7 +3,8 @@
 #include <memfile3.h>
 
 
-struct mem_filesys
+//struct mem_filesys
+struct memfsys
 {
   std::vector< memfile > filelist;
 

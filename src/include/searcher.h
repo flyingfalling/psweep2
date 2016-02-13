@@ -401,7 +401,7 @@ struct searcher
     //REV: nothing todo
   }
   
-  void register_fake_funct( const std::string& name, const fake_system_funct_t& funct)
+  void register_funct( const std::string& name, const fake_system_funct_t& funct)
   {
     fakesys.register_funct( name, funct );
   }
@@ -425,9 +425,12 @@ struct searcher
     //Can a static funct take an argument...? I guess so.
     filesender* fs = filesender::Create( fakesys, writefiles );
     //REV: Oh crap, on this side, it might need to read them in the first place...hm.
+
+
+    //If we want master but not slaves to be different than writefiles, do it here...
     
     //Calls to e.g. SEARCH_GRID etc. will call it. All calls to FS that master will make, I need to make sure to handle them properly...
-  
+    
     fprintf(stdout, "RUNNING SEARCH ALGO: [%s]\n", searchtype.c_str() );
   
     if( searchtype.compare( "grid" ) == 0 )
@@ -478,4 +481,4 @@ struct searcher
   }
 
 
-}
+}; //end struct searcher

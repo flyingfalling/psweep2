@@ -1,6 +1,7 @@
 #pragma once
 
 #include <variable.h>
+#include <memfsys.h>
 
 template <typename T>
 struct hierarchical_varlist

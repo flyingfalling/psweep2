@@ -1110,7 +1110,7 @@ struct parampoint_generator
     fprintf(stdout, "Finished, now GENERATE pg, will enumerate.\n");
     hv.enumerate();
     
-    parampoint_myfsystems.push_back( myfsys );
+    parampoint_memfsystems.push_back( myfsys );
     
     return (parampoints.size() - 1);
   }

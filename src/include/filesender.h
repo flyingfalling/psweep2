@@ -1,3 +1,8 @@
+//REV: Todo: log/offput memory of PARAMPOINT data from PARAMPOINT_GENERATOR as we finish comp_pp_list.
+//Otherwise, memory will become very large. Especially memfsys, and results, and parampoints, etc.
+//For grid search etc., we need to make sure to feed them in "generations" of some kind, which are cleaned up afterwards.
+//Otherwise, we will run into memory problems on MASTER.
+
 
 //REV: Modify this so I can specify WHICH files are actually read/written to file and which aren't. Of course initially all are read in (on master side).
 //However some might be purely memory-files, so we go through there anyway.
@@ -767,7 +772,8 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
   
 
   //REV: this needs to "find" which PITEM was allocated to that worker/ thread.
-  varlist<std::string> handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem, memfsys& myfsys )
+  //REV: Note we could use todisk, but easier to do it as todisk?
+  varlist<std::string> handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem, memfsys& myfsys, const bool& usedisk=false )
   {
     int targrank = pc.SRC;
     std::string cmd = pc.CMD;
@@ -838,7 +844,9 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	//REV: ONLY OUTPUT ON MASTER SIDE IF WE NEED?!?!?!
 	//Whatever, output it for safety...
 
-	if( todisk )
+	//REV: This is using local TODISK... I need to make it regular...
+	//if( todisk )
+	if( usedisk )
 	  {
 	    memfile_ptr mfp(mf);
 	    mfp.tofile( origdir+"/"+fname );
@@ -1368,7 +1376,7 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 
 		//Specifically, call it on the parampoint#, from pg.parampoint_memfsystems[ pc.parampointn ].
 		//REV: THIS will write to files! Modify to use a local (temporary) memfsys
-		varlist<std::string> result = handle_finished_work( pcmd, handledpitem, pg.parampoint_memfsystems[ pc.parampointn ] );
+		varlist<std::string> result = handle_finished_work( pcmd, handledpitem, pg.parampoint_memfsystems[ pc.parampointn ], usedisk );
 		
 		fprintf(stdout, "MASTER: got result from worker [%ld]. Now marking done...\n", workernum);
 		//need to mark it DONE in pitem representation.
