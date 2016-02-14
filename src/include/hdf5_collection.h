@@ -1,3 +1,5 @@
+//REv: Need to make sure matrices are in their own group (?) otherwise param dataset will be treated as if it is a matrix thing at load time.
+//Also the __names thing is problem?
 
 #pragma once
 
@@ -610,6 +612,8 @@ struct hdf5_collection
   //REV: Need to remember "type" of thing...or will hdf5 do it for me?
 
   const std::string PARAM_DSET_NAME = "__PARAMETERS";
+  const std::string DATA_GRP_NAME = "__DATA";
+  
   void add_int64_parameter( const std::string& pname, const int64_t& val )
   {
     hsize_t numdims=1;
@@ -648,12 +652,12 @@ struct hdf5_collection
   
   void add_string_parameter( const std::string& pname, const std::string& val )
   {
-    hsize_t numdims=1;
-    hsize_t DIM1length=1;
-    hsize_t dims[numdims] = { DIM1length };
-    H5::DataSpace attr_dataspace = H5::DataSpace (1, dims );
+    //hsize_t numdims=1;
+    //hsize_t DIM1length=1;
+    //hsize_t dims[numdims] = { DIM1length };
+    H5::DataSpace attr_dataspace(H5S_SCALAR); // = H5::DataSpace (1, dims );
 
-    H5::StrType datatype(H5::PredType::C_S1, H5T_VARIABLE);
+    H5::StrType datatype(0, H5T_VARIABLE);
     
     H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
     H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
@@ -662,10 +666,10 @@ struct hdf5_collection
 
     //REV: Crap, I think I need to make sure to always write to a "known" type i.e. in file system space don't use NATIVE_LONG, bc it won't know what
     //it is on other side?
-    attribute.write( datatype, val.data());
+    attribute.write( datatype, val );
     return;
   }
-
+  
 
   int64_t get_int64_parameter( const std::string& pname )
   {
@@ -710,14 +714,12 @@ struct hdf5_collection
     
 
     H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
-    // Open attribute and read its contents
-
-    H5::StrType datatype(H5::PredType::C_S1, H5T_VARIABLE);
-    H5::Attribute myatt_out = dataset.openAttribute( pname.c_str() );
-
-    //H5::H5std_string strreadbuf("");
+        
+    H5::Attribute attr = dataset.openAttribute( pname.c_str() );
+    H5::DataType datatype = attr.getDataType();
+    
     std::string strreadbuf("");
-    myatt_out.read(datatype, strreadbuf);
+    attr.read(datatype, strreadbuf);
 
     std::string ret = strreadbuf;
     return ret;
@@ -734,10 +736,9 @@ struct hdf5_collection
     H5::DSetCreatPropList ds_creatplist;
     file.createDataSet( PARAM_DSET_NAME, H5::PredType::NATIVE_INT,
 			dataspace, ds_creatplist  );
-    
   }
   
-  //Will either load from memory, or create a new one.
+    // either load from memory, or create a new one.
   hdf5_collection() // const std::string& fname )
   {
     
@@ -847,7 +848,7 @@ struct hdf5_collection
 	  }
       }
   }
-
+  
   std::vector<std::string> matrix_names_from_file()
   {
     std::vector<std::string> datnames = enumerate_hdf5_dir( file, "/" );
