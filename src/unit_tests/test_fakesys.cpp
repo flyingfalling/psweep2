@@ -50,6 +50,9 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
       //vl.vars[x].val = std::to_string( std::stod( vl.vars[x].get_s() ) * 5 );
     }
 
+  //REV: WOw this is horribly ugly...I need a better way of interacting with numbers in varlists...
+  vl.setvar( "VAR1", variable<std::string>("VAR1", std::to_string(std::stod(vl.getvar( "VAR1" ).get_s())*1000.0 ))  );
+  
   //Writing not to memfile? How to figure it out.
   vl.tofile( outputf, fsys, false );
 }
@@ -74,7 +77,17 @@ int main()
   bool writefiles=false;
   
   srch.run_search( searchalg, scriptfname, mydir, paramsvl, writefiles);
-  
+
+
+  //It called "exit" after search, but I'm still at main for main loop. OK.
+  fprintf(stdout, "After search: Parampoint generator got [%ld] PP results\n", srch.pg.parampoint_results.size());
+  for(size_t x=0; x<srch.pg.parampoint_results.size(); ++x)
+    {
+      fprintf(stdout, "Results varlist for pitem 0 of last PSET of PP [%ld]:\n", x);
+      varlist<std::string> r = srch.pg.get_result( x, srch.pg.parampoint_results[x].pset_results.size()-1, 0 );
+
+      r.enumerate();
+    }
   
   /*std::vector<std::string> arglist = {"-c", "testin.var", "-o", "testout.var" };
   mem_filesys mf;

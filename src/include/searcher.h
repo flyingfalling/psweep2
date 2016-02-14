@@ -396,6 +396,8 @@ struct searcher
   //Has a fake memsystem in there too hahaha...
   fake_system fakesys;
 
+  parampoint_generator pg;
+
   searcher()
   {
     //REV: nothing todo
@@ -408,12 +410,9 @@ struct searcher
   
   //varlist will contain required um, data files I guess?
   void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const bool& writefiles=false )
-		   
   {
-    fprintf(stdout, "Calling runsearch\n");
-    parampoint_generator pg(scriptfname, mydir);
-    fprintf(stdout, "made it?\n");
-
+    pg = parampoint_generator(scriptfname, mydir);
+    
     //REV: PG contains the "results" of each... parampoint_results, of type parampoint_result.
     //That is: list of pset results, each of which has list of pitem results (specifically, varlist).
     //OK, I can access those however I wish, e.g. I know last is the only one I care about etc.
