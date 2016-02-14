@@ -42,7 +42,8 @@ int main(int argc, char **argv)
       fprintf(stdout, "  USER PRGRM: varname [%s], val [%s] to decimal\n", vl.vars[x].name.c_str(), vl.vars[x].get_s().c_str() );
       //vl.vars[x].val = std::to_string( std::stod( vl.vars[x].get_s() ) * 5 );
     }
-
+  vl.setvar( "VAR1", variable<std::string>("VAR1", std::to_string(std::stod(vl.getvar( "VAR1" ).get_s())*1000.0 ))  );
+  
   vl.tofile( outputf );
   
   

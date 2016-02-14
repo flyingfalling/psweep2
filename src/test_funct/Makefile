@@ -8,7 +8,7 @@ UNITTESTDIR=./unit_tests
 
 
 runtest.exe: runtest.cpp
-	$(CC) $(CFLAGS) $(INCLUDEFLAG) runtest.cpp -o runtest.exe
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) runtest.cpp -o runtest.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
 
 default: runtest.exe
 
