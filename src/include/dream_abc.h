@@ -26,7 +26,7 @@ struct mt_dream_z_state
   std::vector<size_t> CR_used_indices;
   std::vector<size_t> CR_counts;
   std::vector<size_t> GR_values;
-
+  
   std::vector<float64_t> pdelta_delta_probs;
   std::vector<size_t> delta_used_probs;
 
@@ -78,6 +78,7 @@ void search_mt_dream_z( const std::vector<std::string>& varnames,
 			parampoint_generator& pg,
 			filesender& fs )
 {
+  
   
 }
 

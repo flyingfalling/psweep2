@@ -1053,21 +1053,18 @@ struct parampoint_generator
   //This needs to have the ability to take current list and generate new ones?
   
   std::vector< hierarchical_varlist<std::string> > named_vars;
-
-  std::vector< hierarchical_varlist<std::string> > parampoint_vars;
-
-  std::vector< parampoint > parampoints;
-
-  std::vector< parampoint_result > parampoint_results; //make sure these are same shape as the actual parampoint...
-
-  std::vector< memfsys > parampoint_memfsystems;
-  
   std::string basedir="./";
 
-  size_t first_active=0; //this is first in array of parampoints that is active i.e. not finished.
-  
-  size_t paramptidx=0;
 
+  //One made for each parampoint we make.
+  std::vector< hierarchical_varlist<std::string> > parampoint_vars;
+  std::vector< parampoint > parampoints;
+  std::vector< parampoint_result > parampoint_results;
+  std::vector< memfsys > parampoint_memfsystems;
+  
+  
+
+  
   //It's a single executable representation...
   executable_representation exec_rep; //representation of the "script" to run to generate psets (param point) etc.
 
@@ -1087,7 +1084,39 @@ struct parampoint_generator
   varlist<std::string> get_result( const size_t& ppnum, const size_t& psetnum, const size_t& pitemn )
   {
     return  get_result( parampoint_coord( ppnum, psetnum, pitemn ) );
+  }
+
+
+  //REV: How to do this? User should specify how often to cleanup...
+  //I'll leave it up to user to know when to clean it up.
+  //Best to simply "delete" them, i.e. remove from beginning of vector..
+  //Meh it's a vector but whatever.
+  
+  //REV: Might want to also clean up (write to HDF5 log) the stuff
+  //from file system if it is saved there? Otherwise it will grow.
+  //In other words, memfsystem? I.e. iteratively do parampoint.
+  void cleanup_parampoints_upto( const size_t& ppidx )
+  {
+    //Note all arrays should be of same size...if not there's a problem..
+    if( ppidx >= parampoint_vars.size() )
+      {
+	fprintf(stderr, "ERROR, cleanup_parmpoints_upto, requested ppidx > size of array\n");
+	exit(1);
+      }
+
     
+    parampoint_vars.erase(parampoint_vars.begin(), parampoint_vars.begin()+ppidx );
+    parampoints.erase(parampoints.begin(), parampoints.begin()+ppidx );
+    parampoint_results.erase(parampoint_results.begin(), parampoint_results.begin()+ppidx );
+    parampoint_memfsystems.erase(parampoint_memfsystems.begin(), parampoint_memfsystems.begin()+ppidx );
+
+    return;
+  }
+
+  
+  void log_parampoints_upto( const size_t& ppidx)
+  {
+    //REV: Some regular way to handle these? force user to do something about it?
   }
   
   

@@ -1,4 +1,8 @@
+
+
 #include <hdf5_collection.h>
+
+//REV: TODO: Test writing single PARAMETERS of each type. And reading...
 
 //REV: TODO now just create a status file or something, i.e.
 //single small datasets that I can save arbitrary parameters of the sweep

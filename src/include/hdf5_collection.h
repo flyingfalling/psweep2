@@ -507,7 +507,7 @@ struct matrix_props
   {
     H5::DataSet cdataset = f.openDataSet( dsname );
     
-
+    
     H5::DataSpace space = cdataset.getSpace();
       
     int rank = space.getSimpleExtentNdims();
@@ -583,6 +583,19 @@ struct matrix_props
 };
   
 
+//REV: I want to make it possible to write some "named" parameters that are single, i.e. non-vectors.
+//Note, they must be of corresponding type, i.e. write one for each type I guess...
+//Note right now I only have double floats type...
+//Need to store:
+//1) Double values
+//2) Int values
+//3) String values
+//4) 1D vectors of those types too...?
+//Make a type named "parameters" or something? Nah, best to make it "flat"...
+
+typedef double float64_t;
+typedef long int int64_t;
+
 struct hdf5_collection
 {
   //H5std_string file_name; //( "SDS.h5" );
@@ -591,6 +604,128 @@ struct hdf5_collection
   
   std::vector< matrix_props > matrices;
   //state. We keep all datasets "open".
+
+  //Problem is making varlist-like entity, is I want to have it store variable types ugh.
+  //REV: For attributes, read directly from the file? I.e. don't go via "matrix_props"
+  //REV: Need to remember "type" of thing...or will hdf5 do it for me?
+
+  const std::string PARAM_DSET_NAME = "__PARAMETERS";
+  void add_int64_parameter( const std::string& pname, const int64_t& val )
+  {
+    hsize_t numdims=1;
+    hsize_t DIM1length=1;
+    hsize_t dims[numdims] = { DIM1length };
+    H5::DataSpace attr_dataspace = H5::DataSpace (1, dims );
+
+    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
+    H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
+						   H5::PredType::STD_I64BE, 
+						   attr_dataspace);
+
+    //REV: Crap, I think I need to make sure to always write to a "known" type i.e. in file system space don't use NATIVE_LONG, bc it won't know what
+    //it is on other side?
+    attribute.write( H5::PredType::NATIVE_LONG, &val );
+    return;
+  }
+
+  void add_float64_parameter( const std::string& pname, const float64_t& val )
+  {
+    hsize_t numdims=1;
+    hsize_t DIM1length=1;
+    hsize_t dims[numdims] = { DIM1length };
+    H5::DataSpace attr_dataspace = H5::DataSpace (1, dims );
+
+    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
+    H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
+						       /*H5::PredType::IEEE_F64BE*/ H5::PredType::NATIVE_DOUBLE , 
+						   attr_dataspace);
+
+    //REV: Crap, I think I need to make sure to always write to a "known" type i.e. in file system space don't use NATIVE_LONG, bc it won't know what
+    //it is on other side?
+    attribute.write( H5::PredType::NATIVE_DOUBLE, &val );
+    return;
+  }
+  
+  void add_string_parameter( const std::string& pname, const std::string& val )
+  {
+    hsize_t numdims=1;
+    hsize_t DIM1length=1;
+    hsize_t dims[numdims] = { DIM1length };
+    H5::DataSpace attr_dataspace = H5::DataSpace (1, dims );
+
+    H5::StrType datatype(H5::PredType::C_S1, H5T_VARIABLE);
+    
+    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
+    H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
+						       datatype,
+						       attr_dataspace);
+
+    //REV: Crap, I think I need to make sure to always write to a "known" type i.e. in file system space don't use NATIVE_LONG, bc it won't know what
+    //it is on other side?
+    attribute.write( datatype, val.data());
+    return;
+  }
+
+
+  int64_t get_int64_parameter( const std::string& pname )
+  {
+    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
+    // Open attribute and read its contents
+    //hsize_t numdims=1;
+    //hsize_t DIM1length=1;
+    //hsize_t dims[numdims] = { DIM1length };
+    //DataSpace attr_dataspace = DataSpace (1, dims );
+
+    int64_t ret;
+    
+    H5::Attribute attr = dataset.openAttribute( pname.c_str() );
+    H5::DataType type = attr.getDataType();
+    attr.read(type, &ret);
+    
+    return ret;
+  }
+  
+  float64_t get_float64_parameter( const std::string& pname )
+  {
+    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
+    // Open attribute and read its contents
+    //hsize_t numdims=1;
+    //hsize_t DIM1length=1;
+    //hsize_t dims[numdims] = { DIM1length };
+    //DataSpace attr_dataspace = DataSpace (1, dims );
+
+    float64_t ret;
+    
+    H5::Attribute attr = dataset.openAttribute( pname.c_str() );
+    H5::DataType type = attr.getDataType();
+    attr.read(type, &ret);
+    
+    return ret;
+    
+  }
+
+  std::string get_string_parameter( const std::string& pname )
+  {
+    // Set up read buffer for attribute
+    
+
+    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
+    // Open attribute and read its contents
+
+    H5::StrType datatype(H5::PredType::C_S1, H5T_VARIABLE);
+    H5::Attribute myatt_out = dataset.openAttribute( pname.c_str() );
+
+    //H5::H5std_string strreadbuf("");
+    std::string strreadbuf("");
+    myatt_out.read(datatype, strreadbuf);
+
+    std::string ret = strreadbuf;
+    return ret;
+
+  }
+
+  
+  
   
   //Will either load from memory, or create a new one.
   hdf5_collection() // const std::string& fname )
@@ -674,7 +809,7 @@ struct hdf5_collection
     
     return matrices[ locs[0] ].read_row_range( startrow, endrow );
   }
-
+  
   std::vector<double> read_row( const std::string& matname, const size_t& row )
   {
     std::vector< size_t > locs = find_matrix( matname );
@@ -711,6 +846,7 @@ struct hdf5_collection
 	}*/
     return datnames;
   }
+
   void enumerate_matrix( const std::string& matname )
   {
     std::vector< size_t > locs = find_matrix( matname );
