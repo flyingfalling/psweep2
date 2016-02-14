@@ -59,51 +59,60 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
 
 
 
-int main()
+int main(int argc, char** argv)
 {
+  bool runfile=false;
+  if (argc > 1)
+    {
+      if( strcmp(argv[1], "file") == 0 )
+	{
+	  runfile=true;
+	}
+    }
+  
   std::string minmaxstepfile = "testminmaxstep.bounds";
   varlist<std::string> paramsvl;
   paramsvl.addvar( variable<std::string>( "GRID_MIN_MAX_STEP_FILE", minmaxstepfile ) );
-
+  
   std::string searchalg = "grid";
   std::string scriptfname = "../configs/test_fakesystem.cfg";
   std::string mydir = "./testdir2";
   
-
   
-  searcher srch1;
-  srch1.register_funct( "./userfunct", user_funct );
-  bool writefiles=false;
-  srch1.run_search( searchalg, scriptfname, mydir, paramsvl, writefiles);
-  
-  //It called "exit" after search, but I'm still at main for main loop. OK.
-  fprintf(stdout, "After search (IN MEMORY!!!): Parampoint generator got [%ld] PP results\n", srch1.pg.parampoint_results.size());
-  for(size_t x=0; x<srch1.pg.parampoint_results.size(); ++x)
+  if( !runfile )
     {
-      fprintf(stdout, "Results varlist for pitem 0 of last PSET of PP [%ld]:\n", x);
-      varlist<std::string> r = srch1.pg.get_result( x, srch1.pg.parampoint_results[x].pset_results.size()-1, 0 );
+      searcher srch1;
+      srch1.register_funct( "./userfunct", user_funct );
+      bool writefiles=false;
+      srch1.run_search( searchalg, scriptfname, mydir, paramsvl, writefiles);
+  
+      //It called "exit" after search, but I'm still at main for main loop. OK.
+      fprintf(stdout, "After search (IN MEMORY!!!): Parampoint generator got [%ld] PP results\n", srch1.pg.parampoint_results.size());
+      for(size_t x=0; x<srch1.pg.parampoint_results.size(); ++x)
+	{
+	  fprintf(stdout, "Results varlist for pitem 0 of last PSET of PP [%ld]:\n", x);
+	  varlist<std::string> r = srch1.pg.get_result( x, srch1.pg.parampoint_results[x].pset_results.size()-1, 0 );
       
-      r.enumerate();
+	  r.enumerate();
+	}
     }
-
-  
-  
-  
-  fprintf(stdout, "\n\n\n\n\n\n\n\n\n\n\n NOW FILE SEARCH \n");
-  
-  writefiles = true;
-  mydir = "./testdir";
-  scriptfname = "../configs/test_parampoint.cfg";
-  
-  searcher srch2;
-  srch2.run_search( searchalg, scriptfname, mydir, paramsvl, writefiles);
-  fprintf(stdout, "After search: Parampoint generator got [%ld] PP results\n", srch2.pg.parampoint_results.size());
-  for(size_t x=0; x<srch2.pg.parampoint_results.size(); ++x)
+  else
     {
-      fprintf(stdout, "Results varlist for pitem 0 of last PSET of PP [%ld]:\n", x);
-      varlist<std::string> r = srch2.pg.get_result( x, srch2.pg.parampoint_results[x].pset_results.size()-1, 0 );
+      fprintf(stdout, " - - - - - OMG RUNNING WITH FILES\n");
+      bool writefiles = true;
+      std::string mydir = "./testdir";
+      std::string scriptfname = "../configs/test_parampoint.cfg";
       
-      r.enumerate();
+      searcher srch2;
+      srch2.run_search( searchalg, scriptfname, mydir, paramsvl, writefiles);
+      fprintf(stdout, "After search: Parampoint generator got [%ld] PP results\n", srch2.pg.parampoint_results.size());
+      for(size_t x=0; x<srch2.pg.parampoint_results.size(); ++x)
+	{
+	  fprintf(stdout, "Results varlist for pitem 0 of last PSET of PP [%ld]:\n", x);
+	  varlist<std::string> r = srch2.pg.get_result( x, srch2.pg.parampoint_results[x].pset_results.size()-1, 0 );
+      
+	  r.enumerate();
+	}
     }
   
   return 0;
