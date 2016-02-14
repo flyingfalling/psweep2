@@ -619,7 +619,7 @@ struct hdf5_collection
 
     H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
     H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
-						   H5::PredType::STD_I64BE, 
+						   H5::PredType::NATIVE_LONG, 
 						   attr_dataspace);
 
     //REV: Crap, I think I need to make sure to always write to a "known" type i.e. in file system space don't use NATIVE_LONG, bc it won't know what
@@ -725,7 +725,17 @@ struct hdf5_collection
   }
 
   
-  
+  void make_parameters_dataspace()
+  {
+    hsize_t  ndims=1;
+    hsize_t  dims[ndims];
+    dims[0] = 0;
+    H5::DataSpace dataspace(ndims, dims);
+    H5::DSetCreatPropList ds_creatplist;
+    file.createDataSet( PARAM_DSET_NAME, H5::PredType::NATIVE_INT,
+			dataspace, ds_creatplist  );
+    
+  }
   
   //Will either load from memory, or create a new one.
   hdf5_collection() // const std::string& fname )
@@ -737,6 +747,7 @@ struct hdf5_collection
   void new_collection( const std::string& fname )
   {
     file = H5::H5File( fname, H5F_ACC_TRUNC );
+    make_parameters_dataspace();
   }
 
   void add_new_matrix( const std::string& matname, const std::vector<std::string>& varnames )
