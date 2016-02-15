@@ -16,8 +16,17 @@
 //REV: I will include a MATRIX of guys of history, and current guys, which will just be access functions I guess.
 
 //So much easier to save all VARIABLES and PARAMS together, although state is reset, params are not if we want to e.g. run the same one over again.
+
+//REV: Need a way of storing not only DOUBLE matrices, but also LONG INT (and STRING? Nah...)
+
+typedef double float64_t;
+typedef long int int64_t;
+
 struct mt_dream_z_state
 {
+  hdf5_collection state;
+  
+  //Dynamic state
   size_t t_current_gen;
   size_t M_size_Z;
   
@@ -29,13 +38,27 @@ struct mt_dream_z_state
   
   std::vector<float64_t> pdelta_delta_probs;
   std::vector<size_t> delta_used_probs;
-
+  
   std::vector<std::vector<size_t>> mt_CR_used_indices;
   std::vector<std::vector<size_t>> mt_delta_used_indices;
-};
 
-struct mt_dream_z_params
-{
+  std::string Z_thinned_hist;
+  std::string Xall_state_hist;
+  std::string piXall_fitness_hist;
+  std::string H_full_hist;
+  std::string piH_fitness_H;
+
+  std::string pCR_CR_probs_hist;
+  std::string DeltaCR_norm_square_jumpdists_hist;
+  std::string
+  //State of matrices are accessed by STRNAMES.
+  //We can add vect<vect> to matrices by add_to_matrix
+  //we can get_num_rows and get_num_cols
+  //We can read_row_range()
+  //We can read_row()
+  
+  
+  //Static params
   size_t T_max_gens;
   size_t N_num_chains;
   size_t d_num_dims;
@@ -53,11 +76,45 @@ struct mt_dream_z_params
   std::vector<std::string> dim_names;
   std::vector<float64_t> dim_mins;
   std::vector<float64_t> dim_mins;
+
+
+  //Make an init? Or a way to load from a configuration file?
+
+  mt_dream_z_state()
+  {
+  }
+
+  //REV: Is there really a reason to separate these? Seems like it just confuses things...
+  void load( const std::string& file )
+  {
+    state.load_collection( file );
+
+    
+        
+    //Check HDF5 file is "sane", i.e. that all matrices have appropriate length given t_current_gen etc. If not, we will try the equivalent BU file.
+    bool sane = issane( );
+
+    if(sane == false && file.c_str()[0] != '_' && file.c_str()[1] != '_' )
+      {
+	std::string bufname = "__" + file;
+	load( bufname, params );
+      }
+    else
+      {
+	fprintf(stderr, "Even backup file of h5 file [%s] is not sane! Exiting\n", bufname.c_str() );
+	exit(1);
+      }
+    
+  }
+
+  bool issane( )
+  {
+    
+  }
 };
 
 struct mt_dream_z
 {
-  mt_dream_z_params params;
   mt_dream_z_state state;
 
   void run()

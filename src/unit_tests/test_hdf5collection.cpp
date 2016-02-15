@@ -2,33 +2,6 @@
 
 #include <hdf5_collection.h>
 
-//REV: TODO: Test writing single PARAMETERS of each type. And reading...
-
-//REV: TODO now just create a status file or something, i.e.
-//single small datasets that I can save arbitrary parameters of the sweep
-//so that I can load it quickly (do I need to? Params should be saved?)
-
-//For now hack it and store it as a "params" data set, with varnames and values that are all doubles... Some of them are ints though.
-//I.e. make the same one for ints, to store int-like guys. That's all I need I guess...
-//Have a string one store the type as well I guess. They are more like attributes...hmmm.
-//Note really want to store min/max of all vars etc.
-
-//#### Add the char name thing to save varnames so it doesnt mess up after I load.
-
-//Make it save the HDF5 stuff via the file saving thing in a separate HDF5 file
-
-//#### Make simple thing to output HDF5 to text file for simplicity of visualization
-
-//Make it call model from memory (via notes)
-
-
-
-//Rewrite NSIM to use temporal data (expt file). I already output it so just
-//compare it right now.
-
-//Modify/rewrite NSIM to be better/run on GPU.
-
-
 
 void dotest( hdf5_collection& col )
 {
@@ -36,7 +9,7 @@ void dotest( hdf5_collection& col )
   std::string mat1n = "mat1";
   std::string mat2n = "mat2";
   
-  std::vector<std::vector<double> > ret = col.read_row_range( mat1n, 2, 3 );
+  std::vector<std::vector<double> > ret = col.read_row_range<double>( mat1n, 2, 3 );
 
   fprintf(stdout, "Reading row range from 2 to 3 of matrix 1 (i.e. 3rd to 4th row)\n");
   for(size_t x=0; x<ret.size(); ++x)
@@ -49,7 +22,7 @@ void dotest( hdf5_collection& col )
     }
 
 
-  std::vector<double> ret2 = col.read_row( mat2n, 3 );
+  std::vector<double> ret2 = col.read_row<double>( mat2n, 3 );
 
   fprintf(stdout, "Reading row range 3 from matrix 2 (i.e. only 4th row)\n");
   for(size_t x=0; x<ret.size(); ++x)
@@ -73,7 +46,7 @@ void loadfile(const std::string& testfname)
   fprintf(stdout, "\n\n\n\n\n\n\n LOADED NOW!\n");
   dotest( col );
 }
-  
+
 void buildfile(const std::string& testfname)
 {
   
@@ -92,34 +65,34 @@ void buildfile(const std::string& testfname)
   std::string mat1n = "mat1";
   std::string mat2n = "mat2";
   
-  col.add_new_matrix( mat1n, varnames1 );
-  col.add_new_matrix( mat2n, varnames2 );
+  col.add_new_matrix( mat1n, varnames1, "REAL" );
+  col.add_new_matrix( mat2n, varnames2, "REAL" );
 
 
   //add to mat1
-  col.add_to_matrix(mat1n, varnames1, dat1_1);
-  col.enumerate_matrix( mat1n );
-  col.enumerate_matrix( mat2n );
+  col.add_to_matrix<double>(mat1n, varnames1, dat1_1);
+  col.enumerate_matrix<double>( mat1n );
+  col.enumerate_matrix<double>( mat2n );
 
   //add to mat2
-  col.add_to_matrix(mat2n, varnames2, dat2_1);
-  col.enumerate_matrix( mat1n );
-  col.enumerate_matrix( mat2n );
+  col.add_to_matrix<double>(mat2n, varnames2, dat2_1);
+  col.enumerate_matrix<double>( mat1n );
+  col.enumerate_matrix<double>( mat2n );
 
   //add to mat1
-  col.add_to_matrix(mat1n, varnames1, dat1_2);
-  col.enumerate_matrix( mat1n );
-  col.enumerate_matrix( mat2n );
+  col.add_to_matrix<double>(mat1n, varnames1, dat1_2);
+  col.enumerate_matrix<double>( mat1n );
+  col.enumerate_matrix<double>( mat2n );
 
   //add to mat2
-  col.add_to_matrix(mat2n, varnames2, dat2_2);
-  col.enumerate_matrix( mat1n );
-  col.enumerate_matrix( mat2n );
+  col.add_to_matrix<double>(mat2n, varnames2, dat2_2);
+  col.enumerate_matrix<double>( mat1n );
+  col.enumerate_matrix<double>( mat2n );
 
   //add to mat1
-  col.add_to_matrix(mat1n, varnames1, dat1_3);
-  col.enumerate_matrix( mat1n );
-  col.enumerate_matrix( mat2n );
+  col.add_to_matrix<double>(mat1n, varnames1, dat1_3);
+  col.enumerate_matrix<double>( mat1n );
+  col.enumerate_matrix<double>( mat2n );
 
   fprintf(stdout, "REV: Making parameters.\n");
   
