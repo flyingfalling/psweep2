@@ -73,6 +73,8 @@ void buildfile(const std::string& testfname)
   std::vector<std::vector<double> > dat2_1= {{1.0, 2.0}, {4.0, 5.0}};
   std::vector<std::vector<double> > dat2_2= {{6.0, 7.0}, {8.0, 9.0}};
 
+  std::vector<double> overwrt2 = {2000.0, 3000.0, 4000.0};
+  
   std::vector<std::vector<long int> > idat1_1 ={{2000, 2100},{3000, 3100}};
   
   std::string mat1n = "mat1";
@@ -103,12 +105,16 @@ void buildfile(const std::string& testfname)
   col.add_to_matrix<double>(mat2n, varnames2, dat2_2);
   col.enumerate_matrix<double>( mat1n );
   col.enumerate_matrix<double>( mat2n );
-
+  
   //add to mat1
   col.add_to_matrix<double>(mat1n, varnames1, dat1_3);
   col.enumerate_matrix<double>( mat1n );
   col.enumerate_matrix<double>( mat2n );
 
+  fprintf(stdout, "OVERWRITING MAT1 LINE 2!\n");
+  col.write_row( mat1n, 1, overwrt2 );
+  
+  
   //Add to imat
   col.add_to_matrix<long int>(imat2n, varnames2, idat1_1);
   col.enumerate_matrix<double>( mat1n );

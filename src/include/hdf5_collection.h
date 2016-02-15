@@ -528,6 +528,67 @@ struct matrix_props
     return retvect;
   } //end read_row_range
 
+
+  template <typename T>
+  void write_row_range( const size_t& startrow, const size_t& endrow, const std::vector< std::vector<T>>& vals )
+  {
+      
+    //Basically create hyperslab, and then just read that to a correct size local thing.
+    H5::DataSpace origspace = dataset.getSpace();
+      
+    int rank = origspace.getSimpleExtentNdims();
+      
+    hsize_t dims_out[2];
+      
+    int ndims = origspace.getSimpleExtentDims( dims_out, NULL);
+
+    size_t ncolwrite = dims_out[1];
+      
+    if( endrow >= dims_out[0] )
+      {
+	fprintf(stderr, "SUPER ERROR, trying to read past end of matrix\n");
+	exit(1);
+      }
+
+    if( endrow < startrow)
+      {
+	fprintf(stderr, "ERROR, endrow <= startrow [%ld] vs [%ld]\n", endrow, startrow);
+	exit(1);
+      }
+    //If this is zero, we read only 1 row???
+    size_t nrowwrite = endrow-startrow+1; //+1 for reading single row
+
+    if(vals.size() != nrowwrite )
+      {
+	fprintf(stderr, "ERROR in matrix write: passed value array does not fill specified start/end rows!\n");
+	exit(1);
+      }
+    T vec[ nrowwrite ][ ncolwrite ];
+    
+    //REV: Fill vec, haha copying...oh well.
+    for(size_t x=0; x<vals.size(); ++x)
+      {
+	for(size_t y=0; y<vals[x].size(); ++y)
+	  {
+	    vec[x][y] = vals[x][y];
+	  }
+      }
+    
+    hsize_t dimsmem[ndims] = {nrowwrite, ncolwrite};
+    
+    //Tells size of vect in mem to write to.
+    H5::DataSpace memspace(ndims, dimsmem);
+      
+    hsize_t offset[ndims] = { startrow, 0 };
+    
+    origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
+    
+    dataset.write( vec, matrix_datatype, memspace, origspace );
+    
+    return;
+  } //end read_row_range
+
+  
   //REV: Could manually do this with  datattype...ugh.
   template <typename T>
   void enumerate()
@@ -813,6 +874,29 @@ struct hdf5_collection
     make_parameters_dataspace();
   }
 
+  void add_float64_matrix(const std::string& matname, const std::vector<std::string>& varnames )
+  {
+    add_new_matrix( matname, varnames, "REAL");
+  }
+
+  //A 1d vector doesn't have row names?
+  void add_float64_vector(const std::string& matname, const std::vector<float64_t>& vals )
+  {
+    add_float64_matrix( matname, dummy_colnames( vals.size() ) );
+    add_row_to_matrix( matname, vals );
+  }
+  
+  //A 1d vector doesn't have row names?
+  void set_float64_vector(const std::string& matname, const size_t& targ, const float64_t& val )
+  {
+    
+  }
+
+  void add_int64_matrix(const std::string& matname, const std::vector<std::string>& varnames )
+  {
+    add_new_matrix( matname, varnames, "INT");
+  }
+  
   void add_new_matrix( const std::string& matname, const std::vector<std::string>& varnames, const std::string& datatype )
   {
     matrix_props mp1;
@@ -833,6 +917,11 @@ struct hdf5_collection
     return ret;
   }
 
+  std::vector<std::string> dummy_colnames( const size_t& size )
+  {
+    return std::vector<std::string>( size, "__NONAME" );
+  }
+  
   //void load_matrix( const std::string& matname, const std::vector<std::string>& varnames )
   void load_matrix( const std::string& matname ) //, const std::string& datatype )
   {
@@ -860,6 +949,21 @@ struct hdf5_collection
       }
     return matrices[ locs[0] ].get_ncols();
   }
+
+  template <typename T>
+  void add_row_to_matrix( const std::string& matname, const std::vector< T >& vals )
+  {
+    std::vector< size_t > locs = find_matrix( matname );
+    if(locs.size() != 1)
+      {
+	fprintf(stderr, "ERROR Couldn't find requested matrix name (dataset) [%s] in matrices, or there were multiple (Found [%ld])\n", matname.c_str(), locs.size());
+      }
+
+    std::vector< std::vector<T> > f;
+    f.push_back( vals );
+    add_to_matrix( matname, dummy_colnames( vals.size() ), f );
+    return;
+  }
   
   template <typename T>
   void add_to_matrix( const std::string& matname, const std::vector<std::string>& colnames, const std::vector< std::vector< T > >& vals )
@@ -873,6 +977,29 @@ struct hdf5_collection
     matrices[ locs[0] ].add_data<T>( colnames, vals );
   }
 
+  template <typename T>
+  void write_row_range( const std::string& matname, const size_t& startrow, const size_t& endrow, const std::vector< std::vector< T > >& vals )
+  {
+    std::vector< size_t > locs = find_matrix( matname );
+    if(locs.size() != 1)
+      {
+	fprintf(stderr, "ERROR Couldn't find requested matrix name (dataset) [%s] in matrices, or there were multiple (Found [%ld])\n", matname.c_str(), locs.size());
+      }
+    
+    matrices[ locs[0] ].write_row_range<T>( startrow, endrow, vals );
+    return;
+  }
+
+  template <typename T>
+  void write_row( const std::string& matname, const size_t& startrow, const  std::vector< T > & vals )
+  {
+    
+    std::vector<std::vector<T>> vals2( 1, vals );
+    
+    write_row_range( matname, startrow, startrow, vals2 );
+    return;
+  }
+  
   template <typename T>
   std::vector<std::vector<T>> read_row_range( const std::string& matname, const size_t& startrow, const size_t& endrow )
   {

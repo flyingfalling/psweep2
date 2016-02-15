@@ -22,9 +22,71 @@
 typedef double float64_t;
 typedef long int int64_t;
 
+#define D(s) const std::string s = #s
+//#define DD(s) state.add_
+
 struct mt_dream_z_state
 {
   hdf5_collection state;
+  
+  D( t_gen );
+  D( M );
+  D( pCR_state );
+  D( DeltaCR_state );
+  D( CR_used_state );
+  D( CR_cnts_state );
+  D( GR_vals_state );
+  D( pdelta_state );
+  D( delta_used_state );
+  D( mt_CR_used_state );
+  D( mt_delta_used_state );
+
+  
+  D( Z_hist );
+  D( Xall_hist );
+  D( piXall_hist );
+  D( H_hist );
+  D( piH_hist );
+  D( pCR_hist );
+  D( DeltaCR_hist );
+  D( CR_used_hist );
+  D( CR_cnts_hist );
+  D( GR_vals_hist );
+  D( accept_hist );
+
+  D( T_max_gens_param );
+  D( N_chains_param );
+  D( d_dims_param );
+  D( n_delta_param );
+  D( M0_param );
+  D( K_thin_param );
+  D( k_param );
+  D( b_noise_param );
+  D( bstar_param );
+  D( R_thresh_param );
+  D( GR_skip_param );
+  D( nCR_pairs_param );
+  D( pCR_skip_param );
+  D( p_jump_param );
+
+  D( dim_names_param );
+  D( dim_mins_param );
+  D( dim_maxes_param );
+
+  
+  void new_state()
+  {
+    state.add_int64_parameter( t_gen, 0 );
+    state.add_int64_parameter( M, 0 );
+        
+    state.add_int64_parameter( );
+
+    state.add_float64_parameter( );
+    
+    state.add_int64_matrix( );
+    
+    state.add_float64_matrix( );
+  }
   
   //Dynamic state
   size_t t_current_gen;
@@ -38,10 +100,14 @@ struct mt_dream_z_state
   
   std::vector<float64_t> pdelta_delta_probs;
   std::vector<size_t> delta_used_probs;
-  
+
+  //REV: This is only used WITHIN each generation, i.e. we don't need it for next generation...?
+  //Pass an option to get vector rows etc. from the HDF5 file...i.e. selections.
+  //Another one that generates randoms from multinomial or something. OK.
   std::vector<std::vector<size_t>> mt_CR_used_indices;
   std::vector<std::vector<size_t>> mt_delta_used_indices;
-
+  
+  
   std::string Z_thinned_hist;
   std::string Xall_state_hist;
   std::string piXall_fitness_hist;
@@ -50,7 +116,10 @@ struct mt_dream_z_state
 
   std::string pCR_CR_probs_hist;
   std::string DeltaCR_norm_square_jumpdists_hist;
-  std::string
+  std::string CR_used_indices_hist;
+  std::string CR_counts_hist;
+  std::string GR_vals_hist;
+  std::string accept_and_count_hist;
   //State of matrices are accessed by STRNAMES.
   //We can add vect<vect> to matrices by add_to_matrix
   //we can get_num_rows and get_num_cols
@@ -75,7 +144,7 @@ struct mt_dream_z_state
   size_t p_jump;
   std::vector<std::string> dim_names;
   std::vector<float64_t> dim_mins;
-  std::vector<float64_t> dim_mins;
+  std::vector<float64_t> dim_maxes;
 
 
   //Make an init? Or a way to load from a configuration file?
