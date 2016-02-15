@@ -538,8 +538,8 @@ struct matrix_props
       {
 	for(size_t y=0; y<ret[x].size(); ++y)
 	  {
-	    //std::cout << ret[x][y] << " ";
-	    fprintf(stdout, "%lf ", ret[x][y]);
+	    std::cout << ret[x][y] << " ";
+	    //fprintf(stdout, "%lf ", ret[x][y]);
 	  }
 	fprintf(stdout, "\n");
       }

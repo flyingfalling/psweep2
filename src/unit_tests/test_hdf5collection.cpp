@@ -8,6 +8,7 @@ void dotest( hdf5_collection& col )
 
   std::string mat1n = "mat1";
   std::string mat2n = "mat2";
+  std::string imat2n = "imat2";
   
   std::vector<std::vector<double> > ret = col.read_row_range<double>( mat1n, 2, 3 );
 
@@ -28,6 +29,16 @@ void dotest( hdf5_collection& col )
   for(size_t x=0; x<ret.size(); ++x)
     {
       fprintf(stdout, "%5.3lf ", ret2[x]);
+    }
+  fprintf(stdout, "\n");
+
+
+  std::vector<long int> ret3 = col.read_row<long int>( imat2n, 1 );
+  
+  fprintf(stdout, "Reading row range 1 from matrix 2 (i.e. only 2nd row)\n");
+  for(size_t x=0; x<ret.size(); ++x)
+    {
+      fprintf(stdout, "%5.3ld ", ret3[x]);
     }
   fprintf(stdout, "\n");
 
@@ -62,11 +73,15 @@ void buildfile(const std::string& testfname)
   std::vector<std::vector<double> > dat2_1= {{1.0, 2.0}, {4.0, 5.0}};
   std::vector<std::vector<double> > dat2_2= {{6.0, 7.0}, {8.0, 9.0}};
 
+  std::vector<std::vector<long int> > idat1_1 ={{2000, 2100},{3000, 3100}};
+  
   std::string mat1n = "mat1";
   std::string mat2n = "mat2";
+  std::string imat2n = "imat2";
   
   col.add_new_matrix( mat1n, varnames1, "REAL" );
   col.add_new_matrix( mat2n, varnames2, "REAL" );
+  col.add_new_matrix( imat2n, varnames2, "INT" );
 
 
   //add to mat1
@@ -93,6 +108,12 @@ void buildfile(const std::string& testfname)
   col.add_to_matrix<double>(mat1n, varnames1, dat1_3);
   col.enumerate_matrix<double>( mat1n );
   col.enumerate_matrix<double>( mat2n );
+
+  //Add to imat
+  col.add_to_matrix<long int>(imat2n, varnames2, idat1_1);
+  col.enumerate_matrix<double>( mat1n );
+  col.enumerate_matrix<double>( mat2n );
+  col.enumerate_matrix<long int>( imat2n );
 
   fprintf(stdout, "REV: Making parameters.\n");
   
