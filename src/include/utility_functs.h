@@ -30,6 +30,32 @@
 #include <errno.h>
 #include <unistd.h> 
 
+#include <sys/sendfile.h>  // sendfile
+#include <fcntl.h>         // open
+#include <unistd.h>        // close
+#include <sys/stat.h>      // fstat
+#include <sys/types.h>     // fstat
+#include <ctime>
+
+
+
+void copy_file( const std::string& src, const std::string& targ )
+{
+  int source = open(src.c_str(), O_RDONLY, 0);
+  int dest =   open(targ.c_str(), O_WRONLY | O_CREAT /*| O_TRUNC/**/, 0644);
+  //int dest =   open(targ.c_str(), O_WRONLY |  O_TRUNC, 0644);
+
+  // struct required, rationale: function stat() exists also
+  struct stat stat_source;
+  fstat(source, &stat_source);
+
+  sendfile(dest, source, 0, stat_source.st_size);
+  
+  close(source);
+  close(dest);
+
+  return;
+}
 
 
 std::vector<size_t> find_string_in_vect( const std::string& targ, const std::vector<std::string>& vect )

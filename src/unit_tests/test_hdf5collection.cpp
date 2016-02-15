@@ -126,6 +126,8 @@ void buildfile(const std::string& testfname)
   col.add_string_parameter("STRPARAM", "STRPARAM_VAL");
   col.add_float64_parameter("F64PARAM", 666.6);
   col.add_int64_parameter("I64PARAM", 2);
+
+  col.backup();
   
   dotest( col );
 
@@ -140,6 +142,7 @@ int main()
   //At end it should destruct it right?
 
   loadfile(testfname);
+
   
   //auto a = col.matrix_names_from_file();
   

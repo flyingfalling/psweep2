@@ -1,6 +1,10 @@
 //REv: Need to make sure matrices are in their own group (?) otherwise param dataset will be treated as if it is a matrix thing at load time.
 //Also the __names thing is problem?
 
+//REV: Make a "backup" function to copy it for safety in case job is killed partway through write?
+//Simplest/stupid way is to make sure H5 file is flushed, and then call "copyfile" on the filename...
+//To a specific target.
+
 #pragma once
 
 #include <cstdlib>
@@ -8,6 +12,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include <utility_functs.h>
 
 #include <H5Cpp.h>
 
@@ -603,6 +609,7 @@ struct hdf5_collection
   //H5std_string file_name; //( "SDS.h5" );
 
   H5::H5File file; // =NULL; //( FILE_NAME, H5F_ACC_TRUNC );
+  std::string file_name;
   
   std::vector< matrix_props > matrices;
   //state. We keep all datasets "open".
@@ -743,11 +750,24 @@ struct hdf5_collection
   {
     
   }
+
+  void backup( )
+  {
+    //Automatically backups to "__"+file_name
+    std::string bufname = "__" + file_name;
+
+    file.flush(H5F_SCOPE_GLOBAL);
+    
+    fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", file_name.c_str(), bufname.c_str() );
+    copy_file( file_name, bufname );
+    return;
+  }
   
   //Makes a new one as user specifies. Makes empty, creates file etc.
   void new_collection( const std::string& fname )
   {
     file = H5::H5File( fname, H5F_ACC_TRUNC );
+    file_name = fname;
     make_parameters_dataspace();
   }
 
@@ -837,6 +857,7 @@ struct hdf5_collection
   void load_collection( const std::string& fname )
   {
     file = H5::H5File( fname, H5F_ACC_RDWR );
+    file_name = fname;
     //Read all the datasets in there. That requires me enumerating them.
     
     std::vector<std::string> toload = matrix_names_from_file();
