@@ -873,29 +873,62 @@ struct hdf5_collection
     file_name = fname;
     make_parameters_dataspace();
   }
-
+  
   void add_float64_matrix(const std::string& matname, const std::vector<std::string>& varnames )
   {
     add_new_matrix( matname, varnames, "REAL");
-  }
-
-  //A 1d vector doesn't have row names?
-  void add_float64_vector(const std::string& matname, const std::vector<float64_t>& vals )
-  {
-    add_float64_matrix( matname, dummy_colnames( vals.size() ) );
-    add_row_to_matrix( matname, vals );
-  }
-  
-  //A 1d vector doesn't have row names?
-  void set_float64_vector(const std::string& matname, const size_t& targ, const float64_t& val )
-  {
-    
   }
 
   void add_int64_matrix(const std::string& matname, const std::vector<std::string>& varnames )
   {
     add_new_matrix( matname, varnames, "INT");
   }
+  
+  //A 1d vector doesn't have row names?
+  void add_float64_vector(const std::string& matname, const std::vector<float64_t>& vals )
+  {
+    add_float64_matrix( matname, dummy_colnames( vals.size() ) );
+    add_row_to_matrix( matname, vals );
+  }
+
+  //A 1d vector doesn't have row names?
+  void add_int64_vector(const std::string& matname, const std::vector<int64_t>& vals )
+  {
+    add_int64_matrix( matname, dummy_colnames( vals.size() ) );
+    add_row_to_matrix( matname, vals );
+  }
+  
+  template <typename T>
+  std::vector<T> get_vector(const std::string& matname )
+  {
+    return read_row<T>( matname, 0 );
+  }
+  
+  template <typename T>
+  void set_vector(const std::string& matname, const std::vector<T>& vals )
+  {
+    //write row 0 to vals
+    write_row<T>( matname, 0, vals );
+    return;
+  }
+  
+  template <typename T>
+  void set_vector_element(const std::string& matname, const size_t& targ, const T& val )
+  {
+    std::vector<T> ret = get_vector<T>(matname);
+    //Make sure it's not out of bounds etc.
+    ret[targ]=val;
+    set_vector( matname, ret );
+    return;
+  }
+
+  template <typename T>
+  T get_vector_element(const std::string& matname, const size_t& targ)
+  {
+    std::vector<T> ret = get_vector<T>(matname);
+    return ret[targ];
+  }
+  
   
   void add_new_matrix( const std::string& matname, const std::vector<std::string>& varnames, const std::string& datatype )
   {
