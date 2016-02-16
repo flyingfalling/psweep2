@@ -23,6 +23,8 @@
 
 //REV: well I fucked up. I can't use union. Need to use boost variant, or do my own thing with inhereitance and pointers.
 
+typedef double float64_t;
+typedef long int int64_t;
 
 //make this a base variable, and everything is derived from this type...?
 template <typename T>
@@ -506,6 +508,36 @@ struct varlist
       }
     return rlocs;
   }
+
+  template <typename TT>
+  void make_varlist( const std::vector<std::string>& vnames, const std::vector<TT>& vvals )
+  {
+    if(vnames.size() != vvals.size() )
+      {
+	fprintf(stderr, "Error in make varlist vvals != vnames size\n");
+	exit(1);
+      }
+    for(size_t x=0; x<vnames.size(); ++x)
+      {
+	std::stringstream _ss("");
+	_ss << vvals[x];
+	addTvar( vnames[x], _ss.str() );
+      }
+    return;
+  }
+
+  float64_t get_float64(const std::string& v)
+  {
+    std::string val = getTvar( v );
+    return std::stof( val );
+  }
+
+  int64_t get_int64(const std::string& v)
+  {
+    std::string val = getTvar( v );
+    return std::stol( val );
+  }
+  
 };
   
 

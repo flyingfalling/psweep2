@@ -1081,6 +1081,24 @@ struct parampoint_generator
     
   }
 
+  std::vector<varlist<std::string>> get_last_N_results( const size_t& N )
+  {
+    std::vector<varlist<std::string> > ret( N );
+    for(size_t x=parampoint_results.size()-N; x<parampoint_results.size(); ++x)
+      {
+	if(parampoint_results[x].pset_results[ parampoint_results[x].pset_results.size()-1 ].pitem_results.size() != 1)
+	  {
+	    fprintf(stderr, "REV: In get last N results (parampoint results): Final PSET is of width != 1\n");
+	    exit(1);
+	  }
+	ret[x] = parampoint_results[x].pset_results[ parampoint_results[x].pset_results.size()-1 ].pitem_results[0];
+      }
+    
+    
+    return ret;
+    
+  }
+
   varlist<std::string> get_result( const size_t& ppnum, const size_t& psetnum, const size_t& pitemn )
   {
     return  get_result( parampoint_coord( ppnum, psetnum, pitemn ) );

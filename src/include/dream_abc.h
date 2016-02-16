@@ -57,8 +57,8 @@ struct mt_dream_z_state
 
   
   D( Z_hist );
-  D( Xall_hist );
-  D( piXall_hist );
+  D( X_hist );
+  D( piX_hist );
   D( H_hist );
   D( piH_hist );
   D( pCR_hist );
@@ -147,8 +147,8 @@ struct mt_dream_z_state
     state.add_int64_matrix( mt_delta_used_state, state.dummy_colnames(numchains)  );
     
     state.add_float64_matrix( Z_hist, varnames );
-    state.add_float64_matrix( Xall_hist, varnames );
-    state.add_float64_matrix( piXall_hist, state.dummy_colnames(1));
+    state.add_float64_matrix( X_hist, varnames );
+    state.add_float64_matrix( piX_hist, state.dummy_colnames(1));
     state.add_float64_matrix( H_hist, varnames );
     state.add_float64_matrix( piH_hist, state.dummy_colnames(1) );
     state.add_float64_matrix( pCR_hist, state.dummy_colnames(nCRpairs) );
@@ -236,6 +236,7 @@ struct mt_dream_z_state
 
   void generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg )
   {
+        
     std::vector<float64_t> tmp( get_param<int64_t>( d_dims_param ) );
     std::vector< std::vector <float64_t> > toeval( N_chains_param,  std::vector<float64_t>( d_dims_param ) );
 
@@ -246,27 +247,48 @@ struct mt_dream_z_state
 
     state.add_to_matrix( Z_hist, state.dummy_colnames( N_chains_param ), samples );
 
-    std::vector< std::vector< float64_t > > firstpop = N_uniform<float64_t>( get_vector( dim_mins_param),
-								  get_vector( dims_max_param),
-								  get_param(N_chains_param),
-								  rand_gen );
+    std::vector< std::vector< float64_t > > firstpop = N_uniform<float64_t>( get_vector<float64_t>( dim_mins_param),
+									     get_vector<float64_t>( dims_max_param),
+									     get_param<int64_t>(N_chains_param),
+									     rand_gen );
 
+    std::vector<varlist<std::string> > vls( get_param<int64_t>(N_chains_param ) );
     //Make varlist from names and doubles...
-    varlist<std::string> vl;
-    vl.make_varlist<float64_t>( const std::vector<std::string>& names, const std::vector<float64_t>& vals );
-    
+    for(size_t x=0; x<firstpop.size(); ++x)
+      {
+	varlist<std::string> vl;
+	vl.make_varlist<float64_t>( const std::vector<std::string>& names, const std::vector<float64_t>& vals );
+	vls[x] = vl;
+      }
     //Compute the fitnesses of them
-    fs.comp_pp_list( pg, vl );
-
+    fs.comp_pp_list( pg, vls );
+    
     //TODO REV: get results from RESULTS, specifically FITNESS? Just get from RESULTS (should be a varlist heh)
+    //We know same order as varlists we gave, so OK.
+
+    std::vector<varlist<std::string> > results = pg.get_last_N_results( get_param<int64_t>(N_chains_param) );
+    
+    pg.cleanup_parampoints_upto( get_param<int64_t>(N_chains_param) );
     
     set_param<int64_t>( M,
 			( get_param<int64_t>(M0_param) + get_param(N_chains_param) )
 			);
 
-    //TODO: Append results to piXall and piH
+    std::vector<float64_t> fitnesses( results.size(), 0.0 );
+    //TODO: Append results to piX and piH
+    for(size_t x=0; x<results.size(); ++x)
+      {
+	fitnesses[x] = results[x].get_float64( "FITNESS" );
+	
+	//The fitnesses are organized as column vectors...so I need to add "rows" one at a time lol...
+	add_row_to_matrix<float64_t>( piX_hist, fitnesses[x] );
+	add_row_to_matrix<float64_t>( piH_hist, fitnesses[x] );
+      }
 
-  }
+    //Note these are also the current (initial) "state"
+    
+  } //end generate_init_pop
+
   
   
 };
