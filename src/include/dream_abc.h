@@ -1,3 +1,17 @@
+//REV: Need to make it so that I can read from "NAMESPACE" varlist in addition to the hierarchical one...
+//Need to make way to search "list" of hierarchical varlist.
+
+//REV: Run on SC stuff (SGI/SGS). But, it won't do e.g. normalization for us. Use PARAFAC etc., to see what patterns are for different neurons (mouse/trials).
+
+//Difference between SGI and SGS?
+
+//Will it extract "long" tail of it, fast decay, etc.? How about for
+//CURRENT clamp vs. VOLTAGE clamp etc.,?
+
+//How about 2PT?
+
+//Could give us some idea about analysis.
+
 
 #pragma once
 
@@ -73,96 +87,92 @@ struct mt_dream_z_state
   D( dim_mins_param );
   D( dim_maxes_param );
 
+  D( PRE_GEN_ITER );
+  D( POST_GEN_ITER );
   
-  void new_state()
+  void new_state( const std::vector<std::string>& varnames,
+		  const std::vector<float64_t>& mins,
+		  const std::vector<float64_t>& maxes,
+		  int64_t maxgens=100000,
+		  int64_t numchains=10,
+		  int64_t ndelta=1,
+		  int64_t M0mult=100,
+		  int64_t Kthin=10,
+		  int64_t k=5,
+		  float64_t bnoise=0.05,
+		  float64_t bstar=1e-6,
+		  float64_t rthresh=1.2,
+		  int64_t GRskip=10,
+		  int64_t nCRpairs=3,
+		  int64_t pCRskip=10,
+		  float64_t pjump=0.1
+		  )
   {
+    
+    
+    //Names should be stored in EACH matrix (wow!)
+    state.add_float64_vector( dim_mins_param, mins );
+    state.add_float64_vector( dim_maxes_param, maxes );
+    
+    //REV: Need to do this in order...ugh.
+    state.add_int64_parameter( T_max_gens_param, maxgens );
+    state.add_int64_parameter( N_chains_param, numchains );
+    state.add_int64_parameter( n_delta_param, ndelta );
+    state.add_int64_parameter( d_dims_param, mins.size());
+    state.add_int64_parameter( M0_param, M0mult*mins.size());
+    state.add_int64_parameter( K_thin_param, Kthin );
+    state.add_int64_parameter( k_param, k );
+
+    state.add_float64_parameter( b_noise_param, bnoise );
+    state.add_float64_parameter( bstar_param, bstar );
+    state.add_float64_parameter( R_thresh_param, rthresh );
+
+    state.add_int64_parameter( GR_skip_param, GRskip );
+    state.add_int64_parameter( nCR_pairs_param, nCRpairs );
+    state.add_int64_parameter( pCR_skip_param, pCRskip );
+
+    state.add_float64_parameter( p_jump_param, pjump );
+    
     state.add_int64_parameter( t_gen, 0 );
     state.add_int64_parameter( M, 0 );
-        
-    state.add_int64_parameter( );
-
-    state.add_float64_parameter( );
     
-    state.add_int64_matrix( );
+    state.add_float64_vector( pCR_state, std::vector<float64_t>( nCRpairs, 1.0/nCRpairs) );
+    state.add_float64_vector( DeltaCR_state, std::vector<float64_t>( nCRpairs, 0.0 ) );
+    state.add_int64_vector( CR_used_state, std::vector<int64_t>( nCRpairs, 1e10) );
+    state.add_int64_vector( CR_cnts_state, std::vector<int64_t>( nCRpairs, 0) );
+    state.add_float64_vector( GR_vals_state, std::vector<float64_t>( mins.size(), 666.66 ) );
+    state.add_float64_vector( pdelta_state, std::vector<float64_t>( ndelta, 1.0/ndelta ) );
+    state.add_int64_vector( delta_used_state, std::vector<int64_t>(ndelta,  1e10 ) );
+    state.add_int64_matrix( mt_CR_used_state, state.dummy_colnames(numchains) );
+    state.add_int64_matrix( mt_delta_used_state, state.dummy_colnames(numchains)  );
     
-    state.add_float64_matrix( );
-  }
-  
-  //Dynamic state
-  size_t t_current_gen;
-  size_t M_size_Z;
-  
-  std::vector<float64_t> pCR_CR_probs;
-  std::vector<float64_t> DeltaCR_norm_sq_jumpdists;
-  std::vector<size_t> CR_used_indices;
-  std::vector<size_t> CR_counts;
-  std::vector<size_t> GR_values;
-  
-  std::vector<float64_t> pdelta_delta_probs;
-  std::vector<size_t> delta_used_probs;
+    state.add_float64_matrix( Z_hist, varnames );
+    state.add_float64_matrix( Xall_hist, varnames );
+    state.add_float64_matrix( piXall_hist, state.dummy_colnames(1));
+    state.add_float64_matrix( H_hist, varnames );
+    state.add_float64_matrix( piH_hist, state.dummy_colnames(1) );
+    state.add_float64_matrix( pCR_hist, state.dummy_colnames(nCRpairs) );
+    state.add_float64_matrix( DeltaCR_hist, state.dummy_colnames(nCRpairs) );
 
-  //REV: This is only used WITHIN each generation, i.e. we don't need it for next generation...?
-  //Pass an option to get vector rows etc. from the HDF5 file...i.e. selections.
-  //Another one that generates randoms from multinomial or something. OK.
-  std::vector<std::vector<size_t>> mt_CR_used_indices;
-  std::vector<std::vector<size_t>> mt_delta_used_indices;
-  
-  
-  std::string Z_thinned_hist;
-  std::string Xall_state_hist;
-  std::string piXall_fitness_hist;
-  std::string H_full_hist;
-  std::string piH_fitness_H;
+    state.add_int64_matrix( CR_used_hist, state.dummy_colnames(nCRpairs)  );
+    state.add_int64_matrix( CR_cnts_hist, state.dummy_colnames(nCRpairs)  );
+    state.add_float64_matrix( GR_vals_hist, varnames );
+    state.add_int64_matrix( accept_hist, state.dummy_colnames(1) ); //REV: Which chains accepted...? Ignores MT.
 
-  std::string pCR_CR_probs_hist;
-  std::string DeltaCR_norm_square_jumpdists_hist;
-  std::string CR_used_indices_hist;
-  std::string CR_counts_hist;
-  std::string GR_vals_hist;
-  std::string accept_and_count_hist;
-  //State of matrices are accessed by STRNAMES.
-  //We can add vect<vect> to matrices by add_to_matrix
-  //we can get_num_rows and get_num_cols
-  //We can read_row_range()
-  //We can read_row()
-  
-  
-  //Static params
-  size_t T_max_gens;
-  size_t N_num_chains;
-  size_t d_num_dims;
-  size_t n_delta;
-  size_t M0_start_size_Z;
-  size_t K_thinning_factor_Z;
-  size_t k_num_mt;
-  float64_t b_uniform_noise_radius;
-  float64_t bstar_gauss_noise_std;
-  float64_t R_GR_thresh;
-  size_t GR_skip_gens;
-  size_t nCR_num_pairs;
-  size_t pCR_skip_gens;
-  size_t p_jump;
-  std::vector<std::string> dim_names;
-  std::vector<float64_t> dim_mins;
-  std::vector<float64_t> dim_maxes;
-
-
-  //Make an init? Or a way to load from a configuration file?
-
-  mt_dream_z_state()
-  {
+    state.add_int64_parameter( PRE_GEN_ITER, 0 );
+    state.add_int64_parameter( POST_GEN_ITER, 0 );
+    
   }
 
-  //REV: Is there really a reason to separate these? Seems like it just confuses things...
-  void load( const std::string& file )
+  
+  
+  void load_state( const std::string& file )
   {
     state.load_collection( file );
 
-    
-        
     //Check HDF5 file is "sane", i.e. that all matrices have appropriate length given t_current_gen etc. If not, we will try the equivalent BU file.
     bool sane = issane( );
-
+    
     if(sane == false && file.c_str()[0] != '_' && file.c_str()[1] != '_' )
       {
 	std::string bufname = "__" + file;
@@ -178,14 +188,95 @@ struct mt_dream_z_state
 
   bool issane( )
   {
-    
+    //REV: need to check lengths of everything and all parameters to make sure they line up...pain in the ass haha.
+    //Screw it for now just go.
+    return true;
   }
+  
+  
+  //REV: These convenience functions might be better coded in the collection struct. Can be used for multiple things.
+  template <typename T>
+  T get_param( const std::string& s)
+  {
+    return state.get_numeric_parameter( s );
+  }
+
+  template <typename T>
+  void set_param( const std::string& s, const T& val)
+  {
+    state.set_numeric_parameter( s, val );
+  }
+
+  template <typename T>
+  T get_vparam( const std::string& s, const size_t& idx )
+  {
+    //TODO
+  }
+  
+  template <typename T>
+  void set_vparam( const std::string& s, const size_t& idx, const T& val )
+  {
+    //TODO
+  }
+
+  template <typename T>
+  std::vector<T> get_vector( const std::string& s )
+  {
+    //TODO
+  }
+
+  template <typename T>
+  void set_vector( const std::string& s, const std::vector<T>& val )
+  {
+    //TODO
+  }
+
+  //Just use raw add to matrix...do everything first raw, then wrap it?
+
+
+  void generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg )
+  {
+    std::vector<float64_t> tmp( get_param<int64_t>( d_dims_param ) );
+    std::vector< std::vector <float64_t> > toeval( N_chains_param,  std::vector<float64_t>( d_dims_param ) );
+
+    std::vector< std::vector <float64_t> > samples = latin_hypercube(get_vector<float64_t>(dim_mins_param),
+								     get_vector<float64_t>(dim_maxes),
+								     get_param<int64_t>(M0_param),
+								     rand_gen ); //prior_function();
+
+    state.add_to_matrix( Z_hist, state.dummy_colnames( N_chains_param ), samples );
+
+    std::vector< std::vector< float64_t > > firstpop = N_uniform<float64_t>( get_vector( dim_mins_param),
+								  get_vector( dims_max_param),
+								  get_param(N_chains_param),
+								  rand_gen );
+
+    //Make varlist from names and doubles...
+    varlist<std::string> vl;
+    vl.make_varlist<float64_t>( const std::vector<std::string>& names, const std::vector<float64_t>& vals );
+    
+    //Compute the fitnesses of them
+    fs.comp_pp_list( pg, vl );
+
+    //TODO REV: get results from RESULTS, specifically FITNESS? Just get from RESULTS (should be a varlist heh)
+    
+    set_param<int64_t>( M,
+			( get_param<int64_t>(M0_param) + get_param(N_chains_param) )
+			);
+
+    //TODO: Append results to piXall and piH
+
+  }
+  
+  
 };
 
 struct mt_dream_z
 {
   mt_dream_z_state state;
 
+  //REV: This will set/get all the guys...hehe.
+  
   void run()
   {
     // 1 compute initial population M0

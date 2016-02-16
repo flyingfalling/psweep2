@@ -723,6 +723,42 @@ struct hdf5_collection
   
   const std::string PARAM_DSET_NAME = "__PARAMETERS";
   const std::string DATA_GRP_NAME = "__DATA";
+
+  template <typename T>
+  void set_numeric_parameter( const std::string& pname, const T& val )
+  {
+    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
+        
+    H5::Attribute attr = dataset.openAttribute( pname.c_str() );
+    H5::DataType type = attr.getDataType();
+    attr.write(type, &T);
+    return;
+  }
+
+  template <typename T>
+  std::vector<T> get_vector_slice( const std::string& pname, const std::vector<size_t>& slices )
+  {
+    std::vector<T> ret( slices.size() ); //better not be any repeats in slices...?
+    for(size_t x=0; x<slices.size(); ++x)
+      {
+	//Can optimize...by only reading it once...do it later
+	ret[x] = get_numeric_parameter<T>( pname, slices[x] );
+      }
+    return ret;
+  }
+
+  template <typename T>
+  std::vector< std::vector<T> > get_matrix_row_slice( const std::string& pname, const std::vector<size_t>& slices )
+  {
+    std::vector< std::vector<T> > ret( slices.size() ); //better not be any repeats in slices...?
+    for(size_t x=0; x<slices.size(); ++x)
+      {
+	//Can optimize...by opening matrix only once...do later.
+	std::vector<T> r = read_row( pname, slices[x] );
+	ret.push_back( r );
+      }
+    return ret;
+  }
   
   void add_int64_parameter( const std::string& pname, const int64_t& val )
   {
@@ -779,7 +815,25 @@ struct hdf5_collection
     attribute.write( datatype, val );
     return;
   }
-  
+
+  template <typename T>
+  T get_numeric_parameter( const std::string& pname )
+  {
+    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
+    // Open attribute and read its contents
+    //hsize_t numdims=1;
+    //hsize_t DIM1length=1;
+    //hsize_t dims[numdims] = { DIM1length };
+    //DataSpace attr_dataspace = DataSpace (1, dims );
+
+    T ret;
+    
+    H5::Attribute attr = dataset.openAttribute( pname.c_str() );
+    H5::DataType type = attr.getDataType();
+    attr.read(type, &ret);
+    
+    return ret;
+  }
 
   int64_t get_int64_parameter( const std::string& pname )
   {
