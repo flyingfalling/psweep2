@@ -312,11 +312,11 @@ struct dream_abc_state
   //D( M );
   D( pCR_state );
   D( DeltaCR_state );
-  D( CR_used_state );
-  D( CR_cnts_state );
+  //D( CR_used_state );
+  //D( CR_cnts_state );
   D( GR_vals_state );
   D( pdelta_state );
-  D( delta_used_state );
+  //D( delta_used_state );
   //D( mt_CR_used_state );
   //D( mt_delta_used_state );
   
@@ -349,7 +349,7 @@ struct dream_abc_state
   D( bstar_param );
   D( R_thresh_param );
   D( GR_skip_param );
-  D( nCR_pairs_param );
+  D( nCR_param );
   D( pCR_skip_param );
   D( p_jump_param );
   
@@ -373,7 +373,7 @@ struct dream_abc_state
 		  float64_t bstar=1e-6,
 		  float64_t rthresh=1.2,
 		  int64_t GRskip=10,
-		  int64_t nCRpairs=3,
+		  int64_t nCR=3,
 		  int64_t pCRskip=10,
 		  float64_t pjump=0.1
 		  )
@@ -401,7 +401,7 @@ struct dream_abc_state
     state.add_float64_parameter( R_thresh_param, rthresh );
 
     state.add_int64_parameter( GR_skip_param, GRskip );
-    state.add_int64_parameter( nCR_pairs_param, nCRpairs );
+    state.add_int64_parameter( nCR_param, nCR );
     state.add_int64_parameter( pCR_skip_param, pCRskip );
 
     state.add_float64_parameter( p_jump_param, pjump );
@@ -409,13 +409,13 @@ struct dream_abc_state
     state.add_int64_parameter( t_gen, 0 );
     //state.add_int64_parameter( M, 0 );
     
-    state.add_float64_vector( pCR_state, std::vector<float64_t>( nCRpairs, 1.0/nCRpairs) );
-    state.add_float64_vector( DeltaCR_state, std::vector<float64_t>( nCRpairs, 0.0 ) );
-    state.add_int64_vector( CR_used_state, std::vector<int64_t>( nCRpairs, 1e10) );
-    state.add_int64_vector( CR_cnts_state, std::vector<int64_t>( nCRpairs, 0) );
+    state.add_float64_vector( pCR_state, std::vector<float64_t>( nCR, 1.0/nCR) );
+    state.add_float64_vector( DeltaCR_state, std::vector<float64_t>( nCR, 0.0 ) );
+    //state.add_int64_vector( CR_used_state, std::vector<int64_t>( nCRpairs, 1e10) );
+    //state.add_int64_vector( CR_cnts_state, std::vector<int64_t>( nCRpairs, 0) );
     state.add_float64_vector( GR_vals_state, std::vector<float64_t>( mins.size(), 666.66 ) );
     state.add_float64_vector( pdelta_state, std::vector<float64_t>( ndelta, 1.0/ndelta ) );
-    state.add_int64_vector( delta_used_state, std::vector<int64_t>(ndelta,  1e10 ) );
+    //state.add_int64_vector( delta_used_state, std::vector<int64_t>(ndelta,  1e10 ) );
     
     state.add_float64_matrix( Z_hist, varnames );
     state.add_float64_matrix( X_hist, varnames );
@@ -425,7 +425,7 @@ struct dream_abc_state
     state.add_float64_matrix( pCR_hist, state.dummy_colnames(nCRpairs) );
     state.add_float64_matrix( DeltaCR_hist, state.dummy_colnames(nCRpairs) );
 
-    state.add_int64_matrix( CR_used_hist, state.dummy_colnames(nCRpairs)  );
+    state.add_int64_matrix( CR_used_hist, state.dummy_colnames(1)  );
     state.add_int64_matrix( CR_cnts_hist, state.dummy_colnames(nCRpairs)  );
     state.add_float64_matrix( GR_vals_hist, varnames );
     state.add_int64_matrix( accept_hist, state.dummy_colnames(1) ); //REV: Which chains accepted...? Ignores MT.
@@ -550,58 +550,87 @@ struct dream_abc_state
     END_GEN();
   }
 
-  std::vector<float64_t> make_single_proposal( const std::vector<float64_t>& parent, const std::vector<size_t>& movingdims, const double& gamma, const std::vector< std::vector< float64_t > >& mypairs, std::default_random_engine& rand_gen )
+  std::vector<float64_t> make_single_proposal( const std::vector<float64_t>& parent, std::default_random_engine& rand_gen )
   {
     std::vector<float64_t> proposal = parent;
+
+    
+    std::vector<size_t> pairidxs;
+    std::vector<size_t> movingdims;
+    float64_t gamma;
+    
+    choose_moving_dims_and_npairs( pairidxs, movingdims, gamma, rand_gen );
+
+    std::vector<std::vector<float64_t> > mypairs = state.get_matrix_row_slice<float64_t>( X_hist, pairidxs );
+    
+    
     std::normal_distribution<float64_t> gdist(0, get_param<float64_t>( bstar_param ) );
     float64_t bwid = get_param<float64_t>( b_noise_param  );
     std::uniform_real_distribution<float64_t> udist(-bwid, bwid);
-
-    //REV: Gamma==1, so ALL dims are moving (ghetto?)
-    if( gamma == 1.0 )
+    
+    
+    std::vector<std::vector<T> > dimdiffs(  mypairs.size()/2, std::vector<float64_t>(proposal.size(), 0 ) );
+    std::vector<T> dimdiffs_total( proposal.size(), 0);
+    std::vector<T> dimdiffs_wnoise( proposal.size(), 0);
+    
+    if(mypairs.size() % 2 != 0)
       {
-	for(size_t d=0; d<proposal.size(); ++d)
-	  {
-	    float64_t diff=mypairs[0][d] - mypairs[1][d];
-	    double epsilon_noise = gdist( rand_gen );
-	    //r8_normal_sample(0, bstar_gaussian_noise_std);
-	    proposal[d] += diff + epsilon_noise; //gamma is 1.0
-	  }
+	fprintf(stderr, "ERROR, generate_proposal, passed mypairs is size (%ld) but should be divisible by 2...\n", mypairs.size());
+	exit(1);
       }
-    else
+    
+    size_t pairs= mypairs.size()/2;
+    for(size_t d=0; d<movingdims.size(); ++d)
       {
-	std::vector<std::vector<T> > dimdiffs(  mypairs.size()/2, std::vector<float64_t>(proposal.size(), 0 ) );
-	std::vector<T> dimdiffs_total( proposal.size(), 0);
-	std::vector<T> dimdiffs_wnoise( proposal.size(), 0);
-
-	if(mypairs.size() % 2 != 0)
-	  {
-	    fprintf(stderr, "ERROR, generate_proposal, passed mypairs is size (%ld) but should be divisible by 2...\n", mypairs.size());
-	    exit(1);
-	  }
-
-	size_t pairs= mypairs.size()/2;
-	for(size_t d=0; d<movingdims.size(); ++d)
-	  {
-	    size_t actualdim = movingdims[d];
+	size_t actualdim = movingdims[d];
 	    
-	    float64_t diff = 0;
-	    for(size_t p=0; p<pairs; ++p)
-	      {
-		//REV: same as summing all p*2 first, then subtracting sum of all p*2+1...?
-		diff += ( mypairs[p*2][ actualdim ] - mypairs[(p*2)+1][ actualdim ] );
+	float64_t diff = 0;
+	for(size_t p=0; p<pairs; ++p)
+	  {
+	    //REV: same as summing all p*2 first, then subtracting sum of all p*2+1...?
+	    diff += ( mypairs[p*2][ actualdim ] - mypairs[(p*2)+1][ actualdim ] );
 		
-	      }
-	    
-	    double e_noise = 1.0 + udist( rand_gen ); //+r8_uniform_sample(-b_uniform_noise_radius, b_uniform_noise_radius); //we draw these independently for each dimension, I guess.
-	    double epsilon_noise = gdist( rand_gen ); //r8_normal_sample(0, bstar_gaussian_noise_std);
-	    
-	    proposal[ actualdim ] += e_noise * gamma * diff + epsilon_noise;
 	  }
+	    
+	double e_noise = 1.0 + udist( rand_gen ); //+r8_uniform_sample(-b_uniform_noise_radius, b_uniform_noise_radius); //we draw these independently for each dimension, I guess.
+	double epsilon_noise = gdist( rand_gen ); //r8_normal_sample(0, bstar_gaussian_noise_std);
+	    
+	proposal[ actualdim ] += e_noise * gamma * diff + epsilon_noise;
       }
-
+  
     proposal = edge_handling( proposal, rand_gen );
     return proposal;
+  }
+
+  std::vector<float64_t> edge_handling( const std::vector<float64_t>& proposal, std::default_random_engine& rand_gen )
+  {
+    //CLAMP seems best, but will stack up if it keeps trying to go out the side
+    //REFLECT will give right "distribution", but bad position...
+    //Random sample seems most "fair" but it will cause it to miss important (proposal) density that would otherwise cluster near the edge.
+    std::vector<float64_t> newproposal = proposal;
+    std::vector<float64_t> dim_mins = get_vector<float64_t>( dim_mins_param );
+    std::vector<float64_t> dim_maxes = get_vector<float64_t>( dim_maxes_param );
+    std::uniform_real_distribution<float64_t> udist(0.0, 1.0);
+    
+    for(size_t d=0; d<proposal.size(); ++d)
+      {
+	if(proposal[d] > dim_maxes[d])
+	  {
+	    newproposal[d] = (2.0 * dim_maxes[d]) - proposal[d];
+	  }
+	else if(proposal[d] < dim_mins[d])
+	  {
+	    newproposal[d] = (2.0 * dim_mins[d]) - proposal[d];
+	  }
+	
+	//if still, just uniform (e.g. because of excessively large / small jumps that takes it "back out the other side" )
+	if(newproposal[d] > dim_maxes[d] || newproposal[d] < dim_mins[d])
+	  {
+	    proposal[d] = dim_mins[d] + (dim_maxes[d] - dim_mins[d]) * udist( rand_gen );
+	  }
+      }
+    
+    return newproposal;
   }
   
   std::vector<std::vector< float64_t> > make_proposals(std::default_random_engine& rand_gen)
@@ -610,19 +639,46 @@ struct dream_abc_state
     std::vector<std::vector<float64_t> > Xcurr = state.get_last_n_rows<float64_t>( X_hist, get_param<int64_t>(N_chains_param) );
     for(size_t c=0; c<Xcurr.size(); ++c)
       {
-	float64_t gamma = compute_gamma(); //probably computed as side effect of delta_computation
 	std::vector< std::vector< float64_t > > mypairs = choose_pairs( ); //this uses CR
-	std::vector<size_t> movingdims = compute_moving_dims( ); //This uses DELTA
-	std::vector<float64_t> proposal = make_single_proposal( Xcurr[c], movingdims, gamma, mypairs, rand_gen );
-
-	
+	std::vector<float64_t> proposal = make_single_proposal( Xcurr[c], rand_gen );
+		
 	proposals.push_back(proposal);
       }
 
     return proposals;
   }
 
-  void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs, std::vector<size_t>& moving_dims, std::default_random_engine& rand_gen )
+  void update_DeltaCR()
+  {
+    
+  }
+  
+  //REV: Huh, there's probably a more intelligent way to do this than manually check each one?
+  std::vector<size_t> choose_moving_dims( const size_t& Didx,  std::default_random_engine& rand_gen ) 
+  {
+    std::uniform_real_distribution<float64_t> udist(0.0, 1.0);
+    
+    std::vector<size_t> mymovingdims;
+
+    float64_t crval = (float64_t)(Didx+1) / (float64_t)get_param<int64_t>( nCR_param );
+    for(size_t d=0; d < get_param<int64_t>( d_dims_param ); ++d)
+      {
+	if( (1.0 - crval) < udist(rand_gen) )
+	  {
+	    mymovingdims.push_back(d);
+	  }
+      }
+    
+    if(mymovingdims.size() == 0)
+      {
+	//randomly select a dim to move...
+	std::uniform_int_distribution<size_t> dist(0, get_param<int64_t>( d_dims_param ) - 1);
+	size_t choice = dist(rand_gen);
+	mymovingdims.push_back(choice);
+      }
+  }
+  
+  void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs, std::vector<size_t>& moving_dims, float64_t& gamma, std::default_random_engine& rand_gen )
   {
     size_t Didx = choose_CR_idx( rand_gen );
     size_t tauidx = draw_num_DE_pairs( rand_gen );
@@ -636,11 +692,18 @@ struct dream_abc_state
     //Each pair gets the same pair of moving dims.
     moving_dims = choose_moving_dims( Didx, rand_gen );
     mypairs = draw_DE_pairs( tauidx+1, rand_gen );
+    
+    //Assume we're pushing back to the correct "new" chain at the end.
+    state.add_row_to_matrix<int64_t>( CR_used_hist, std::vector<int64_t>(1, Didx ));
 
-
+    state.add_row_to_matrix<int64_t>( delta_used_hist, std::vector<int64_t>(1, tauidx ));
+    
     //REV: Update used_CR, used_delta, etc.
     //Also compute STD, etc., and move them based on those?
     //Actually update pCR and pDELTA?
+    //pDELTA is not updated (it's always equal for each num pairs..)
+    //Every generation, we update DeltaCR.
+    //Once every SKIP, we update pCR.
     
     return;
   }
@@ -693,13 +756,14 @@ struct dream_abc_state
   {
     return choose_k_indices_from_N_no_replace( get_param<int64_t>(N_chains_param), npairs*2 );
   }
+
   
   void compute_GR()
   {
     
   }
   
-  void update_CR()
+  void update_pCR()
   {
     
   }

@@ -755,12 +755,13 @@ struct hdf5_collection
   template <typename T>
   std::vector< std::vector<T> > get_matrix_row_slice( const std::string& pname, const std::vector<size_t>& slices )
   {
-    std::vector< std::vector<T> > ret( slices.size() ); //better not be any repeats in slices...?
+    std::vector< std::vector<T> > ret( slices.size(), get_num_cols( pname ) ); //better not be any repeats in slices...?
     for(size_t x=0; x<slices.size(); ++x)
       {
 	//Can optimize...by opening matrix only once...do later.
-	std::vector<T> r = read_row( pname, slices[x] );
-	ret.push_back( r );
+	//std::vector<T> r = read_row( pname, slices[x] );
+	//ret.push_back( r );
+	ret[x] = read_row<T>( pname, slices[x] );
       }
     return ret;
   }
