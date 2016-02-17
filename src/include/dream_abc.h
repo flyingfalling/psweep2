@@ -647,11 +647,102 @@ struct dream_abc_state
 
     return proposals;
   }
+  
+  float64_t incrementally_compute_mean( const float64_t& prevmean, const float64_t& newsample, const int64_t& newn )
+  {
+    float64_t mean = prevmean*(newn-1);
+    mean = (mean+newsample)/newn;
+    return mean;
+  }
 
+  //https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+  float64_t incrementally_compute_var( const float64_t& prevmean, const float64_t& prevvar, const float64_t& newmean, const float64_t& newsample, const int64_t& newn, float64_t& prevM2n )
+  {
+    float64_t M2n = prevM2n + (newsample - prevmean) * (newsample - newmean);
+    float64_t newvar = M2n / (float64_t)(newn-1);
+    //float64_t div = (newsample - prevmean);
+    //float64_t newvar = (n-2)/(n-1)*prevvar + (1/n)*(div*div);
+    return newvar;
+  }
+  
+  std::vector<float64_t> compute_std_for_all_dims_all_history()
+  {
+    //Keep a "partial sum" updated, and just do the change in N.
+    //Also, keep a "deviation from mean" for each. Problem is, change in mean will cause change in the deviation...
+
+    //http://math.stackexchange.com/questions/102978/incremental-computation-of-standard-deviation
+    
+    std::vector<float64_t> prev_stds = get_prev_stds();
+    std::vector<float64_t> prev_means = get_prev_means();
+    std::vector<float64_t> prev_M2ns = get_prev_M2ns();
+
+    int64_t skippcr= get_param<int64_t>( pCR_skip_param );
+    int64_t nchains= get_param<int64_t>( N_chains_param );
+    std::vector< std::vector<float64_t> > newsamples = state.get_last_n_rows( X_hist, nchains );
+    int64_t n = state.get_num_rows( X_hist ) - newsamples.size();
+    
+    for(size_t c=0; c<newsamples.size(); ++c)
+      {
+	for(size_t d=0; d<prev_stds.size(); ++d)
+	  {
+	    float64_t newsample = newsamples[c][d];
+	    float64_t prevmean = prev_means[d];
+	    ++n; //increment n, b/c we added a sample
+	    prev_means[d] = incrementally_compute_mean( prev_means[d], newsample, n );
+	    prev_stds[d] = incrementally_compute_var( prevmean, prev_stds[d], prev_means[d], newsample, n, prev_M2ns[d] );
+	  }
+      }
+
+    //Write STDS, MEANS, M2NS. Note STD is sqrt of prev_stds.
+    return prev_stds;
+  }
+  
   void update_DeltaCR()
   {
+    std::vector<std::vector<float64_t> > Xlast2gens = get_last_n_rows( X_hist, 2 * get_param<int64_t>( N_chains_param ) );
+
+    std::vector<std::vector<float64_t> > lastgen =
+      std::vector<std::vector<float64_t> >( Xlast2gens.begin(), Xlast2gens.begin()+get_param<int64_t>( N_chains_param ) );
     
+    std::vector<std::vector<float64_t> > thisgen =
+      std::vector<std::vector<float64_t> >( Xlast2gens.begin() + get_param<int64_t>( N_chains_param ), Xlast2gens.end() );
+
+    std::vector<std::vector<int64_t> > usedCRidxs = state.get_last_n_rows( CR_used_hist, get_param<int64_t>( N_chains_param ) );
+
+    std::vector<float64_t> DeltaCR = state.get_last_n_rows( DeltaCR_hist, 1 );
+    
+    if(thisgen.size() != lastgen.size() )
+      {
+	fprintf(stderr, "REV: ERROR fuxxed up iterarors in updateDELTACR\n");
+	exit(1);
+      }
+    
+    std::vector<float64_t> stds = compute_std_for_all_dims_all_history();
+
+    //SQRT BECAUSE THEY ARE ACTUALLY VARIANCE...
+    vector_sqrt<float64_t>( stds );
+    
+    size_t ndims = get_param<int64_t>( d_dims_param );
+    //Update DeltaCR (norm squared jump distances...)
+    for(size_t c=0; c<lastgen.size(); ++c)
+      {
+	size_t used = usedCRidxs[c][0];
+	float64_t dist=0;
+	for(size_t d=0; d<ndims; ++d)
+	  {
+	    if(stds[d] > 0 )
+	      {
+		double a=( lastgen[c][d] - thisgen[c][d] ) / ( stds[d] );
+		dist += a*a;
+	      }
+	  }
+
+	DeltaCR[d] += dist;
+      }
+
+    //Update/write DeltaCR (add row to history)
   }
+  
   
   //REV: Huh, there's probably a more intelligent way to do this than manually check each one?
   std::vector<size_t> choose_moving_dims( const size_t& Didx,  std::default_random_engine& rand_gen ) 
@@ -760,13 +851,152 @@ struct dream_abc_state
   
   void compute_GR()
   {
+    int64_t timepoints = get_param<int64_t>(t_gen) / 2;
+    if( timepoints < 2 )
+      {
+	return ;
+      }
+    size_t ndims = get_param<float64_t>( d_dims_param );
+    size_t nchains = get_param<float64_t>( N_chains_param );
     
-  }
+    //Reconstruct the chain, and take only 2nd half
+    
+    //REV: This is a pain in the ass, because it has to be from the last
+    //50%. So, it's not possible to incrementally do it I think.
+    //However, I can at least incrementally compute STD as I go.
+
+    std::vector< std::vector< float64_t> > each_chain_and_dim_means;
+    std::vector< std::vector< float64_t> > each_chain_and_dim_vars;
+    
+    //for each chain:
+    for(size_t c=0; c<nchains; ++c)
+      {
+	std::vector<float64_t> means;
+	std::vector<float64_t> stds;
+
+	//for each dim
+	for(size_t d=0; d<ndims; ++d)
+	  {
+	    float64_t newmean = incrementally_compute_mean( );
+	    float64_t newstd = incrementally_compute_var( );
+	  }
+	
+	each_chain_and_dim_means.push_back(means);
+	each_chain_and_dim_vars.push_back(stds);
+      }
+    
+    std::vector<float64_t> variance_between_chain_means(ndims, 0);
+    std::vector<float64_t> means(ndims, 0);
+    
+    for(size_t c=0; c<nchains; ++c)
+      {
+	//for each dim:
+	for(size_t d=0; d<ndims; ++d)
+	  {
+	    means[c] += each_chain_and_dim_means[c][d];
+	  }
+      }
+    vector_divide_constant<float64_t>( means, (float64_t)nchains );
+    for(size_t c=0; c<nchains; ++c)
+      {
+	for(size_t d=0; d<ndims; ++d)
+	  {
+	    float64_t tmp = (each_chain_and_dim_means[c][d] - means[d]);
+	    variance_between_chain_means[d] += (tmp*tmp);
+	  }
+      }
+    
+    vector_divide_constant<T>(variance_between_chain_means, (float64_t)(nchains-1));
+    if(timepoints > 1)
+      {
+	vector_multiply_constant<float64_t>(variance_between_chain_means, (float64_t)timepoints);
+      }
+
+
+    //What is the variance between chains
+    std::vector<float64_t> mean_variance_all_chain_dim(ndims, 0);
+    //4) Compute mean of within-sequence variances. Mean of each dim from step 3. Call W.
+    for(size_t c=0; c<N_num_chains; ++c)
+      {
+	for(size_t d=0; d<d_num_dims; ++d)
+	  {
+	    mean_variance_all_chain_dim[d] += each_chain_and_dim_vars[c][d];
+	  }
+      }
+    vector_divide_constant<float64_t>( mean_variance_all_chain_dim, (float64_t)nchains );
+
+    std::vector<float64_t> Rstat(d_num_dims, 0);
+    
+    bool wouldconverge = true;
+    for(size_t d=0; d<ndims; ++d)
+      {
+	if(mean_variance_all_chain_dim[d] > 0)
+	  {
+	    Rstat[d] = (float64_t)(timepoints-1)/(float64_t)timepoints + (float64_t)(nchains+1)/(float64_t)(nchains*timepoints) * ((float64_t)variance_between_chain_means[d] / (float64_t)mean_variance_all_chain_dim[d]);
+	    Rstat[d] = sqrt(Rstat[d]);
+	  }
+	else
+	  {
+	    Rstat[d] = 6666.0;
+	  }
+	
+	if( Rstat[d] >= get_param<float64_t>( R_thresh_param ) )
+	  {
+	    //At least one dim has R value > threshold
+	    wouldconverge = false;
+	  }
+      }
+    
+  } //end compute_GR
   
   void update_pCR()
   {
+    std::vector<float64_t> DeltaCR = state.get_last_n_rows<float64_t>( DeltaCR_hist, 1 );
+    std::vector<int64_t> CRcnts = state.get_last_n_rows<int64_t>( CR_cnts_hist, 1 );
+
+    std::vector<float64_t> pCR = state.get_last_n_rows<float64_t>( pCR_hist, 1 );
+    double sumDeltas= vector_sum<double>(DeltaCR);
+    size_t nchains = get_param<int64_t>( N_chains_param );
+    size_t ncr = get_param<size_t>( nCR_param );
+
+    bool doit=true;
+    size_t tgen=get_param<int64_t>( t_gen );
+    for(size_t cridx=0; cridx<ncr; ++cridx)
+      {
+	//just numbers I picked out of my ass
+	if( CRcnts[cridx] < 50 || tgen < 1000 )
+	  {
+	    doit = false;
+	  }
+      }
+    if( doit == true )
+      {
+	for(size_t cridx=0; cridx<nCR; ++cridx)
+	  {
+	    pCR[cridx] = nchains * (DeltaCR[cridx] / ((float64_t)CRcnts[cridx]));
+	    pCR[cridx] /= (sumDeltas);
+	  }
+      }
+
     
+    //REV: Guarantees we don't get any zero-size guys.
+    //This is for numerical stability.
+    float64_t sum=vector_sum<float64_t>( pCR );
+    vector_divide_constant<float64_t>(pCR, sum); //+0.0001);
+    
+    float64_t minsize=1e-5;
+    float64_t sizeper = minsize / pCR.size();
+    vector_add_constant<float64_t>(pCR, sizeper);
+    
+    sum=vector_sum<float64_t>( pCR );
+    vector_divide_constant<float64_t>(pCR, sum+minsize); //+0.0001);
+    
+    
+    //TODO Write pCR
+    state.add_row_to_matrix<float64_t>( pCR_hist, pCR );
   }
+
+  
   
   
   void generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg )
