@@ -668,6 +668,11 @@ struct matrix_props
     return strs;
   } //read_string_dset
 
+  std::vector<std::string> get_varnames() const
+  {
+    return my_colnames;
+  }
+  
   //REV: I could make it easier and automatically set datatype but whatever.
   void load_matrix( const std::string& matname, H5::H5File& f ) //, const std::string& datatype )
   {
@@ -945,6 +950,13 @@ struct hdf5_collection
     add_row_to_matrix( matname, vals );
   }
 
+  //A 1d vector where we might care about the rownames haha.
+  void add_float64_vector(const std::string& matname, const std::vector<std::string>& vnames, const std::vector<float64_t>& vals )
+  {
+    add_float64_matrix( matname, vnames );
+    add_row_to_matrix( matname, vals );
+  }
+
   //A 1d vector doesn't have row names?
   void add_int64_vector(const std::string& matname, const std::vector<int64_t>& vals )
   {
@@ -1016,6 +1028,17 @@ struct hdf5_collection
     mp1.load_matrix(matname, file );
     matrices.push_back(mp1);
   }
+
+  std::vector<std::string> get_varnames( const std::string& matname )
+  {
+    std::vector< size_t > locs = find_matrix( matname );
+    if(locs.size() != 1)
+      {
+	fprintf(stderr, "ERROR Couldn't find requested matrix name (dataset) [%s] in matrices, or there were multiple (Found [%ld])\n", matname.c_str(), locs.size( ) );
+      }
+    return matrices[ locs[0] ].get_varnames();
+  }
+
   
   size_t get_num_rows( const std::string& matname )
   {
@@ -1045,12 +1068,27 @@ struct hdf5_collection
       {
 	fprintf(stderr, "ERROR Couldn't find requested matrix name (dataset) [%s] in matrices, or there were multiple (Found [%ld])\n", matname.c_str(), locs.size());
       }
-
+    
     std::vector< std::vector<T> > f;
     f.push_back( vals );
     add_to_matrix( matname, dummy_colnames( vals.size() ), f );
     return;
   }
+
+  template<typename T>
+  std::vector<std::vector<T> > get_last_n_rows( const std::string& matname, const size_t& nr )
+  {
+    size_t len = get_num_rows( matname );
+    if( len < nr )
+      {
+	fprintf(stderr, "REV: ERROR in get_last_n_rows: not enough rows...( mat [%s], trying to get [%ld] rows but only [%ld] exist)\n", matname.c_str(), nr, len );
+	exit(1);
+      }
+    size_t startrow = len-nr;
+    size_t endrow = len-1; //Reads "include" the end row!!!!
+    return read_row_range<T>( matname, startrow, endrow );
+  }
+
   
   template <typename T>
   void add_to_matrix( const std::string& matname, const std::vector<std::string>& colnames, const std::vector< std::vector< T > >& vals )

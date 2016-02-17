@@ -170,6 +170,51 @@ void vector_sq(std::vector<T>& arg)
     }
 }
 
+template <typename T>
+size_t vector_min_pos( const std::vector<T>& arg )
+{
+  T minv=arg[0];
+  size_t pos=0;
+  for(size_t x=1; x<arg.size(); ++x)
+    {
+      if( arg[x] < minv )
+	{
+	  minv = arg[x];
+	  pos=x;
+	}
+    }
+  return pos; //might be multiple! Hm. Figure it out. I ahve another funct to do this I'm pretty sure.
+}
+
+template <typename T>
+size_t vector_max_pos( const std::vector<T>& arg )
+{
+  T maxv=arg[0];
+  size_t pos=0;
+  for(size_t x=1; x<arg.size(); ++x)
+    {
+      if( arg[x] > maxv )
+	{
+	  maxv = arg[x];
+	  pos=x;
+	}
+    }
+  return pos; //might be multiple! Hm. Figure it out. I ahve another funct to do this I'm pretty sure.
+}
+
+template <typename T>
+T vector_min( const std::vector<T>& arg )
+{
+  return arg[ vector_min_pos( arg ) ]; //might be multiple! Hm. Figure it out. I ahve another funct to do this I'm pretty sure.
+}
+
+template <typename T>
+T vector_max( const std::vector<T>& arg )
+{
+  return arg[ vector_max_pos( arg ) ]; //might be multiple! Hm. Figure it out. I ahve another funct to do this I'm pretty sure.
+}
+
+
 
 template <typename T>
 void print2dvec_row(const std::vector< std::vector<T> >& arg)

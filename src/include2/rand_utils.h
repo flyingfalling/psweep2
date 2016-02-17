@@ -90,3 +90,51 @@ std::vector<std::vector<T> > N_uniform(std::vector<T> mins, std::vector<T> maxes
   //REV: need to do random sampling in here, make sure random guys are initialized. So, would need to pass a global RNG or something?
   return finals;
 }
+
+
+std::vector<size_t> multinomial_sample( const std::vector<float64_t>& p, const size_t& nsamples, std::default_random_engine& rand_gen )
+{
+  //Call binomial sample multiple times. As in PDFLIB.
+  //All probabilities are [0, 1]
+  float64_t ptot = 0.0;
+  for( size_t i = 0; i < nsamples.size()-1; ++i )
+  {
+    ptot = ptot + p[i];
+  }
+  if ( 0.99999 < ptot ) 
+  {
+    std::cerr << std::endl;
+    std::cerr << "multinomial sample: fatal error." << std::endl;
+    std::cerr << "  1.0 < Sum of P()." << std::endl;
+    exit ( 1 );
+  }
+
+  size_t ntot = nsamples;
+  ptot = 1.0;
+
+  std::vector<size_t> ix( nsamples.size(), 0 );
+
+  //Make binomial distribution.
+  
+  
+  for( size_t icat = 0; icat < nsamples.size() - 1; ++icat )
+    {
+      float64_t prob = p[icat] / ptot;
+      std::binomial_distribution<size_t> bdist( ntot, prob );
+      ix[icat] = bdist(rand_gen);
+      //ntot = ntot - ix[icat];
+      //if ( ntot <= 0 )
+      if( ix[icat] >= ntot )
+	{
+	  return ix;
+	}
+      ntot -= ix[icat]; //only do this if it would be >0 (these are unsigned ints)
+      ptot = ptot - p[icat];
+    }
+  
+  ix[ nsamples.size()-1 ] = ntot;
+
+  return ix;
+} //end multinomial.
+
+
