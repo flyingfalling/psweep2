@@ -1109,9 +1109,25 @@ struct parampoint_generator
 
   std::vector<varlist<std::string>> get_last_N_results( const size_t& N )
   {
+    if( parampoints.size() < N )
+      {
+	fprintf(stdout, "ERROR in get last N: parampoints size too small [%ld] for N [%ld]\n", parampoints.size(), N);
+	exit(1);
+      }
+    
     std::vector<varlist<std::string> > ret( N );
     for(size_t x=parampoint_results.size()-N; x<parampoint_results.size(); ++x)
       {
+	if( parampoint_results.size() <= x )
+	  {
+	    fprintf(stderr, "Error parampoint results size too small in get last N (results size: [%ld], trying to get Xth [%ld]\n", parampoint_results.size(), x);
+	    exit(1);
+	  }
+	if( parampoint_results[x].pset_results.size() == 0 )
+	  {
+	    fprintf(stderr, "ERROR parampoint results, PSET results size is 0\n" );
+	    exit(1);
+	  }
 	if(parampoint_results[x].pset_results[ parampoint_results[x].pset_results.size()-1 ].pitem_results.size() != 1)
 	  {
 	    fprintf(stderr, "REV: In get last N results (parampoint results): Final PSET is of width != 1\n");
@@ -1142,17 +1158,23 @@ struct parampoint_generator
   void cleanup_parampoints_upto( const size_t& ppidx )
   {
     //Note all arrays should be of same size...if not there's a problem..
-    if( ppidx >= parampoint_vars.size() )
+    if( ppidx > parampoint_vars.size() )
       {
 	fprintf(stderr, "ERROR, cleanup_parmpoints_upto, requested ppidx [%ld] > size of array [%ld]\n", ppidx, parampoint_vars.size() );
 	exit(1);
       }
 
-    
+
+    //REV: .end() pointer should point PAST end of guys we are erasing. So this will including the +ppidx-1 guy I assume...?
     parampoint_vars.erase(parampoint_vars.begin(), parampoint_vars.begin()+ppidx );
     parampoints.erase(parampoints.begin(), parampoints.begin()+ppidx );
     parampoint_results.erase(parampoint_results.begin(), parampoint_results.begin()+ppidx );
     parampoint_memfsystems.erase(parampoint_memfsystems.begin(), parampoint_memfsystems.begin()+ppidx );
+
+    if( parampoint_vars.size() != 0 )
+      {
+	fprintf(stderr, "REV: WARNING in cleanup parampoints upto: parampoint length is not 0! It is [%ld]\n", parampoint_vars.size() );
+      }
 
     return;
   }
