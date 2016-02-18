@@ -1,6 +1,7 @@
 #pragma once
 #include <random>
 #include <vector>
+#include <idxsortIMPL.h>
 
 
 //template <typename T>
@@ -17,7 +18,7 @@ std::vector< int64_t > rand_permute(const int64_t& N, std::default_random_engine
   
   //sort it
   sorter<float64_t> bob( &permuted_probs[0] , permuted_probs.size() );
-  bob.add_i( &permuted[0] ); //lol must be int, what if we make size_T? Need to mod sorter algo?
+  bob.add_l( &permuted[0] ); //lol must be int, what if we make size_T? Need to mod sorter algo?
   
   bob.runsort();
   
@@ -52,7 +53,7 @@ std::vector<std::vector<T> > latin_hypercube(std::vector<T> mins, std::vector<T>
 	  locs_within_slices[z] = (slicesize*z) + mins[dim] + dist(rand_gen) * slicesize;
 	}
       //then permute...
-      std::vector<int> permed = rand_permute<int>(N);
+      std::vector<int> permed = rand_permute(N, rand_gen);
       
       //ugh just add it and sort by the random guy?
       for(size_t z=0; z<N; ++z)
@@ -92,12 +93,13 @@ std::vector<std::vector<T> > N_uniform(std::vector<T> mins, std::vector<T> maxes
 }
 
 
+//REV: This adds a "1" to each category as it is sampled hahahaha. So if I only choose 1...
 std::vector<size_t> multinomial_sample( const std::vector<float64_t>& p, const size_t& nsamples, std::default_random_engine& rand_gen )
 {
   //Call binomial sample multiple times. As in PDFLIB.
   //All probabilities are [0, 1]
   float64_t ptot = 0.0;
-  for( size_t i = 0; i < nsamples.size()-1; ++i )
+  for( size_t i = 0; i < p.size()-1; ++i )
   {
     ptot = ptot + p[i];
   }
@@ -108,16 +110,16 @@ std::vector<size_t> multinomial_sample( const std::vector<float64_t>& p, const s
     std::cerr << "  1.0 < Sum of P()." << std::endl;
     exit ( 1 );
   }
-
+  
   size_t ntot = nsamples;
   ptot = 1.0;
 
-  std::vector<size_t> ix( nsamples.size(), 0 );
+  std::vector<size_t> ix( p.size(), 0 );
 
   //Make binomial distribution.
   
   
-  for( size_t icat = 0; icat < nsamples.size() - 1; ++icat )
+  for( size_t icat = 0; icat < ix.size() - 1; ++icat )
     {
       float64_t prob = p[icat] / ptot;
       std::binomial_distribution<size_t> bdist( ntot, prob );
@@ -131,8 +133,9 @@ std::vector<size_t> multinomial_sample( const std::vector<float64_t>& p, const s
       ntot -= ix[icat]; //only do this if it would be >0 (these are unsigned ints)
       ptot = ptot - p[icat];
     }
-  
-  ix[ nsamples.size()-1 ] = ntot;
+
+  //Final one is that...yea. Hm, I think probabilities are all messed up, I need to shift them over. Final one is assumed to be distance to 1.0...
+  ix[ ix.size()-1 ] = ntot;
 
   return ix;
 } //end multinomial.

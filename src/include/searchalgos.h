@@ -54,10 +54,13 @@ void search_grid( const std::vector<std::string>& varnames,
       vls.push_back(vl);
     }
 
+  seedgen sg;
+  sg.seed(0);
+  
   fprintf(stdout, "EXECUTING SEARCH GRID: Now doing COMP PP LIST\n");
   
   //Now, run on vls.
-  fs.comp_pp_list(pg, vls, fs.todisk); //, workingworkers);
+  fs.comp_pp_list(pg, vls, sg, fs.todisk); //, workingworkers);
 
   fprintf(stdout, "Finished comp PP list, leaving search grid\n");
 }

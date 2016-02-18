@@ -168,7 +168,7 @@ struct varlist
 	//fprintf(stdout, "Attempting to print out to file [%ld]th var: %s %s\n", v, vars[v].name.c_str(), vars[v].get_s().c_str() );
 	//REV: It's trying to write CMD array variable to the file which is fucked up. I don't want that. I only want the root parameters I think? Crap.
 	//OVERLOAD variable so that it appropriately outputs it if it is an array.
-	if( vars[v].mytype == variable::type::VAR )
+	if( vars[v].mytype == variable<T>::type::VAR )
 	  {
 	    mfp << vars[v].name << " " << vars[v].get_s() << std::endl;
 	  }
@@ -205,7 +205,7 @@ struct varlist
       {
 	//REV: It's trying to write CMD array variable to the file which is fucked up. I don't want that. I only want the root parameters I think? Crap.
 	//OVERLOAD variable so that it appropriately outputs it if it is an array.
-	if( vars[v].mytype == variable::type::VAR )
+	if( vars[v].mytype == variable<T>::type::VAR )
 	  {
 	    //f << vars[v].name << " " << vars[v].get_s() << std::endl;
 	    f << vars[v].name << " " << vars[v].get_s() << std::endl;
@@ -533,7 +533,19 @@ struct varlist
     return;
   }
 
-  float64_t get_float64(const std::string& v)
+  void add_float64( const std::string& v, const float64_t& val )
+  {
+    std::string sval = std::to_string(val);
+    addTvar( v, sval );
+  }
+
+  void add_int64( const std::string& v, const int64_t& val )
+  {
+    std::string sval = std::to_string(val);
+    addTvar( v, sval );
+  }
+  
+  float64_t get_float64( const std::string& v )
   {
     std::string val = getTvar( v );
     return std::stof( val );

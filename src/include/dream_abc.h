@@ -15,10 +15,14 @@
 
 #pragma once
 
-
+#include <algorithm>    // std::find
 #include <filesender.h>
+#include <hdf5_collection.h>
 #include <random>
-
+#include <vector_utils.h>
+#include <rand_utils.h>
+#include <stat_helpers.h>
+#include <idxsortIMPL.h>
 //REV: start with a flat prior I guess...
 
 //REV: pass other specific variables, like numgens etc.
@@ -127,7 +131,7 @@ struct dream_abc_state
     state.add_float64_vector( dim_mins_param, mins );
     state.add_float64_vector( dim_maxes_param, maxes );
 
-    state.add_float64_vector( pdelta_param, (1.0/(float64_t)ndelta) );
+    state.add_float64_vector( pdelta_param, std::vector<float64_t>(ndelta, (1.0/(float64_t)ndelta)) );
     
     //REV: Need to do this in order...ugh.
     state.add_int64_parameter( T_max_gens_param, maxgens );
@@ -147,17 +151,16 @@ struct dream_abc_state
     
     state.add_int64_parameter( t_gen, 0 );
         
-    state.add_float64_matrix( Z_hist, varnames );
     state.add_float64_matrix( X_hist, varnames );
     state.add_float64_matrix( piX_hist, state.dummy_colnames(1));
     state.add_float64_matrix( H_hist, varnames );
     state.add_float64_matrix( piH_hist, state.dummy_colnames(1) );
-    state.add_float64_matrix( pCR_hist, state.dummy_colnames(nCRpairs) );
-    state.add_float64_matrix( DeltaCR_hist, state.dummy_colnames(nCRpairs) );
+    state.add_float64_matrix( pCR_hist, state.dummy_colnames(nCR) );
+    state.add_float64_matrix( DeltaCR_hist, state.dummy_colnames(nCR) );
     state.add_float64_matrix( GR_hist, varnames );
 
     state.add_int64_matrix( CR_used_hist, state.dummy_colnames(1)  );
-    state.add_int64_matrix( CR_cnts_hist, state.dummy_colnames(nCRpairs)  );
+    state.add_int64_matrix( CR_cnts_hist, state.dummy_colnames(nCR)  );
     state.add_float64_matrix( GR_vals_hist, varnames );
     state.add_int64_matrix( accept_hist, state.dummy_colnames(1) );
 
@@ -182,11 +185,11 @@ struct dream_abc_state
     if(sane == false && file.c_str()[0] != '_' && file.c_str()[1] != '_' )
       {
 	std::string bufname = "__" + file;
-	load( bufname, params );
+	state.load_collection( bufname );
       }
     else
       {
-	fprintf(stderr, "ERROR: DREAM ABC Even backup file of h5 file [%s] is not sane! Exiting\n", bufname.c_str() );
+	fprintf(stderr, "ERROR: DREAM ABC Even backup file of h5 file [%s] is not sane! Exiting\n", file.c_str() );
 	exit(1);
       }
     
@@ -204,32 +207,32 @@ struct dream_abc_state
   template <typename T>
   T get_param( const std::string& s)
   {
-    return state.get_numeric_parameter( s );
+    return state.get_numeric_parameter<T>( s );
   }
 
   template <typename T>
   void set_param( const std::string& s, const T& val)
   {
-    state.set_numeric_parameter( s, val );
+    state.set_numeric_parameter<T>( s, val );
   }
   
   template <typename T>
   std::vector<T> get_vector_param( const std::string& s )
   {
-    return state.get_last_row( s );
+    return state.get_last_row<T>( s );
   }
 
   //Just use raw add to matrix...do everything first raw, then wrap it?
 
   void START_GEN()
   {
-    state.set_param<int64_t>( PRE_GEN_ITER, state.get_param<int64_t>(PRE_GEN_ITER)+1 );
+    set_param<int64_t>( PRE_GEN_ITER, get_param<int64_t>(PRE_GEN_ITER)+1 );
   }
 
   void END_GEN()
   {
-    state.set_param<int64_t>( t_gen, state.get_param<int64_t>(t_gen)+1 );
-    state.set_param<int64_t>( POST_GEN_ITER, state.get_param<int64_t>(POST_GEN_ITER)+1 );
+    set_param<int64_t>( t_gen, get_param<int64_t>(t_gen)+1 );
+    set_param<int64_t>( POST_GEN_ITER, get_param<int64_t>(POST_GEN_ITER)+1 );
   }
   
   void run( filesender& fs, parampoint_generator& pg )
@@ -237,26 +240,26 @@ struct dream_abc_state
     if( get_param<int64_t>( t_gen ) == 0 )
       {
 	START_GEN();
-	generate_init_pop( rand_gen, fs, pg );
+	generate_init_pop( rg, fs, pg );
 	END_GEN(); //updates t_gen as well.
       }
     int64_t maxgens = get_param<int64_t>( T_max_gens_param );
     while( get_param<int64_t>( t_gen ) < maxgens )
       {
-	run_generation();
+	run_generation(fs, pg);
       }
   }
 
-  run_generation()
+  void run_generation(filesender& fs, parampoint_generator& pg)
   {
     //1) Generate proposals (including jump, choosing CR, choosing DELTA, etc.)
     START_GEN();
 
     
-    std::vector<std::vector<float64_t> > proposals = make_proposals();
+    std::vector<std::vector<float64_t> > proposals = make_proposals( rg );
     
     //2) Compute fitness of new proposals
-    compute_generation_fitnesses( proposals );
+    compute_generation_fitnesses( proposals, fs, pg );
 
     compute_acceptance();
 
@@ -359,7 +362,7 @@ struct dream_abc_state
 	//if still, just uniform (e.g. because of excessively large / small jumps that takes it "back out the other side" )
 	if(newproposal[d] > dim_maxes[d] || newproposal[d] < dim_mins[d])
 	  {
-	    proposal[d] = dim_mins[d] + (dim_maxes[d] - dim_mins[d]) * udist( rand_gen );
+	    newproposal[d] = dim_mins[d] + (dim_maxes[d] - dim_mins[d]) * udist( rand_gen );
 	  }
       }
     
@@ -373,7 +376,6 @@ struct dream_abc_state
     
     for(size_t c=0; c<Xcurr.size(); ++c)
       {
-	std::vector< std::vector< float64_t > > mypairs = choose_pairs( ); //this uses CR
 	std::vector<float64_t> proposal = make_single_proposal( Xcurr[c], rand_gen );
 		
 	proposals.push_back(proposal);
@@ -423,19 +425,19 @@ struct dream_abc_state
 
     //http://math.stackexchange.com/questions/102978/incremental-computation-of-standard-deviation
     
-    std::vector<float64_t> prev_var = get_last_row( X_variance_hist );
-    std::vector<float64_t> prev_means = get_last_row( X_mean_hist );
-    std::vector<float64_t> prev_M2ns = get_last_row( X_M2n_hist );
+    std::vector<float64_t> prev_var = state.get_last_row<float64_t>( X_variance_hist );
+    std::vector<float64_t> prev_means = state.get_last_row<float64_t>( X_mean_hist );
+    std::vector<float64_t> prev_M2ns = state.get_last_row<float64_t>( X_M2n_hist );
 
     int64_t nchains= get_param<int64_t>( N_chains_param );
 
-    std::vector< std::vector<float64_t> > newsamples = state.get_last_n_rows( X_hist, nchains );
+    std::vector< std::vector<float64_t> > newsamples = state.get_last_n_rows<float64_t>( X_hist, nchains );
 
     int64_t n = state.get_num_rows( X_hist ) - newsamples.size();
     
     for(size_t c=0; c<newsamples.size(); ++c)
       {
-	for(size_t d=0; d<prev_stds.size(); ++d)
+	for(size_t d=0; d<prev_var.size(); ++d)
 	  {
 	    float64_t newsample = newsamples[c][d];
 	    float64_t prevmean = prev_means[d];
@@ -452,10 +454,11 @@ struct dream_abc_state
     
     return prev_var;
   }
-  
+
+  //REV: Whoops, I need to update DeltaCR for the USED INDICES!!!!
   void update_DeltaCR()
   {
-    std::vector<std::vector<float64_t> > Xlast2gens = get_last_n_rows( X_hist, 2 * get_param<int64_t>( N_chains_param ) );
+    std::vector<std::vector<float64_t> > Xlast2gens = state.get_last_n_rows<float64_t>( X_hist, 2 * get_param<int64_t>( N_chains_param ) );
 
     std::vector<std::vector<float64_t> > lastgen =
       std::vector<std::vector<float64_t> >( Xlast2gens.begin(), Xlast2gens.begin()+get_param<int64_t>( N_chains_param ) );
@@ -463,9 +466,9 @@ struct dream_abc_state
     std::vector<std::vector<float64_t> > thisgen =
       std::vector<std::vector<float64_t> >( Xlast2gens.begin() + get_param<int64_t>( N_chains_param ), Xlast2gens.end() );
 
-    std::vector<std::vector<int64_t> > usedCRidxs = state.get_last_n_rows( CR_used_hist, get_param<int64_t>( N_chains_param ) );
+    std::vector<std::vector<int64_t> > usedCRidxs = state.get_last_n_rows<int64_t>( CR_used_hist, get_param<int64_t>( N_chains_param ) );
 
-    std::vector<float64_t> DeltaCR = state.get_last_n_rows( DeltaCR_hist, 1 );
+    std::vector<float64_t> DeltaCR = state.get_last_row<float64_t>( DeltaCR_hist );
     
     if(thisgen.size() != lastgen.size() )
       {
@@ -491,9 +494,10 @@ struct dream_abc_state
 		double a=( lastgen[c][d] - thisgen[c][d] ) / ( vars[d] );
 		dist += a*a;
 	      }
+	    
 	  }
-
-	DeltaCR[d] += dist;
+	DeltaCR[used] += dist;
+	
       }
     
     //Update/write DeltaCR (add row to history)
@@ -529,9 +533,9 @@ struct dream_abc_state
   
   void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs, std::vector<size_t>& moving_dims, float64_t& gamma, std::default_random_engine& rand_gen )
   {
-    size_t Didx = choose_CR_idx( rand_gen );
+    size_t Didx = choose_CR_index( rand_gen );
     size_t tauidx = draw_num_DE_pairs( rand_gen );
-    float64_t gamma = compute_gamma_nonsnooker( tauidx+1, Didx+1, rand_gen );
+    gamma = compute_gamma_nonsnooker( tauidx+1, Didx+1, rand_gen );
     if( gamma == 1.0 )
       {
 	Didx = get_param<int64_t>(d_dims_param) - 1; //-1 bc its idx.
@@ -545,7 +549,7 @@ struct dream_abc_state
     //Assume we're pushing back to the correct "new" chain at the end.
     state.add_row_to_matrix<int64_t>( CR_used_hist, std::vector<int64_t>(1, Didx ));
     
-    state.add_row_to_matrix<int64_t>( delta_used_hist, std::vector<int64_t>(1, tauidx ));
+    //state.add_row_to_matrix<int64_t>( delta_used_hist, std::vector<int64_t>(1, tauidx ));
     
     //REV: Update used_CR, used_delta, etc.
     //Also compute STD, etc., and move them based on those?
@@ -559,11 +563,20 @@ struct dream_abc_state
 
   size_t choose_CR_index( std::default_random_engine& rand_gen )
   {
-    std::vector<float64_t> pcr = state.get_last_row( pCR_hist );
+    std::vector<float64_t> pcr = state.get_last_row<float64_t>( pCR_hist );
     if( get_param<int64_t>(nCR_param) > 1 )
       {
-	std::vector<size_t> chosen=multinomial_sample( pcr, 1, rand_gen );
-	return chosen[0];
+	std::vector<size_t> chosen = multinomial_sample( pcr, 1, rand_gen ); //PCR is a problem...?
+	std::vector<size_t>::iterator it = std::find(chosen.begin(), chosen.end(), 1);
+	if( it == chosen.end() )
+	  {
+	    fprintf(stderr, "ERROR couldnt find chosen in multinomial!!!??!?!\n");
+	    exit(1);
+	  }
+	
+	return *it;
+	//Find which one has 1 in it...
+	//return chosen[0];
       }
     else
       {
@@ -606,7 +619,7 @@ struct dream_abc_state
   
   std::vector<size_t> draw_DE_pairs( const size_t& npairs, std::default_random_engine& rand_gen )
   {
-    return choose_k_indices_from_N_no_replace( get_param<int64_t>(N_chains_param), npairs*2 );
+    return choose_k_indices_from_N_no_replace( get_param<int64_t>(N_chains_param), npairs*2, rand_gen );
   }
 
   
@@ -615,7 +628,7 @@ struct dream_abc_state
     int64_t timepoints = get_param<int64_t>(t_gen) / 2;
     if( timepoints < 2 )
       {
-	return ;
+	return false;
       }
     size_t ndims = get_param<float64_t>( d_dims_param );
     size_t nchains = get_param<float64_t>( N_chains_param );
@@ -625,7 +638,7 @@ struct dream_abc_state
     //REV: This is a pain in the ass, because it has to be from the last
     //50%. So, it's not possible to incrementally do it I think.
     //However, I can at least incrementally compute STD as I go.
-    std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows( X_hist, timepoints*nchains );
+    std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows<float64_t>( X_hist, timepoints*nchains );
 
     std::vector< std::vector< float64_t> > each_chain_and_dim_means;
     std::vector< std::vector< float64_t> > each_chain_and_dim_vars;
@@ -678,7 +691,7 @@ struct dream_abc_state
 	  }
       }
     
-    vector_divide_constant<T>(variance_between_chain_means, (float64_t)(nchains-1));
+    vector_divide_constant<float64_t>(variance_between_chain_means, (float64_t)(nchains-1));
     if(timepoints > 1)
       {
 	vector_multiply_constant<float64_t>(variance_between_chain_means, (float64_t)timepoints);
@@ -688,16 +701,16 @@ struct dream_abc_state
     //What is the variance between chains
     std::vector<float64_t> mean_variance_all_chain_dim(ndims, 0);
     //4) Compute mean of within-sequence variances. Mean of each dim from step 3. Call W.
-    for(size_t c=0; c<N_num_chains; ++c)
+    for(size_t c=0; c<nchains; ++c)
       {
-	for(size_t d=0; d<d_num_dims; ++d)
+	for(size_t d=0; d<ndims; ++d)
 	  {
 	    mean_variance_all_chain_dim[d] += each_chain_and_dim_vars[c][d];
 	  }
       }
     vector_divide_constant<float64_t>( mean_variance_all_chain_dim, (float64_t)nchains );
 
-    std::vector<float64_t> Rstat(d_num_dims, 0);
+    std::vector<float64_t> Rstat(ndims, 0);
     
     bool wouldconverge = true;
     for(size_t d=0; d<ndims; ++d)
@@ -749,7 +762,7 @@ struct dream_abc_state
       }
     if( doit == true )
       {
-	for(size_t cridx=0; cridx<nCR; ++cridx)
+	for(size_t cridx=0; cridx<ncr; ++cridx)
 	  {
 	    pCR[cridx] = nchains * (DeltaCR[cridx] / ((float64_t)CRcnts[cridx]));
 	    pCR[cridx] /= (sumDeltas);
@@ -788,9 +801,9 @@ struct dream_abc_state
 
     //Add these guys to X as well since it is the first generation. Computing generation will fill H, piH, etc.
     //
-    add_to_matrix( X_hist, get_varnames( X_hist ), vals );
+    state.add_to_matrix<float64_t>( X_hist, state.get_varnames( X_hist ), samples );
     
-    compute_generation( get_varnames( dim_mins_param ), samples );
+    compute_generation_fitnesses( samples, fs, pg );
     
     //piH_hist and rho_hist now contain the most recent chain computations!
     
@@ -804,10 +817,10 @@ struct dream_abc_state
   } //end generate_init_pop
 
 
-  std::vector<float64_t> compute_stat_divergence( const varlist<std::string>& results, std::vector<float64_t>& resultvals )
+  std::vector<float64_t> compute_stat_divergence( varlist<std::string>& results, std::vector<float64_t>& resultvals )
   {
     std::vector<float64_t> targ = get_vector_param<float64_t>( Y_param );
-    std::vector<std::string> names = get_varnames( Y_param );
+    const std::vector<std::string> names = state.get_varnames( Y_param );
     
     resultvals.resize( targ.size() );
     
@@ -837,7 +850,7 @@ struct dream_abc_state
   std::vector<float64_t> compute_epsilon_divergence( const std::vector<float64_t>& abs_divergence )
   {
     std::vector<float64_t> ret( abs_divergence );
-    vector_subtract<float64_t>( ret, get_param<float64_t>( epsilon_param ) );
+    vector_subtract_constant<float64_t>( ret, get_param<float64_t>( epsilon_param ) );
     return ret;
   }
 
@@ -914,16 +927,17 @@ struct dream_abc_state
   }
   
 
-  void compute_generation_fitnesses(const std::vector<std::vector<float64_t>>& vals  )
+  void compute_generation_fitnesses( const std::vector<std::vector<float64_t>>& vals, filesender& fs, parampoint_generator& pg  )
   {
-    const std::vector<std::string> names = get_varnames( dim_mins_param );
+    const std::vector<std::string> names = state.get_varnames( dim_mins_param );
     
     std::vector<varlist<std::string> > vls( vals.size() );
+    
     //Make varlist from names and doubles...
-    for(size_t x=0; x<firstpop.size(); ++x)
+    for(size_t x=0; x<vals.size(); ++x)
       {
 	varlist<std::string> vl;
-	vl.make_varlist<float64_t>(names, vals );
+	vl.make_varlist<float64_t>(names, vals[x] );
 	vls[x] = vl;
       }
     //Compute the fitnesses of them
@@ -938,7 +952,7 @@ struct dream_abc_state
     pg.cleanup_parampoints_upto( get_param<int64_t>( vals.size() ) );
     
     //Add these guys to H.
-    state.add_to_matrix<float64_t>( H_hist, get_varnames( H_hist ), vals );
+    state.add_to_matrix<float64_t>( H_hist, state.get_varnames( H_hist ), vals );
     
     std::vector<float64_t> fitnesses( results.size(), -66666.22222 );
     

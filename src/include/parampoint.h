@@ -24,7 +24,7 @@ struct seedgen
   }
 
   //Hopefully it keeps state...?
-  std::uint32_t nextval()
+  std::uint32_t nextseed()
   {
     std::vector<std::uint32_t> seeds(1);
     seq.generate(seeds.begin(), seeds.end());
@@ -436,7 +436,7 @@ struct pitem
     variable<std::string> var3( "__MY_SUCCESS_FILES", emptyvect );
     variable<std::string> var4( "__MY_OUTPUT_FILES", emptyvect );
     variable<std::string> var5( "__MY_CMD", emptyvect );
-    variable<std::string> var6( "__MY_RANDSEED", myseed );
+    variable<std::string> var6( "__MY_RANDSEED", std::to_string(myseed) );
     hv.vl[myidx].addvar( var1 );
     hv.vl[myidx].addvar( var2 );
     hv.vl[myidx].addvar( var3 );

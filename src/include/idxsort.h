@@ -29,10 +29,15 @@ class sortthing
 template <typename T>
 struct sorter
 {
-  sorter(T* targarray, int size, std::vector<int*> iargs, std::vector<float*> fargs, std::vector<double*> dargs);
+  sorter(T* targarray, int size, std::vector<int*> iargs, std::vector<int*> largs, std::vector<float*> fargs, std::vector<double*> dargs);
   sorter(T* targarray, int size); 
   
   void runsort();
+
+  void add_l(long int* a)
+  {
+    largs.push_back(a);
+  }
   
   void add_i(int* a)
   {
@@ -53,6 +58,7 @@ struct sorter
   int* indices;
   T* targarray;
   std::vector<int*> iargs;
+  std::vector<long int*> largs;
   std::vector<float*> fargs;
   std::vector<double*> dargs;
   int size;

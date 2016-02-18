@@ -58,24 +58,26 @@
 */
 
 
-template <typename T>
-sorter<T>::sorter(T* _targarray, int _size, std::vector<int*> _iargs, std::vector<float*> _fargs, std::vector<double*> _dargs)
-{
-  targarray = _targarray;
-  size = _size;
-  fargs = _fargs;
-  dargs = _dargs;
-  iargs = _iargs;
+
+/* template <typename T> */
+/* sorter<T>::sorter(T* _targarray, int _size, std::vector<int*> _iargs, std::vector<long int*> _largs, std::vector<float*> _fargs, std::vector<double*> _dargs) */
+/* { */
+/*   targarray = _targarray; */
+/*   size = _size; */
+/*   fargs = _fargs; */
+/*   dargs = _dargs; */
+/*   iargs = _iargs; */
+/*   largs = _largs; */
   
-  //indices.resize(size);
+/*   //indices.resize(size); */
   
-  indices = new int[_size];
+/*   indices = new int[_size]; */
   
-  for(int i=0; i<size; ++i) /* REV: meh generators too complex */
-    {
-      indices[i] = i;
-    }
-}
+/*   for(int i=0; i<size; ++i) /\* REV: meh generators too complex *\/ */
+/*     { */
+/*       indices[i] = i; */
+/*     } */
+/* } */
 
 
 template <typename T>
@@ -104,6 +106,7 @@ void sorter<T>::runsort()
   std::memcpy(tmp, targarray, size*sizeof(T));
     
   std::vector<int*> tmpiargs;
+  std::vector<long int*> tmplargs;
   std::vector<float*> tmpfargs;
   std::vector<double*> tmpdargs;
     
@@ -112,6 +115,12 @@ void sorter<T>::runsort()
       int* a = new int[size];
       std::memcpy(a, iargs[i], sizeof(int)*size);
       tmpiargs.push_back(a);
+    }
+  for(int i=0; i<largs.size(); ++i)
+    {
+      long int* a = new long int[size];
+      std::memcpy(a, largs[i], sizeof(long int)*size);
+      tmplargs.push_back(a);
     }
   for(int i=0; i<fargs.size(); ++i)
     {
@@ -139,6 +148,14 @@ void sorter<T>::runsort()
 	  iargs[z][i] = tmpiargs[z][indices[i]];
 	}
       delete [] tmpiargs[z];
+    }
+  for(int z=0; z<largs.size(); ++z)
+    {
+      for(int i=0; i<size; ++i)
+	{
+	  largs[z][i] = tmplargs[z][indices[i]];
+	}
+      delete [] tmplargs[z];
     }
   for(int z=0; z<fargs.size(); ++z)
     {

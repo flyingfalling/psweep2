@@ -1,16 +1,18 @@
 CC=g++
 MPICC=mpic++
-INCLUDEFLAG=-I./ -I./include
+INCLUDEFLAG=-I./ -I./include -I./include2
 CFLAGS=-std=c++11 -O3 -g #-Wall
 INCLUDEDIR=./include
+INCLUDE2DIR=./include2
 UNITTESTDIR=./unit_tests
 
 #default: scriptparser2.exe
 #default: test_cmd_script_parser.exe
 #default: test_parampoint.exe
-default: test_searchalgo.exe
+#default: test_searchalgo.exe
+default: test_dream_abc.exe
 
-HEADERFILES=$(INCLUDEDIR)/$*
+HEADERFILES=$(INCLUDEDIR)/$* $(INCLUDE2DIR)/$*
 
 testvariable.exe: $(INCLUDEDIR)/variable.h $(UNITTESTDIR)/testvariable.cpp 
 	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/testvariable.cpp -o testvariable.exe
@@ -59,6 +61,14 @@ test_memfile3.exe: $(UNITTESTDIR)/test_memfile3.cpp $(HEADERFILES)
 test_fakesys.exe:  $(UNITTESTDIR)/test_fakesys.cpp $(HEADERFILES)
 	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_fakesys.cpp -o test_fakesys.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
 
+
+#hdf5_collection.o: $(HEADERFILES) $(INCLUDEDIR)/hdf5_collection.cpp
+#	export HDF5_CXX=$(MPICC)
+#	h5c++ -c --verbose $(CFLAGS) $(INCLUDEFLAG) $(INCLUDEDIR)/hdf5_collection.cpp
+
+test_dream_abc.exe: $(UNITTESTDIR)/test_dream_abc.cpp $(HEADERFILES)
+	export HDF5_CXX=$(MPICC)
+	h5c++ $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_dream_abc.cpp -o test_dream_abc.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
 
 clean:
 	rm *.exe *.o

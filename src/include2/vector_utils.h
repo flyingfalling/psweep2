@@ -2,6 +2,7 @@
 #include <vector>
 #include <cstdio>
 
+/*
 template <typename T>
 T vector_max(const std::vector<T>& arg)
 {
@@ -23,6 +24,7 @@ T vector_max(const std::vector<T>& arg)
       exit(1);
     }
 }
+*/
 
 
 template <typename T>

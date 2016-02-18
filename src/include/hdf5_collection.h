@@ -16,39 +16,41 @@
 #include <utility_functs.h>
 
 #include <H5Cpp.h>
+#include <string_manip.h>
 
 typedef double float64_t;
 typedef long int int64_t;
 
 
-std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats);
+/* std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats); */
 
-std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats)
-{
-  std::vector<std::string> res;
+/* std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats) */
+/* { */
+/*   std::vector<std::string> res; */
   
-  /* REV: size_t is uint? */
-  size_t prev = 0;
-  size_t next = 0;
+/*   /\* REV: size_t is uint? *\/ */
+/*   size_t prev = 0; */
+/*   size_t next = 0; */
 
-  /* npos is -1 */
-  while ((next = source.find_first_of(delim, prev)) != std::string::npos)
-    {
-      if (include_empty_repeats || ((next-prev) != 0) )
-        {
-	  res.push_back(source.substr(prev, (next-prev)) );
-        }
-      prev = next + 1;
-    }
+/*   /\* npos is -1 *\/ */
+/*   while ((next = source.find_first_of(delim, prev)) != std::string::npos) */
+/*     { */
+/*       if (include_empty_repeats || ((next-prev) != 0) ) */
+/*         { */
+/* 	  res.push_back(source.substr(prev, (next-prev)) ); */
+/*         } */
+/*       prev = next + 1; */
+/*     } */
 
-  /* REV: push back remainder if there is anything left (i.e. after the last token?) */
-  if (prev < source.size())
-    {
-      res.push_back(source.substr(prev));
-    }
+/*   /\* REV: push back remainder if there is anything left (i.e. after the last token?) *\/ */
+/*   if (prev < source.size()) */
+/*     { */
+/*       res.push_back(source.substr(prev)); */
+/*     } */
 
-  return res;
-}
+/*   return res; */
+/* } */
+
 
 typedef struct hdf5_dirnames_t
 {
@@ -1096,7 +1098,7 @@ struct hdf5_collection
     size_t len = get_num_rows( matname );
     if( len < 1 )
       {
-	fprintf(stderr, "REV: ERROR in get_last_n_rows: not enough rows...( mat [%s], trying to get [%ld] rows but only [%ld] exist)\n", matname.c_str(), 1, len );
+	fprintf(stderr, "REV: ERROR in get_last_n_rows: not enough rows...( mat [%s], trying to get [%d] rows but only [%ld] exist)\n", matname.c_str(), 1, len );
 	exit(1);
       }
     size_t startrow = len-1;
