@@ -87,17 +87,18 @@ std::vector<std::vector<std::string>> parse_CSV_file( const std::string& fname, 
 
   while( getline(in,line) )
     {
-      fprintf(stdout, "Parsing line...[%s]\n", line.c_str());
+      //fprintf(stdout, "Parsing line...[%s]\n", line.c_str());
       std::vector< std::string > vec;
       Tokenizer tok(line, sep);
       vec.assign(tok.begin(),tok.end());
-
-      fprintf(stdout, "Got vect: [%ld]\n", vec.size());
+      
+      /*fprintf(stdout, "Got vect: [%ld]\n", vec.size());
       for(size_t x=0; x<vec.size(); ++x)
 	{
 	  fprintf(stdout, " %s", vec[x].c_str());
 	}
       fprintf(stdout, "\n");
+      */
       retvec.push_back( vec );
     }
 
@@ -177,7 +178,7 @@ struct data_table
     char sep = ' '; //REV: do more intelligent, e.g. any spaces.
     construct( parse_CSV_file( fname , sep), hascolnames );
     
-    fprintf(stdout, "CONSTRUCTED DATA TABLE: cols [%ld], rows [%ld]\n", ncols, nrows );
+    fprintf(stdout, "From file [%s]: CONSTRUCTED DATA TABLE: cols [%ld], rows [%ld]\n", fname.c_str(), ncols, nrows );
     enumerate();
   }
   
@@ -186,7 +187,7 @@ struct data_table
     std::vector<float64_t> ret( vect.size() );
     for(size_t x=0; x<vect.size(); ++x)
       {
-	fprintf(stdout, "Double-izing [%s]\n", vect[x].c_str());
+	//fprintf(stdout, "Double-izing [%s]\n", vect[x].c_str());
 	ret[x] = std::stod(vect[x]);
       }
     return ret;
@@ -276,6 +277,14 @@ struct data_table
     
     std::vector<size_t> locs = find_string_in_vect( colname, colnames );
 
+    if(locs.size() == 0)
+      {
+	fprintf(stderr, "WHOA, couldn't find colname [%s] in data table, exiting\n", colname.c_str());
+	enumerate();
+	exit(1);
+	
+      }
+    
     fprintf(stdout, "I think that colname [%s] is colidx [%ld]\n", colname.c_str(), locs[0] );
     
     if( locs.size() != 1 )
@@ -452,20 +461,22 @@ struct searcher
 	fprintf(stdout, "Got mins\n");
 	std::vector<double> maxes = data_table::to_float64( dtable.get_col( "MAX" ) );
 	std::vector<double> steps = data_table::to_float64( dtable.get_col( "STEP" ) );
-
+	
 	fprintf(stdout, "Got STEP\n");
       
 	//Construct required stuff from PARAMS. I.e. min and max of each param? Need N varlists? Have them named? Specific name? Have array type of
 	//name PARAMS, etc.? Probably got from a file at beginning... Some special way of reading that...it should know varnames? 
 	search_grid( varnames, mins, maxes, steps, pg, *fs);
       }
+
+
     else if( searchtype.compare( "DREAM-ABC" ) == 0 )
       {
 	std::string varname = "ABC_TEST_MIN_MAX_FILE";
 	std::string minmaxfname = params.getTvar( varname );
 
 	std::string obsdatafname = "ABC_TEST_OBSERV_DATA_FILE";
-	std::string observfname = params.getTvar( varname );
+	std::string observfname = params.getTvar( obsdatafname );
 	
 	
 	bool hascolnames = true;
@@ -486,6 +497,8 @@ struct searcher
 	//Make a random "problem"
 	size_t ndims = varnames.size();
 
+
+	fprintf(stdout, "Getting observ data from [%s]\n", observfname.c_str() );
 	std::vector<std::string> obsv_varnames = obsvdtable.get_col( "NAME" );
 	std::vector<double> obsv_vals = data_table::to_float64( obsvdtable.get_col( "VAL" ) ); //REV: this will just be ERROR and 0 for me... heh.
 	

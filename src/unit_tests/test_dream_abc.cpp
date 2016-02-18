@@ -24,14 +24,14 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
       exit(1);
     }
     
-  if( argv[0].compare( "-c" ) != 0 )
+  if( argv[1].compare( "-c" ) != 0 )
     {
       fprintf(stderr, "ERROR, unrecognized option [%s]\n", argv[1].c_str());
     }
   ftoparse = std::string(argv[2]);
   fprintf(stdout, "TEST PROGRAM: USING VAR FILE [%s]\n", ftoparse.c_str());
 
-  if( argv[2].compare( "-o" ) != 0 )
+  if( argv[3].compare( "-o" ) != 0 )
     {
       fprintf(stderr, "ERROR, unrecognized option [%s]\n", argv[3].c_str());
     }

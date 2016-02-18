@@ -61,7 +61,7 @@ test_memfile3.exe: $(UNITTESTDIR)/test_memfile3.cpp $(HEADERFILES)
 
 
 test_fakesys.exe:  $(UNITTESTDIR)/test_fakesys.cpp $(HEADERFILES)
-	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_fakesys.cpp -o test_fakesys.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system 
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) $(UNITTESTDIR)/test_fakesys.cpp -o test_fakesys.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system  -lhdf5_cpp -lhdf5 -lhdf5_serial
 
 
 #hdf5_collection.o: $(HEADERFILES) $(INCLUDEDIR)/hdf5_collection.cpp
