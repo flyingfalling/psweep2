@@ -1,10 +1,12 @@
 CC=g++
 MPICC=mpic++
-INCLUDEFLAG=-I./ -I./include -I./include2
+HDF5HEADERS=/usr/include/hdf5/serial
+INCLUDEFLAG=-I./ -I./include -I./include2 -I$(HDF5HEADERS)
 CFLAGS=-std=c++11 -O3 -g #-Wall
 INCLUDEDIR=./include
 INCLUDE2DIR=./include2
 UNITTESTDIR=./unit_tests
+LIBS=-L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 
 #default: scriptparser2.exe
 #default: test_cmd_script_parser.exe
@@ -59,7 +61,7 @@ test_memfile3.exe: $(UNITTESTDIR)/test_memfile3.cpp $(HEADERFILES)
 
 
 test_fakesys.exe:  $(UNITTESTDIR)/test_fakesys.cpp $(HEADERFILES)
-	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_fakesys.cpp -o test_fakesys.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_fakesys.cpp -o test_fakesys.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system 
 
 
 #hdf5_collection.o: $(HEADERFILES) $(INCLUDEDIR)/hdf5_collection.cpp
@@ -67,8 +69,7 @@ test_fakesys.exe:  $(UNITTESTDIR)/test_fakesys.cpp $(HEADERFILES)
 #	h5c++ -c --verbose $(CFLAGS) $(INCLUDEFLAG) $(INCLUDEDIR)/hdf5_collection.cpp
 
 test_dream_abc.exe: $(UNITTESTDIR)/test_dream_abc.cpp $(HEADERFILES)
-	export HDF5_CXX=$(MPICC)
-	h5c++ $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_dream_abc.cpp -o test_dream_abc.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dream_abc.exe $(UNITTESTDIR)/test_dream_abc.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5 -lhdf5_serial
 
 clean:
 	rm *.exe *.o

@@ -53,7 +53,7 @@ std::vector<std::vector<T> > latin_hypercube(std::vector<T> mins, std::vector<T>
 	  locs_within_slices[z] = (slicesize*z) + mins[dim] + dist(rand_gen) * slicesize;
 	}
       //then permute...
-      std::vector<int> permed = rand_permute(N, rand_gen);
+      std::vector<long int> permed = rand_permute(N, rand_gen);
       
       //ugh just add it and sort by the random guy?
       for(size_t z=0; z<N; ++z)

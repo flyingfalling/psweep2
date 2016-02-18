@@ -949,7 +949,7 @@ struct dream_abc_state
     //std::vector<varlist<std::string> > results = pg.get_last_N_results( get_param<int64_t>(N_chains_param) );
     std::vector<varlist<std::string> > results = pg.get_last_N_results( vals.size() );
     
-    pg.cleanup_parampoints_upto( get_param<int64_t>( vals.size() ) );
+    pg.cleanup_parampoints_upto( vals.size() );
     
     //Add these guys to H.
     state.add_to_matrix<float64_t>( H_hist, state.get_varnames( H_hist ), vals );
@@ -965,7 +965,7 @@ struct dream_abc_state
 	fitnesses[x] = fit;
 	
 	//The fitnesses are organized as column vectors...so I need to add "rows" one at a time lol...
-	state.add_row_to_matrix<float64_t>( piH_hist, fit );
+	state.add_row_to_matrix<float64_t>( piH_hist, std::vector<float64_t>(1, fit) );
 	state.add_row_to_matrix<float64_t>( model_observ_diverg_hist, statdiv );
       }
 
@@ -976,15 +976,15 @@ struct dream_abc_state
   void init_random()
   {
     std::random_device rd;
-    rand_gen.seed(rd());
-
+    rg.seed(rd());
+    
     sg.seed( rd() );
   }
 
   void init_random(const long& seed)
   {
-    rand_gen.seed( seed );
-
+    rg.seed( seed );
+    
     sg.seed( seed );
   }
   
@@ -1007,7 +1007,7 @@ void search_dream_abc( const std::string& statefilename,
 		       const std::vector<std::string>& varnames,
 		       const std::vector<float64_t>& mins,
 		       const std::vector<float64_t>& maxes,
-		       const std::vector<float64_t>& observed_varnames,
+		       const std::vector<std::string>& observed_varnames,
 		       const std::vector<float64_t>& observed_data,
 		       parampoint_generator& pg,
 		       filesender& fs

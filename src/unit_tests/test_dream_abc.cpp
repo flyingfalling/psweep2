@@ -48,7 +48,7 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
   //User tries #
   varlist<std::string> vl;
   vl.inputfromfile( ftoparse, fsys, true );
-
+  
   int64_t ndims = vl.get_int64( "NDIMS" );
 
   std::vector<float64_t> estimate( ndims );
@@ -59,7 +59,7 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
   
   for(size_t d=0; d<ndims; ++d)
     {
-      std::string vname = "MEAN_" + std::to_string( d );
+      std::string vname = "VAR_" + std::to_string( d );
       float64_t paramval = vl.get_float64( vname );
       t1 += pow ( paramval - peak1, 2 ); //center at -5 //distance from peak 1
       t2 += pow ( paramval - peak2, 2 ); //center at +5 //distance from peak 2
@@ -104,8 +104,10 @@ int main(int argc, char** argv)
     }
 
   std::string minmaxfile = "testabc_minmax.bounds";
+  std::string obsfile = "testabc_observ.data";
   varlist<std::string> paramsvl;
   paramsvl.addvar( variable<std::string>( "ABC_TEST_MIN_MAX_FILE", minmaxfile ) );
+  paramsvl.addvar( variable<std::string>( "ABC_TEST_OBSERV_DATA_FILE", obsfile ) );
   
   std::string searchalg = "DREAM-ABC";
   std::string scriptfname = "../configs/test_abc_twopeak.cfg";
