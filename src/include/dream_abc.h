@@ -128,8 +128,8 @@ struct dream_abc_state
     state.add_int64_parameter( observation_dims_param, observation_varnames.size() );
     
     //Names should be stored in EACH matrix (wow!)
-    state.add_float64_vector( dim_mins_param, mins );
-    state.add_float64_vector( dim_maxes_param, maxes );
+    state.add_float64_vector( dim_mins_param, varnames, mins );
+    state.add_float64_vector( dim_maxes_param, varnames, maxes );
 
     state.add_float64_vector( pdelta_param, std::vector<float64_t>(ndelta, (1.0/(float64_t)ndelta)) );
     
@@ -239,10 +239,9 @@ struct dream_abc_state
   {
     if( get_param<int64_t>( t_gen ) == 0 )
       {
-	START_GEN();
 	generate_init_pop( rg, fs, pg );
-	END_GEN(); //updates t_gen as well.
       }
+    
     int64_t maxgens = get_param<int64_t>( T_max_gens_param );
     while( get_param<int64_t>( t_gen ) < maxgens )
       {
@@ -793,6 +792,8 @@ struct dream_abc_state
   void generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg )
   {
 
+    START_GEN();
+    
     //Use latin hypercube? or just N Uniform?
     std::vector< std::vector <float64_t> > samples = latin_hypercube( get_vector_param<float64_t>(dim_mins_param),
 								      get_vector_param<float64_t>(dim_maxes_param),
@@ -814,6 +815,7 @@ struct dream_abc_state
 	state.add_row_to_matrix( piX_hist, Hfit[c] );
       }
     
+    END_GEN();
   } //end generate_init_pop
 
 
@@ -939,7 +941,7 @@ struct dream_abc_state
 	fprintf(stdout, "TRYING TO COMPUTE:\n");
 	for(size_t y=0; y<vals[x].size(); ++y)
 	  {
-	    fprintf(stdout, "[%lf]\n", vals[x][y]);
+	    fprintf(stdout, "[%s] [%lf]\n", names[y].c_str(), vals[x][y]);
 	  }
 	varlist<std::string> vl;
 	vl.make_varlist<float64_t>(names, vals[x] );

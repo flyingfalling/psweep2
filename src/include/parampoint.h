@@ -1144,7 +1144,7 @@ struct parampoint_generator
     //Note all arrays should be of same size...if not there's a problem..
     if( ppidx >= parampoint_vars.size() )
       {
-	fprintf(stderr, "ERROR, cleanup_parmpoints_upto, requested ppidx > size of array\n");
+	fprintf(stderr, "ERROR, cleanup_parmpoints_upto, requested ppidx [%ld] > size of array [%ld]\n", ppidx, parampoint_vars.size() );
 	exit(1);
       }
 
