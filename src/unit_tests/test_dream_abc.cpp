@@ -49,7 +49,7 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
   varlist<std::string> vl;
   vl.inputfromfile( ftoparse, fsys, true );
   
-  int64_t ndims = vl.get_int64( "NDIMS" );
+  int64_t ndims = 20; //vl.get_int64( "NDIMS" );
 
   std::vector<float64_t> estimate( ndims );
   std::vector<float64_t> truemeans( ndims );
