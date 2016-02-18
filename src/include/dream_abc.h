@@ -936,10 +936,17 @@ struct dream_abc_state
     //Make varlist from names and doubles...
     for(size_t x=0; x<vals.size(); ++x)
       {
+	fprintf(stdout, "TRYING TO COMPUTE:\n");
+	for(size_t y=0; y<vals[x].size(); ++y)
+	  {
+	    fprintf(stdout, "[%lf]\n", vals[x][y]);
+	  }
 	varlist<std::string> vl;
 	vl.make_varlist<float64_t>(names, vals[x] );
 	vls[x] = vl;
       }
+    
+    
     //Compute the fitnesses of them
     fs.comp_pp_list( pg, vls, sg );
     
