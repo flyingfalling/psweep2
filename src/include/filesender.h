@@ -1185,14 +1185,14 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
     }
 
     //REV: This is a CONSTRUCTOR. I need to keep around all my memfsys? OK.
-    work_progress( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, const size_t& nworkers, const bool& usedisk=false )
+    work_progress( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, const size_t& nworkers, seedgen& sg, const bool& usedisk=false )
     {
       farmed_status.resize( nworkers );
     
       for( size_t n=0; n<newlist.size(); ++n )
 	{
 	  //make the parampoint (i.e. generate the hierarchical varlists etc. locally).
-	  size_t idx = pg.generate( newlist[n], usedisk );
+	  size_t idx = pg.generate( newlist[n], sg, usedisk );
 	  
 	  add_parampoint( pg, idx );
 	}
@@ -1334,10 +1334,10 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
   //have access to that from PITEM. I.e. I need to know my PSET and PPOINT.
   //At any rate, at PITEM creation time (construction), I would like a
   //pointer to it...
-  void comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, const bool& usedisk=false )
+  void comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, seedgen& sg, const bool& usedisk=false )
   {
     
-    work_progress wprog( pg, newlist, _workingworkers.size(), usedisk );
+    work_progress wprog( pg, newlist, _workingworkers.size(), sg, usedisk );
 
     //REV: these should never happen at the same time, i.e. it shouldn't
     //be done if there are any workers working...

@@ -736,7 +736,7 @@ struct hdf5_collection
         
     H5::Attribute attr = dataset.openAttribute( pname.c_str() );
     H5::DataType type = attr.getDataType();
-    attr.write(type, &T);
+    attr.write(type, &val);
     return;
   }
 
@@ -1088,6 +1088,20 @@ struct hdf5_collection
     size_t startrow = len-nr;
     size_t endrow = len-1; //Reads "include" the end row!!!!
     return read_row_range<T>( matname, startrow, endrow );
+  }
+
+  template<typename T>
+  std::vector<T> get_last_row( const std::string& matname )
+  {
+    size_t len = get_num_rows( matname );
+    if( len < 1 )
+      {
+	fprintf(stderr, "REV: ERROR in get_last_n_rows: not enough rows...( mat [%s], trying to get [%ld] rows but only [%ld] exist)\n", matname.c_str(), 1, len );
+	exit(1);
+      }
+    size_t startrow = len-1;
+    size_t endrow = len-1; //Reads "include" the end row!!!!
+    return read_row<T>( matname, startrow );
   }
 
   

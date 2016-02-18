@@ -15,6 +15,25 @@
 #include <fake_system.h>
 
 
+struct seedgen
+{
+  std::seed_seq seq;
+  void seed( const long& seedval )
+  {
+    seq = std::seed_seq( {seedval} );
+  }
+
+  //Hopefully it keeps state...?
+  std::uint32_t nextval()
+  {
+    std::vector<std::uint32_t> seeds(1);
+    seq.generate(seeds.begin(), seeds.end());
+
+    fprintf( stdout, "GENERATED SEED: [%d]\n", seeds[0] );
+
+    return seeds[0];
+  }
+};
 
 struct parampoint_coord
 {
@@ -80,6 +99,8 @@ struct pitem
   std::string input_file;
   
   std::string mydir;
+
+  long myrandseed;
   
   size_t my_hierarchical_idx; //index in my parampoint hierarchical varlist array of my leaf node.
 
@@ -391,7 +412,7 @@ struct pitem
   {
   }
   
-  pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv, memfsys& myfsys, const bool& usedisk=false )
+  pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv, memfsys& myfsys, const std::uint32_t& myseed, const bool& usedisk=false )
   {
     //Need to add to the most recent pset a child...
     std::vector<size_t> rootchildren = hv.get_children( 0 );
@@ -415,11 +436,13 @@ struct pitem
     variable<std::string> var3( "__MY_SUCCESS_FILES", emptyvect );
     variable<std::string> var4( "__MY_OUTPUT_FILES", emptyvect );
     variable<std::string> var5( "__MY_CMD", emptyvect );
+    variable<std::string> var6( "__MY_RANDSEED", myseed );
     hv.vl[myidx].addvar( var1 );
     hv.vl[myidx].addvar( var2 );
     hv.vl[myidx].addvar( var3 );
     hv.vl[myidx].addvar( var4 );
     hv.vl[myidx].addvar( var5 );
+    hv.vl[myidx].addvar( var6 );
 
     //Reserve __ vars internally or something? I'm not doing unrolling so whatever I guess.
     
@@ -511,7 +534,10 @@ struct pitem
     //will cause problems?
 
     //Zeroth is the base, i.e. root...the varlist that was passed that I built off of haha.
-    hv.tofile( input_file, 0, myfsys, usedisk ); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
+    //hv.tofile( input_file, 0, myfsys, usedisk ); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
+    //This will output ALL of my varlist...is this necessary? Ugh...
+    //Note some of them may be ARRAY types, which will lead to problems reading the varlist from file (?)
+    hv.tofile( input_file, myidx, myfsys, usedisk ); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
 
     //fprintf(stdout, "YYYYYY Succeeded in setting (wrote to file?)\n");
     //Input files are REQUIRED files (by default, might be checked twice oh well).
@@ -916,7 +942,7 @@ struct executable_representation
   //etc.
 
   //Builds and returns a parampoint. Which can then be executed in its own way.
-  parampoint build_parampoint( hierarchical_varlist<std::string>& hv, const std::string& dir, memfsys& myfsys, const bool& usedisk=false )
+  parampoint build_parampoint( hierarchical_varlist<std::string>& hv, const std::string& dir, memfsys& myfsys, seedgen& sg, const bool& usedisk=false )
   {
     //REV: this will not work lol, I need one of my own?!??!!
     parampoint mypp( hv, dir );
@@ -953,7 +979,7 @@ struct executable_representation
 	    //GENERATE CMD?
 	    //Constructor does the modification of HV?!?!!! OK.
 	    //REV: This is where memfsys comes in.
-	    pitem mypitem( fscript.pset_list[p], w, hv, myfsys, usedisk);
+	    pitem mypitem( fscript.pset_list[p], w, hv, myfsys, sg.nextseed(), usedisk);
 	    mypset.add_pitem(mypitem);
 	  }
 
@@ -1167,7 +1193,7 @@ struct parampoint_generator
   //I.e. control passes to that to farm out that "set" of paramthings at a time? May be a generation, may not be?
   //We pass a set of varlists to execute, and it does everything for me.
   
-  size_t generate( const varlist<std::string>& vl, const bool& usedisk=false )
+  size_t generate( const varlist<std::string>& vl, seedgen& sg, const bool& usedisk=false )
   {
     //Takes the varlist...
     hierarchical_varlist<std::string> hv( vl );
@@ -1178,7 +1204,7 @@ struct parampoint_generator
     
     memfsys myfsys;
     
-    parampoint retp = exec_rep.build_parampoint( hv, dirname, myfsys, usedisk );
+    parampoint retp = exec_rep.build_parampoint( hv, dirname, myfsys, sg, usedisk );
     
     parampoints.push_back ( retp );
 

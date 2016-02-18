@@ -34,7 +34,7 @@ struct variable
   
   type mytype;
   std::string name;
-
+  
 
   //REV: OK MAIN PROBLEM IS THAT I CANNOT SERIALIZE VARIANTS CONTAINING ARBITRARY DATA TYPES?!
   boost::variant< T, std::vector<T> > val;
@@ -168,7 +168,11 @@ struct varlist
 	//fprintf(stdout, "Attempting to print out to file [%ld]th var: %s %s\n", v, vars[v].name.c_str(), vars[v].get_s().c_str() );
 	//REV: It's trying to write CMD array variable to the file which is fucked up. I don't want that. I only want the root parameters I think? Crap.
 	//OVERLOAD variable so that it appropriately outputs it if it is an array.
-	mfp << vars[v].name << " " << vars[v].get_s() << std::endl;
+	if( vars[v].mytype == variable::type::VAR )
+	  {
+	    mfp << vars[v].name << " " << vars[v].get_s() << std::endl;
+	  }
+	
 	//f << vars[v].name << " " << vars[v].get_s() << std::endl;
 	//mfp.printf( "%s %s\n", vars[v].name.c_str(), vars[v].get_s().c_str() );
 	
@@ -201,8 +205,11 @@ struct varlist
       {
 	//REV: It's trying to write CMD array variable to the file which is fucked up. I don't want that. I only want the root parameters I think? Crap.
 	//OVERLOAD variable so that it appropriately outputs it if it is an array.
-	//f << vars[v].name << " " << vars[v].get_s() << std::endl;
-	f << vars[v].name << " " << vars[v].get_s() << std::endl;
+	if( vars[v].mytype == variable::type::VAR )
+	  {
+	    //f << vars[v].name << " " << vars[v].get_s() << std::endl;
+	    f << vars[v].name << " " << vars[v].get_s() << std::endl;
+	  }
       }
     
     close_ofstream( f );
