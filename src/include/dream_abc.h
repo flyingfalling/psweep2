@@ -164,6 +164,8 @@ struct dream_abc_state
 
     state.add_int64_matrix( CR_used_hist, state.dummy_colnames(1)  );
     state.add_int64_matrix( CR_cnts_hist, state.dummy_colnames(nCR)  );
+    state.add_row_to_matrix<int64_t>( CR_cnts_hist, std::vector<int64_t>( nCR, 0 )  ); //counts start off at zero...of course...
+    
     state.add_float64_matrix( GR_vals_hist, varnames );
     state.add_int64_matrix( accept_hist, state.dummy_colnames(1) );
 
@@ -799,6 +801,7 @@ struct dream_abc_state
   
   void update_pCR()
   {
+    fprintf(stdout, "UPDATING PCR!!!\n");
     std::vector<float64_t> DeltaCR = state.get_last_row<float64_t>( DeltaCR_hist );
     std::vector<int64_t> CRcnts = state.get_last_row<int64_t>( CR_cnts_hist );
 
