@@ -747,7 +747,7 @@ struct dream_abc_state
     //REV: Rofl, doesn't complain about the type...
     size_t ndims = get_param<int64_t>( d_dims_param );
     size_t nchains = get_param<int64_t>( N_chains_param );
-    size_t nrows = state.get_num_rows( X_hist);
+    size_t nrows = state.get_num_rows( X_hist );
     //Reconstruct the chain, and take only 2nd half
 
     size_t hstart = nrows-(timepoints*nchains);
@@ -762,7 +762,11 @@ struct dream_abc_state
 
     //REV: This is the problem, we can't do this it will get too large. Need to do it incrementally... I.e. get nchains at a time.
     //std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows<float64_t>( X_hist, timepoints*nchains );
+
+    fprintf(stdout, "About to get first chunk of guys, from [%ld] to [%ld]\n", hstart, hstart+nchains-1);
     std::vector<std::vector<float64_t> > X_half_hist = state.read_row_range<float64_t>( X_hist, hstart, hstart+nchains-1 ); //e.g. zero to 10, if inclusive.
+    fprintf(stdout, "GOT first chunk of guys, from [%ld] to [%ld] (got [%ld] rows)\n", hstart, hstart+nchains-1, X_half_hist.size());
+
     
     std::vector< std::vector< float64_t> > each_chain_and_dim_means( nchains, std::vector<float64_t>( ndims ) ); //will fill with first value bc n=1
     for(size_t c=0; c<nchains; ++c)
@@ -771,7 +775,7 @@ struct dream_abc_state
       }
     std::vector< std::vector< float64_t> > each_chain_and_dim_vars( nchains, std::vector<float64_t>( ndims, 0 ) );
     std::vector< std::vector< float64_t> > chainM2n( nchains, std::vector<float64_t>( ndims, 0 ) );
-
+    
     size_t n=1;
     
     //fprintf(stdout, "Got history etc...is the problem that we don't have enough memory?\n");
@@ -779,8 +783,10 @@ struct dream_abc_state
       {
 	++n;
 	size_t tstart = t*nchains;
-	
+
+	fprintf(stdout, "Getting timepoint [%ld] chunk of guys, from [%ld] to [%ld]\n", t, hstart+tstart, hstart+tstart+nchains-1);
 	X_half_hist = state.read_row_range<float64_t>( X_hist, hstart+tstart, hstart+tstart+nchains-1 );
+	fprintf(stdout, "GOT timepoint [%ld] of guys, from [%ld] to [%ld] (got [%ld] rows)\n", t, hstart+tstart, hstart+tstart+nchains-1, X_half_hist.size());
 	
 	//for each chain:
 	for(size_t c=0; c<nchains; ++c)
@@ -801,6 +807,8 @@ struct dream_abc_state
 		each_chain_and_dim_vars[c][d] = newvar;
 	      }
 	  }
+	fprintf(stdout, "Finished computing for all chains and all dims for timepoint [%ld]\n", t);
+	
       } //end for all timepoints
     
     std::vector<float64_t> variance_between_chain_means(ndims, 0);
