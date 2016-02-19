@@ -152,26 +152,31 @@ struct dream_abc_state
     state.add_int64_parameter( t_gen, 0 );
         
     state.add_float64_matrix( X_hist, varnames );
-    state.add_float64_matrix( piX_hist, state.dummy_colnames(1));
+    state.add_float64_matrix( piX_hist, 1);
     state.add_float64_matrix( H_hist, varnames );
-    state.add_float64_matrix( piH_hist, state.dummy_colnames(1) );
-    state.add_float64_matrix( pCR_hist, state.dummy_colnames(nCR) );
+    state.add_float64_matrix( piH_hist, 1 );
+    state.add_float64_matrix( pCR_hist, nCR );
     //Initialize pCR history too?
     state.add_row_to_matrix( pCR_hist, std::vector<float64_t>( nCR, 1.0/nCR ) );
     
-    state.add_float64_matrix( DeltaCR_hist, state.dummy_colnames(nCR) );
+    state.add_float64_matrix( DeltaCR_hist, nCR );
+    state.add_row_to_matrix<float64_t>( DeltaCR_hist, std::vector<float64_t>( nCR, 0.0 ) );
+    
     state.add_float64_matrix( GR_hist, varnames );
 
-    state.add_int64_matrix( CR_used_hist, state.dummy_colnames(1)  );
-    state.add_int64_matrix( CR_cnts_hist, state.dummy_colnames(nCR)  );
+    state.add_int64_matrix( CR_used_hist, 1  );
+    state.add_int64_matrix( CR_cnts_hist, nCR  );
     state.add_row_to_matrix<int64_t>( CR_cnts_hist, std::vector<int64_t>( nCR, 0 )  ); //counts start off at zero...of course...
     
     state.add_float64_matrix( GR_vals_hist, varnames );
-    state.add_int64_matrix( accept_hist, state.dummy_colnames(1) );
+    state.add_int64_matrix( accept_hist, 1 );
 
     state.add_float64_matrix( X_variance_hist, varnames );
     state.add_float64_matrix( X_mean_hist, varnames );
     state.add_float64_matrix( X_M2n_hist, varnames );
+    
+    //REV: Not clear how to do this. Obviously, the first mean is just the first one. The first variance is 0 (undefined? If it's /(n-1)). The first
+    //M2n is likewise undefined?
     
     state.add_int64_parameter( PRE_GEN_ITER, 0 );
     state.add_int64_parameter( POST_GEN_ITER, 0 );
@@ -271,13 +276,15 @@ struct dream_abc_state
     compute_acceptance();
     fprintf(stdout, "RUN GENERATION [%ld]: FINISHED compute acceptances...\n", get_param<int64_t>( t_gen ));
     
+
     
     move_chains();
+    fprintf(stdout, "RUN GENERATION [%ld], FINISHED move chains!\n", get_param<int64_t>(t_gen));
     
     //Compute other things like GR, etc.
     //Update JUMP probabilities, CR, etc. based on USED CR indices etc.
     update_DeltaCR();
-
+    
     int64_t tgen = get_param<int64_t>(t_gen);
     int64_t crskip = get_param<int64_t>(pCR_skip_param );
     int64_t grskip = get_param<int64_t>(GR_skip_param );
@@ -432,8 +439,9 @@ struct dream_abc_state
 	proposals.push_back(proposal);
       }
 
+    fprintf(stdout, "Finished making all props, will update CR Cnts in make_all_proposals\n");
     update_CRcnts();
-    
+    fprintf(stdout, "Finished update CR cnts...\n");
     return proposals;
   }
 
@@ -594,7 +602,9 @@ struct dream_abc_state
     gamma = compute_gamma_nonsnooker( tauidx+1, Didx+1, rand_gen );
     if( gamma == 1.0 )
       {
-	Didx = get_param<int64_t>(d_dims_param) - 1; //-1 bc its idx.
+	//Didx = get_param<int64_t>(d_dims_param) - 1; //-1 bc its idx.
+	//REV: OH NO, *probability* of selecting any given dim in d_dims_param is ONE, so we want nCR-1, because that way (nCR/(nCR-1+1)) == 1
+	Didx = get_param<int64_t>( nCR_param ) - 1;
 	tauidx = 0;
       }
 
@@ -863,7 +873,7 @@ struct dream_abc_state
 								      rand_gen );  //prior_function();
 
     //Add these guys to X as well since it is the first generation. Computing generation will fill H, piH, etc.
-    //
+    
     state.add_to_matrix<float64_t>( X_hist, state.get_varnames( X_hist ), samples );
     
     compute_generation_fitnesses( samples, fs, pg );
@@ -878,11 +888,27 @@ struct dream_abc_state
 	state.add_row_to_matrix( piX_hist, Hfit[c] );
       }
 
+    init_population_mean_var();
+    
     fprintf(stdout, "FINISHED INIT POP\n");
     
     END_GEN();
   } //end generate_init_pop
 
+
+  //We don't compute DeltaCR etc., but we need to populate the history of the state variables for incremental computation
+  //of DeltaCR
+  void init_population_mean_var()
+  {
+    //init to single value.
+    state.add_to_matrix<float64_t>( X_mean_hist, state.get_last_n_rows<float64_t>( X_hist, get_param<int64_t>(N_chains_param) ) );
+
+    //Init to zeroes
+    state.add_to_matrix<float64_t>( X_variance_hist, std::vector<std::vector<float64_t>>( get_param<int64_t>(N_chains_param), std::vector<float64_t>( get_param<int64_t>(d_dims_param), 0.0 ) ) );
+
+    //init to zeroes
+    state.add_to_matrix<float64_t>( X_M2n_hist, std::vector<std::vector<float64_t>>( get_param<int64_t>(N_chains_param), std::vector<float64_t>( get_param<int64_t>(d_dims_param), 0.0 ) ) );
+  }
 
   std::vector<float64_t> compute_stat_divergence( varlist<std::string>& results, std::vector<float64_t>& resultvals )
   {
@@ -936,15 +962,19 @@ struct dream_abc_state
   //   i.e. if it is a performant model...)
   //else, REJECT
   
-  std::vector<bool> compute_acceptance( )
+  //std::vector<bool> compute_acceptance( )
+  void compute_acceptance()
   {
     const int64_t nchains = get_param<int64_t>(N_chains_param);
     std::vector< std::vector< float64_t> > Hfits = state.get_last_n_rows<float64_t>( piH_hist, nchains );
     std::vector< std::vector< float64_t> > Xfits = state.get_last_n_rows<float64_t>( piX_hist, nchains );
+
+    fprintf(stdout, "Computing acceptance: got Hfits and Xfits\n");
     
     std::vector<int64_t> accept( nchains, 0 );
     for( size_t c=0; c<Hfits.size(); ++c )
       {
+	fprintf(stdout, "Computing for ACCEPT chain #[%ld]\n", c);
 	if( Hfits[c][0] >= 0  )
 	  {
 	    accept[c] = 1; //TRUE
@@ -962,8 +992,9 @@ struct dream_abc_state
 	  }
 
 	state.add_row_to_matrix<int64_t>( accept_hist, std::vector<int64_t>(1, accept[c]) );
+	fprintf(stdout, "Added accept row to matrix #[%ld]\n", c);
       }
-    
+    //return accept;
   }
 
   void move_chains()
@@ -1052,7 +1083,7 @@ struct dream_abc_state
 	state.add_row_to_matrix<float64_t>( piH_hist, std::vector<float64_t>(1, fit) );
 	state.add_row_to_matrix<float64_t>( model_observ_diverg_hist, statdiv );
       }
-    fprintf(stdout, "FINISHED ALL FITNESS GEN");
+    //fprintf(stdout, "FINISHED ALL FITNESS GEN\n");
 
     //Fitness hist is only added after we check accept/not accept...
   } //end comp gen fitnesses

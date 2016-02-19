@@ -51,6 +51,10 @@ typedef long int int64_t;
 /*   return res; */
 /* } */
 
+std::vector<std::string> dummy_colnames( const size_t& size )
+  {
+    return std::vector<std::string>( size, "__NONAME" );
+  }
 
 typedef struct hdf5_dirnames_t
 {
@@ -376,6 +380,11 @@ struct matrix_props
     return my_nrows;
   }
 
+  template <typename T>
+  void add_data(  const std::vector<std::vector<T>>& toadd )
+  {
+    add_data<T>( dummy_colnames( toadd[0].size() ), toadd );
+  }
   
   template <typename T>
   void add_data( const std::vector<std::string>& colnames, const std::vector<std::vector<T>>& toadd )
@@ -396,7 +405,7 @@ struct matrix_props
       
     if( dims_out[1] != colnames.size() )
       {
-	fprintf(stdout, "ERROR, got #cols in hdf5 file datset != expected number trying to add\n");
+	fprintf(stderr, "ERROR, got #cols in hdf5 file datset != expected number trying to add (Mat [%s], mat wid [%lld], trying to add [%ld])\n", name.c_str(), dims_out[1], colnames.size() );
 	exit(1);
       }
       
@@ -499,7 +508,7 @@ struct matrix_props
 
     if( endrow < startrow)
       {
-	fprintf(stderr, "ERROR, endrow <= startrow [%ld] vs [%ld]\n", endrow, startrow);
+	fprintf(stderr, "ERROR, READROWRANGE: endrow <= startrow [%ld] vs [%ld] (matrix is [%s])\n", endrow, startrow, name.c_str());
 	exit(1);
       }
     //If this is zero, we read only 1 row???
@@ -941,11 +950,21 @@ struct hdf5_collection
     add_new_matrix( matname, varnames, "REAL");
   }
 
+  void add_float64_matrix(const std::string& matname, const size_t& ncols )
+  {
+    add_new_matrix( matname, dummy_colnames(ncols), "REAL");
+  }
+
   void add_int64_matrix(const std::string& matname, const std::vector<std::string>& varnames )
   {
     add_new_matrix( matname, varnames, "INT");
   }
-  
+
+  void add_int64_matrix(const std::string& matname, const size_t& ncols )
+  {
+    add_new_matrix( matname, dummy_colnames(ncols), "INT");
+  }
+
   //A 1d vector doesn't have row names?
   void add_float64_vector(const std::string& matname, const std::vector<float64_t>& vals )
   {
@@ -1019,10 +1038,7 @@ struct hdf5_collection
     return ret;
   }
 
-  std::vector<std::string> dummy_colnames( const size_t& size )
-  {
-    return std::vector<std::string>( size, "__NONAME" );
-  }
+  
   
   //void load_matrix( const std::string& matname, const std::vector<std::string>& varnames )
   void load_matrix( const std::string& matname ) //, const std::string& datatype )
@@ -1119,6 +1135,19 @@ struct hdf5_collection
     matrices[ locs[0] ].add_data<T>( colnames, vals );
   }
 
+  template <typename T>
+  void add_to_matrix( const std::string& matname, const std::vector< std::vector< T > >& vals )
+  {
+    std::vector< size_t > locs = find_matrix( matname );
+    if(locs.size() != 1)
+      {
+	fprintf(stderr, "ERROR Couldn't find requested matrix name (dataset) [%s] in matrices, or there were multiple (Found [%ld])\n", matname.c_str(), locs.size());
+      }
+
+    matrices[ locs[0] ].add_data<T>( vals );
+  }
+
+  
   template <typename T>
   void write_row_range( const std::string& matname, const size_t& startrow, const size_t& endrow, const std::vector< std::vector< T > >& vals )
   {
