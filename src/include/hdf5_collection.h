@@ -21,6 +21,16 @@
 typedef double float64_t;
 typedef long int int64_t;
 
+#define H5TRY() try{
+
+#define H5CATCH() 				\
+  } catch (H5::Exception& err)					\
+  {								\
+    throw std::runtime_error(std::string("HDF5 Error in ")	\
+			     + err.getFuncName()		\
+			     + ": "				\
+			     + err.getDetailMsg());		\
+  }
 
 /* std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats); */
 
@@ -217,19 +227,25 @@ struct matrix_props
 
   std::string get_string_parameter( const std::string& pname )
   {
-    H5::Attribute attr = dataset.openAttribute( pname.c_str() );
-    H5::DataType datatype = attr.getDataType();
+    H5TRY()
+
+      H5::Attribute attr = dataset.openAttribute( pname.c_str() ); 
+     H5::DataType datatype = attr.getDataType(); 
     
     std::string strreadbuf("");
-    attr.read(datatype, strreadbuf);
+    attr.read(datatype, strreadbuf); 
 
-    std::string ret = strreadbuf;
-    return ret;
+	  std::string ret = strreadbuf; 
+	  return ret;
+
+      H5CATCH()	  
 
   }
   
   void add_string_parameter( const std::string& pname, const std::string& val )
   {
+    H5TRY()
+
     H5::DataSpace attr_dataspace(H5S_SCALAR); // = H5::DataSpace (1, dims );
 
     H5::StrType datatype(0, H5T_VARIABLE);
@@ -241,6 +257,7 @@ struct matrix_props
     //REV: Crap, I think I need to make sure to always write to a "known" type i.e. in file system space don't use NATIVE_LONG, bc it won't know what
     //it is on other side?
     attribute.write( datatype, val );
+    H5CATCH()
     return;
   }
 
@@ -276,7 +293,7 @@ struct matrix_props
 
   void write_varnames( const std::string& dsetname, const std::vector<std::string>& strings, H5::H5File& f)
   {
-    H5::Exception::dontPrint();
+    //H5::Exception::dontPrint();
 
     try
       {
@@ -329,8 +346,10 @@ struct matrix_props
     hsize_t  max_dims[ndims] = {H5S_UNLIMITED, ncols};
     
     //Create SPACE
+    H5TRY()
+    
     H5::DataSpace dataspace(ndims, dims, max_dims);
-      
+    
     //Create PROPERTIES
     H5::DSetCreatPropList prop;
     const hsize_t nrows_chunk = 100; //Need to mess with CACHE size too!
@@ -343,9 +362,9 @@ struct matrix_props
     //REV: assume its always native double..ugh. Sometimes I'll write ints though. Just do doubles for now...
     //Need to know type?
     dataset =  f.createDataSet( dsetname, matrix_datatype,
-				dataspace, prop) ;
-
-    //REV: SET HERE, because we need dataset created already.
+				dataspace, prop);
+	  
+	  //REV: SET HERE, because we need dataset created already.
     add_string_parameter( __MATRIX_DATATYPE_NAME, datatype);
     
     hsize_t vardim1=_colnames.size();
@@ -353,12 +372,13 @@ struct matrix_props
     std::string col_dname = "__" + dsetname;
     //colnames_dataset = f.createDataSet( col_dname, );
     write_varnames(col_dname, _colnames, f);
-    
+    H5CATCH()
   } //end new_matrix
 
   
   void get_dset_size( size_t& _nrows, size_t& _ncols )
   {
+    H5TRY()
     H5::DataSpace origspace = dataset.getSpace();
       
     int rank = origspace.getSimpleExtentNdims();
@@ -368,6 +388,7 @@ struct matrix_props
     int ndims = origspace.getSimpleExtentDims( dims_out, NULL);
     _nrows = dims_out[0];
     _ncols = dims_out[1];
+    H5CATCH()
   }
 
   size_t get_ncols()
@@ -389,6 +410,7 @@ struct matrix_props
   template <typename T>
   void add_data( const std::vector<std::string>& colnames, const std::vector<std::vector<T>>& toadd )
   {
+    H5TRY()
     //Assume that order of colnames is same. Check that for sanity I guess.
     //Need to extend current dataset.
     H5::DataSpace origspace = dataset.getSpace();
@@ -450,7 +472,7 @@ struct matrix_props
     dataset.write( vec.data(), matrix_datatype, toaddspace, origspace );
     
     my_nrows += dims_toadd[0];
-    
+    H5CATCH()
     //fprintf(stdout, "Finished writing\n");
   } //end add_data
 
@@ -458,6 +480,7 @@ struct matrix_props
   template <typename T>
   std::vector< std::vector<T> > read_whole_dataset()
   {
+    H5TRY()
     H5::DataSpace origspace = dataset.getSpace();
 
     int rank = origspace.getSimpleExtentNdims();
@@ -488,6 +511,7 @@ struct matrix_props
       }
       
     return retvect;
+    H5CATCH()
   } //end read_whole_dataset
 
 
@@ -495,7 +519,8 @@ struct matrix_props
   template <typename T>
   std::vector< std::vector<T> > read_row_range( const size_t& startrow, const size_t& endrow)
   {
-      
+
+    H5TRY()
     //Basically create hyperslab, and then just read that to a correct size local thing.
     H5::DataSpace origspace = dataset.getSpace();
       
@@ -534,11 +559,11 @@ struct matrix_props
     hsize_t offset[ndims] = { startrow, 0 };
     
     origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
-      
+    
     dataset.read( vec.data(), matrix_datatype, memspace, origspace );
-
+    
     std::vector<std::vector<T>> retvect( nrowread, std::vector<T>(ncolread) );
-      
+    
     for(size_t x=0; x<retvect.size(); ++x)
       {
 	for(size_t y=0; y<retvect[x].size(); ++y)
@@ -549,13 +574,15 @@ struct matrix_props
       }
 
     return retvect;
+    H5CATCH()
   } //end read_row_range
 
 
   template <typename T>
   void write_row_range( const size_t& startrow, const size_t& endrow, const std::vector< std::vector<T>>& vals )
   {
-      
+
+    H5TRY()
     //Basically create hyperslab, and then just read that to a correct size local thing.
     H5::DataSpace origspace = dataset.getSpace();
       
@@ -609,7 +636,7 @@ struct matrix_props
     origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
     
     dataset.write( vec.data(), matrix_datatype, memspace, origspace );
-    
+    H5CATCH()
     return;
   } //end read_row_range
 
@@ -663,6 +690,7 @@ struct matrix_props
 
   std::vector<std::string> read_string_dset( const std::string& dsname, H5::H5File& f )
   {
+    H5TRY()
     H5::DataSet cdataset = f.openDataSet( dsname );
     
     
@@ -691,6 +719,7 @@ struct matrix_props
       }
     
     return strs;
+    H5CATCH()
   } //read_string_dset
 
   std::vector<std::string> get_varnames() const
@@ -701,7 +730,7 @@ struct matrix_props
   //REV: I could make it easier and automatically set datatype but whatever.
   void load_matrix( const std::string& matname, H5::H5File& f ) //, const std::string& datatype )
   {
-    
+    H5TRY()
     
     //REV: Pain in the ass the name will start with root "/". Will it
     //double up?
@@ -733,6 +762,7 @@ struct matrix_props
     //fprintf(stdout, "Will call colnameds with name [%s]?!\n", colnamesds.c_str());
     //colnames_dataset = f.openDataSet( colnamesds );
     my_colnames = read_string_dset( colnamesds, f );
+    H5CATCH()
   }
 
   matrix_props()
