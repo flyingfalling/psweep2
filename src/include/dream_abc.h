@@ -784,6 +784,7 @@ struct dream_abc_state
     size_t n=1;
 
     fprintf(stdout, "Will compute out of [%ld] timepoints!\n", timepoints);
+    //REV: Print number of acceptances of the chains during this period too (might have DEVIATION of zero, which is the problem?)
     
     //fprintf(stdout, "Got history etc...is the problem that we don't have enough memory?\n");
     for(size_t t=1; t<timepoints; ++t) //(nchains+c); t<(timepoints*nchains); t+=nchains)
@@ -845,12 +846,11 @@ struct dream_abc_state
 	    variance_between_chain_means[d] += (tmp*tmp);
 	  }
       }
+
     
     vector_divide_constant<float64_t>(variance_between_chain_means, (float64_t)(nchains-1));
-    if(timepoints > 1)
-      {
-	vector_multiply_constant<float64_t>(variance_between_chain_means, (float64_t)timepoints);
-      }
+    vector_multiply_constant<float64_t>(variance_between_chain_means, (float64_t)timepoints);
+    
 
 
     //What is the variance between chains
