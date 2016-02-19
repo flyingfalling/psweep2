@@ -109,6 +109,7 @@ struct variable
 	  }
 	return toret;
       }
+    return "__ERROR_RET_VAL";
   }
 
   std::string gettype_asstr()

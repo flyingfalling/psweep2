@@ -429,21 +429,25 @@ struct matrix_props
     //REV: Make contiguous data...
     //Row first (i.e. same rows data is grouped) order...
 
-    T vec[toadd.size()][toadd[0].size()];
+    //T vec[toadd.size()][toadd[0].size()];
+    std::vector<T> vec( toadd.size() * toadd[0].size() );
       
     //std::vector<double> vec( toadd.size() * toadd[0].size() );
+    //How is it organized in memory? I think it is ROW FIRST for C++. i.e. vec[a][b] will be stored with a iterated through second (obviously).
+    //SO bth item will be a=0, b=b.
     for(size_t x=0; x<toadd.size(); ++x)
       {
 	for(size_t y=0; y<toadd[x].size(); ++y )
 	  {
-	    vec[x][y] = toadd[x][y];
+	    //vec[x][y] = toadd[x][y];
 	    //vec[ x*toadd[0].size() + y] = toadd[x][y];
+	    vec[ x*toadd[0].size() + y ] = toadd[x][y];
 	  }
       }
       
     //dataset.write( toadd.data(), H5::PredType::NATIVE_DOUBLE, toaddspace, origspace );
     //dataset.write( vec.data(), H5::PredType::NATIVE_DOUBLE, toaddspace, origspace );
-    dataset.write( vec, matrix_datatype, toaddspace, origspace );
+    dataset.write( vec.data(), matrix_datatype, toaddspace, origspace );
     
     my_nrows += dims_toadd[0];
     
@@ -469,15 +473,17 @@ struct matrix_props
       }*/
 
     std::vector<std::vector<T> > retvect(dims_out[0], std::vector<T>(dims_out[1]) );
-    T vec[dims_out[0]][dims_out[1]];
+    //T vec[dims_out[0]][dims_out[1]];
+    std::vector<T> vec( dims_out[0]*dims_out[1] );
     //dataset.read( retvect.data(), H5::PredType::NATIVE_DOUBLE );
-    dataset.read( vec, matrix_datatype );
+    dataset.read( vec.data(), matrix_datatype );
 
     for(size_t x=0; x<retvect.size(); ++x)
       {
 	for(size_t y=0; y<retvect[x].size(); ++y)
 	  {
-	    retvect[x][y] = vec[x][y];
+	    //retvect[x][y] = vec[x][y];
+	    retvect[x][y] = vec[ x*retvect[x].size() + y ];
 	  }
       }
       
@@ -513,18 +519,22 @@ struct matrix_props
       }
     //If this is zero, we read only 1 row???
     size_t nrowread = endrow-startrow+1; //+1 for reading single row
-    T vec[ nrowread ][ ncolread ];
+
+    //T vec[ nrowread ][ ncolread ];
+    //Can I make it contiguous? I guess so...
+    std::vector< T > vec( nrowread * ncolread ); //Make it into single contiguous memory?
+    //Problem was that vec was being stack-allocated, which caused a segfualt...
 
     hsize_t dimsmem[ndims] = {nrowread, ncolread};
       
     //Tells size of vect in mem to write to.
     H5::DataSpace memspace(ndims, dimsmem);
-      
+    
     hsize_t offset[ndims] = { startrow, 0 };
-      
+    
     origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
       
-    dataset.read( vec, matrix_datatype, memspace, origspace );
+    dataset.read( vec.data(), matrix_datatype, memspace, origspace );
 
     std::vector<std::vector<T>> retvect( nrowread, std::vector<T>(ncolread) );
       
@@ -532,7 +542,8 @@ struct matrix_props
       {
 	for(size_t y=0; y<retvect[x].size(); ++y)
 	  {
-	    retvect[x][y] = vec[x][y];
+	    //retvect[x][y] = vec[x][y];
+	    retvect[x][y] = vec[ x*retvect[x].size() + y ];
 	  }
       }
 
@@ -574,14 +585,16 @@ struct matrix_props
 	fprintf(stderr, "ERROR in matrix write: passed value array does not fill specified start/end rows!\n");
 	exit(1);
       }
-    T vec[ nrowwrite ][ ncolwrite ];
+    //T vec[ nrowwrite ][ ncolwrite ];
+    std::vector<T> vec(nrowwrite*ncolwrite);
     
     //REV: Fill vec, haha copying...oh well.
     for(size_t x=0; x<vals.size(); ++x)
       {
 	for(size_t y=0; y<vals[x].size(); ++y)
 	  {
-	    vec[x][y] = vals[x][y];
+	    //vec[x][y] = vals[x][y];
+	    vec[ x*vals[x].size() + y ] = vals[x][y];
 	  }
       }
     
@@ -594,7 +607,7 @@ struct matrix_props
     
     origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
     
-    dataset.write( vec, matrix_datatype, memspace, origspace );
+    dataset.write( vec.data(), matrix_datatype, memspace, origspace );
     
     return;
   } //end read_row_range

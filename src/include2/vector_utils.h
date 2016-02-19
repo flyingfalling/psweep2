@@ -60,6 +60,15 @@ void vector_subtract_constant(std::vector<T>& arg, const T& constant)
       arg[x] -= constant;
     }
 }
+
+template <typename T>
+void vector_subtract_from_constant( const T& constant, std::vector<T>& arg)
+{
+  for(size_t x=0; x<arg.size(); ++x)
+    {
+      arg[x] = constant - arg[x];
+    }
+}
   
 
 template <typename T>

@@ -2,7 +2,7 @@ CC=g++
 MPICC=mpic++
 HDF5HEADERS=/usr/include/hdf5/serial
 INCLUDEFLAG=-I./ -I./include -I./include2 -I$(HDF5HEADERS)
-CFLAGS=-std=c++11 -O3 -g #-Wall
+CFLAGS=-std=c++11 -O3 -g -Wall
 INCLUDEDIR=./include
 INCLUDE2DIR=./include2
 UNITTESTDIR=./unit_tests

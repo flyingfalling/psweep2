@@ -106,7 +106,7 @@ struct dream_abc_state
 		 const std::vector<float64_t>& observation_stats,
 		 float64_t epsil=0.025,
 		 int64_t maxgens=1e5,
-		 int64_t numchains=10,
+		 int64_t numchains=20,
 		 int64_t ndelta=3,
 		 float64_t bnoise=0.05,
 		 float64_t bstar=1e-6,
@@ -426,8 +426,9 @@ struct dream_abc_state
   
   std::vector<std::vector< float64_t> > make_proposals(std::default_random_engine& rand_gen)
   {
+    size_t nchains = get_param<int64_t>(N_chains_param);
     std::vector<std::vector<float64_t> > proposals;
-    std::vector<std::vector<float64_t> > Xcurr = state.get_last_n_rows<float64_t>( X_hist, get_param<int64_t>(N_chains_param) );
+    std::vector<std::vector<float64_t> > Xcurr = state.get_last_n_rows<float64_t>( X_hist, nchains );
 
     //fprintf(stdout, "MAKE PROPOSALS: Got last n rows of X [%ld]\n", get_param<int64_t>(N_chains_param));
     for(size_t c=0; c<Xcurr.size(); ++c)
@@ -439,6 +440,13 @@ struct dream_abc_state
 	proposals.push_back(proposal);
       }
 
+    for(size_t c=0; c<nchains; ++c)
+      {
+	fprintf(stdout, "Chain [%ld]:\n", c);
+	print1dvec_row<float64_t>( Xcurr[c] );
+	print1dvec_row<float64_t>( proposals[c] );
+      }
+    
     //fprintf(stdout, "Finished making all props, will update CR Cnts in make_all_proposals\n");
     update_CRcnts();
     //fprintf(stdout, "Finished update CR cnts...\n");
@@ -457,13 +465,19 @@ struct dream_abc_state
 	++CRcnts[ usedCRidxs[x][0] ];
       }
     state.add_row_to_matrix<int64_t>( CR_cnts_hist, CRcnts );
-
+    fprintf(stdout, "CR cnts: ");
+    print1dvec_row<int64_t>( CRcnts );
   }
   
   float64_t incrementally_compute_mean( const float64_t& prevmean, const float64_t& newsample, const int64_t& newn )
   {
     float64_t mean = prevmean*(newn-1);
-    mean = (mean+newsample)/newn;
+    if(newn == 0 )
+      {
+	fprintf(stderr, "REV ERROR: Newn is 0...div by zero\n");
+	exit(1);
+      }
+    mean = (mean+newsample)/(float64_t)newn;
     return mean;
   }
 
@@ -471,7 +485,13 @@ struct dream_abc_state
   float64_t incrementally_compute_var( const float64_t& prevmean, const float64_t& prevvar, const float64_t& newmean, const float64_t& newsample, const int64_t& newn, float64_t& prevM2n )
   {
     float64_t M2n = prevM2n + (newsample - prevmean) * (newsample - newmean);
+    if(newn <= 1)
+      {
+	fprintf(stderr, "REV: ERROR in incr compute var, newn <= 1, div by zero?!\n");
+	exit(1);
+      }
     float64_t newvar = M2n / (float64_t)(newn-1);
+    prevM2n = M2n;
     //float64_t div = (newsample - prevmean);
     //float64_t newvar = (n-2)/(n-1)*prevvar + (1/n)*(div*div);
     return newvar;
@@ -695,7 +715,7 @@ struct dream_abc_state
   
   bool compute_GR()
   {
-    //fprintf(stdout, "Computing GR\n");
+    fprintf(stdout, "Computing GR\n");
     int64_t timepoints = get_param<int64_t>(t_gen) / 2;
     if( timepoints < 2 )
       {
@@ -712,23 +732,43 @@ struct dream_abc_state
     //However, I can at least incrementally compute STD as I go.
 
     //fprintf(stdout, "Getting last [%ld] rows of X_hist ([%ld] chains times [%ld] timepoints), which has [%ld] rows...\n", timepoints*nchains, nchains, timepoints, state.get_num_rows( X_hist) );
+    
+    fprintf(stdout, "Trying to get last [%ld] rows of Xhist (Xhist has [%ld] rows\n",timepoints*nchains, state.get_num_rows(X_hist) );
     std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows<float64_t>( X_hist, timepoints*nchains );
     
     std::vector< std::vector< float64_t> > each_chain_and_dim_means;
     std::vector< std::vector< float64_t> > each_chain_and_dim_vars;
+
+    fprintf(stdout, "Got history etc...is the problem that we don't have enough memory?\n");
     
     //for each chain:
     for(size_t c=0; c<nchains; ++c)
       {
+	if(X_half_hist.size() <= c)
+	  {
+	    fprintf(stderr, "ERROR X half hist size too small\n");
+	    exit(1);
+	  }
 	//First time point is just n=1, i.e. just single value.
 	std::vector<float64_t> chainmean = X_half_hist[c];
+	if( chainmean.size() != ndims)
+	  {
+	    fprintf(stderr, "In compute mean from GR of chain [%ld], chainmean vect width is not correct size (should be ndims)\n", c);
+	      exit(1);
+	  }
 	std::vector<float64_t> chainvar( ndims, 0 );
 	std::vector<float64_t> chainM2n( ndims, 0 );
 
+	fprintf(stdout, "(COMP GR) Will compute mean/variance for chain [%ld]\n", c);
 	size_t n=1;
-	for(size_t t=(2*c); t<(timepoints*nchains); t+=nchains)
+	for(size_t t=(nchains+c); t<(timepoints*nchains); t+=nchains)
 	  {
 	    ++n;
+	    if(X_half_hist.size() <= t)
+	      {
+		fprintf(stderr, "ERROR X half hist size too small for T (size=%ld), want (%ld)\n", X_half_hist.size(), t);
+		exit(1);
+	      }
 	    //for each dim
 	    for(size_t d=0; d<ndims; ++d)
 	      {
@@ -741,6 +781,10 @@ struct dream_abc_state
 	  }
 	each_chain_and_dim_means.push_back(chainmean);
 	each_chain_and_dim_vars.push_back(chainvar);
+	fprintf(stdout, "Chain [%ld] means and variances: ", c);
+	print1dvec_row<float64_t>( chainmean );
+	print1dvec_row<float64_t>( chainvar );
+	fprintf(stdout, "\n");
       }
     
     std::vector<float64_t> variance_between_chain_means(ndims, 0);
@@ -751,7 +795,7 @@ struct dream_abc_state
 	//for each dim:
 	for(size_t d=0; d<ndims; ++d)
 	  {
-	    means[c] += each_chain_and_dim_means[c][d];
+	    means[d] += each_chain_and_dim_means[c][d];
 	  }
       }
     
@@ -810,6 +854,8 @@ struct dream_abc_state
       }
 
     state.add_row_to_matrix<float64_t>( GR_hist, Rstat );
+    fprintf(stdout, "Completed GR computation:   ");
+    print1dvec_row<float64_t>( Rstat );
     return wouldconverge;
   } //end compute_GR
   
@@ -860,6 +906,9 @@ struct dream_abc_state
     
     //TODO Write pCR
     state.add_row_to_matrix<float64_t>( pCR_hist, pCR );
+
+    fprintf(stdout, "Gen [%ld] pCR: ", get_param<int64_t>( t_gen ));
+    print1dvec_row( pCR );
     //fprintf(stdout, "FINISHED Computed PCR!\n");
   }
 
@@ -948,7 +997,7 @@ struct dream_abc_state
   std::vector<float64_t> compute_epsilon_divergence( const std::vector<float64_t>& abs_divergence )
   {
     std::vector<float64_t> ret( abs_divergence );
-    vector_subtract_constant<float64_t>( ret, get_param<float64_t>( epsilon_param ) );
+    vector_subtract_from_constant<float64_t>( get_param<float64_t>( epsilon_param ), ret );
     return ret;
   }
 
@@ -974,6 +1023,17 @@ struct dream_abc_state
     std::vector< std::vector< float64_t> > Hfits = state.get_last_n_rows<float64_t>( piH_hist, nchains );
     std::vector< std::vector< float64_t> > Xfits = state.get_last_n_rows<float64_t>( piX_hist, nchains );
 
+    fprintf(stdout, "OLDFIT: ");
+    for(size_t c=0; c<Xfits.size(); ++c)
+      {
+	fprintf(stdout, "%5.3lf ", Xfits[c][0] );
+      }
+    fprintf(stdout, "\nNEWFIT: ");
+    for(size_t c=0; c<Hfits.size(); ++c)
+      {
+	fprintf(stdout, "%5.3lf ", Hfits[c][0] );
+      }
+    fprintf(stdout, "\n\n");
     //fprintf(stdout, "Computing acceptance: got Hfits and Xfits\n");
     
     std::vector<int64_t> accept( nchains, 0 );
@@ -999,6 +1059,8 @@ struct dream_abc_state
 	state.add_row_to_matrix<int64_t>( accept_hist, std::vector<int64_t>(1, accept[c]) );
 	//fprintf(stdout, "Added accept row to matrix #[%ld]\n", c);
       }
+    fprintf(stdout, "ACCEPTS: ");
+    print1dvec_row<int64_t>( accept );
     //return accept;
   }
 
@@ -1082,14 +1144,15 @@ struct dream_abc_state
 	std::vector<float64_t> ed = compute_epsilon_divergence( compute_stat_abs( compute_stat_divergence( results[x], statdiv) ) );
 	//fprintf(stdout, "Computed epsilon div [%ld]\n", x);
 	float64_t fit = compute_rho( ed );
-	fprintf(stdout, "GEN [%ld]: Computed rho chain [%ld] (%lf)\n", tgen, x, fit);
+	//fprintf(stdout, "GEN [%ld]: Computed rho chain [%ld] (%lf)\n", tgen, x, fit);
 	fitnesses[x] = fit;
 	
 	//The fitnesses are organized as column vectors...so I need to add "rows" one at a time lol...
 	state.add_row_to_matrix<float64_t>( piH_hist, std::vector<float64_t>(1, fit) );
 	state.add_row_to_matrix<float64_t>( model_observ_diverg_hist, statdiv );
       }
-    //fprintf(stdout, "FINISHED ALL FITNESS GEN\n");
+    fprintf(stdout, "FITS gen [%ld]:  ", tgen);
+    print1dvec_row<float64_t>( fitnesses );
 
     //Fitness hist is only added after we check accept/not accept...
   } //end comp gen fitnesses
