@@ -29,7 +29,7 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
       fprintf(stderr, "ERROR, unrecognized option [%s]\n", argv[1].c_str());
     }
   ftoparse = std::string(argv[2]);
-  fprintf(stdout, "TEST PROGRAM: USING VAR FILE [%s]\n", ftoparse.c_str());
+  //fprintf(stdout, "TEST PROGRAM: USING VAR FILE [%s]\n", ftoparse.c_str());
 
   if( argv[3].compare( "-o" ) != 0 )
     {
@@ -37,8 +37,8 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
     }
   
   outputf = std::string(argv[4]);
-  fprintf(stdout, "TEST PROGRAM: USING OUTPUT FILE [%s]\n", outputf.c_str());
-
+  //fprintf(stdout, "TEST PROGRAM: USING OUTPUT FILE [%s]\n", outputf.c_str());
+  
 
   double peak1=  5.0;
   double peak2= -5.0;

@@ -803,18 +803,18 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
     //Or, allow it to do non-blocking, i.e. spin off threads? That
     //seems best.
 
-    fprintf(stdout, "MASTER: receiving INT\n");
+    //fprintf(stdout, "MASTER: receiving INT\n");
     size_t nfiles = receive_int( targrank );
-    fprintf(stdout, "MASTER: Received int [%ld]\n", nfiles);
+    //fprintf(stdout, "MASTER: Received int [%ld]\n", nfiles);
 
     //std::vector<mem_file> mfs;
     for(size_t x=0; x<nfiles; ++x)
       {
-	fprintf(stdout, "MASTER: receiving file from WORKER [%d]\n", targrank);
+	//fprintf(stdout, "MASTER: receiving file from WORKER [%d]\n", targrank);
 	memfile mf = receive_file( targrank );
 	myfsys.add_file( mf );
 	
-	fprintf(stdout, "MASTER Received file from WORKER [%d]\n", targrank);
+	//fprintf(stdout, "MASTER Received file from WORKER [%d]\n", targrank);
 	//mfs.push_back( mf );
 	//REV: need to figure out how to output these
 	//I need to rebase them
@@ -825,7 +825,7 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	
 	std::string origdir = corresp_pitem.mydir;
 	
-	fprintf(stdout, "MASTER: will rename file to origdir: [%s]\n", origdir.c_str() );
+	//fprintf(stdout, "MASTER: will rename file to origdir: [%s]\n", origdir.c_str() );
 	
 	std::string fname="ERRORFNAME";
 	std::string dirofreceived = get_canonical_dir_of_fname( mf.filename, fname );
@@ -833,12 +833,12 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	//This had sure has hell better exist in original SUCCESS too haha.
 	//Check for sanity.
 
-	fprintf(stdout, "MASTER: searching for local copies of fname we would expect: [%s]\n", newlocal.c_str() );
+	//fprintf(stdout, "MASTER: searching for local copies of fname we would expect: [%s]\n", newlocal.c_str() );
 	
 	std::vector<bool> tmpmarked( corresp_pitem.success_files.size(), false);
 	std::vector<size_t> matched = find_matching_files( newlocal, corresp_pitem.success_files, tmpmarked);
 
-	fprintf(stdout, "MASTER: Renaming received file to [%s]\n", newlocal.c_str());
+	//fprintf(stdout, "MASTER: Renaming received file to [%s]\n", newlocal.c_str());
 	
 	//We expect it to find AT LEAST one.
 	if( matched.size() == 0 )
@@ -851,7 +851,7 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	    fprintf(stderr, "WARNING! In receive files from notify, got MORE than one match in SUCCESS array to file [%s]\n", newlocal.c_str() );
 	  }
 
-	fprintf(stdout, "MASTER: Will attempt to write file to filename [%s]\n", newlocal.c_str());
+	//fprintf(stdout, "MASTER: Will attempt to write file to filename [%s]\n", newlocal.c_str());
 	
 	
 	//mf.tofile( origdir, fname );
@@ -867,12 +867,12 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	    mfp.tofile( origdir+"/"+fname );
 	    mfp.close();
 	  }
-	fprintf(stdout, "MASTER: wrote file\n");
+	//fprintf(stdout, "MASTER: wrote file\n");
       }
 
-    fprintf(stdout, "MASTER: RECEIVING VARLIST from worker [%d].\n", targrank);
+    //fprintf(stdout, "MASTER: RECEIVING VARLIST from worker [%d].\n", targrank);
     varlist<std::string> outputvlist = receive_varlist( targrank );
-    fprintf(stdout, "MASTER: **DONE rec VARLIST from worker [%d].\n", targrank);
+    //fprintf(stdout, "MASTER: **DONE rec VARLIST from worker [%d].\n", targrank);
     
     return outputvlist;
   }
@@ -1343,7 +1343,7 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
     //be done if there are any workers working...
     while( wprog.check_all_done() == false )
       {
-	fprintf(stdout, "Not all done of WPROG!\n");
+	//fprintf(stdout, "Not all done of WPROG!\n");
 	//Only accept messages if there are no available workers and
 	//there's no work to do.
 	//If there is available workers, but no work to do, accept messages
@@ -1354,15 +1354,15 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	      wprog.check_work_avail() == true )
 	    )
 	  {
-	    fprintf(stdout, "CASE: Either there is a worker available, OR there is work available. I will receive a response from a worker\n");
+	    //fprintf(stdout, "CASE: Either there is a worker available, OR there is work available. I will receive a response from a worker\n");
 	    if( wprog.avail_worker( _workingworkers ) == true )
 	      {
-		fprintf(stdout, " NOTE: there ARE workers available\n");
+		//fprintf(stdout, " NOTE: there ARE workers available\n");
 	      }
 
 	    if(  wprog.check_work_avail() == true  )
 	      {
-		fprintf(stdout, " NOTE: there IS work available\n");
+		//fprintf(stdout, " NOTE: there IS work available\n");
 	      }
 	    //ACCEPT MESSAGES FROM WORKERS AND HANDLE.
 	    //Note, we want to keep it so that this array will carry over
@@ -1375,7 +1375,7 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 
 	    psweep_cmd pcmd = receive_cmd_from_any();
 
-	    fprintf(stdout, "RECEIVED COMMAND (%s)\n", pcmd.CMD.c_str() );
+	    //fprintf(stdout, "RECEIVED COMMAND (%s)\n", pcmd.CMD.c_str() );
 	    if( is_finished_work( pcmd ) == true )
 	      {
 		
@@ -1391,31 +1391,31 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 		//farmed_status[workernum] should tell us where
 		parampoint_coord pc = wprog.farmed_status[workernum];
 		
-		fprintf(stdout, "&&& Recevied finished cmd from worker [%ld]. The received was coordinate: PPOINT [%ld], PSET [%ld], PITEM [%ld]\n", workernum,  pc.parampointn, pc.psetn, pc.pitemn );
+		//fprintf(stdout, "&&& Recevied finished cmd from worker [%ld]. The received was coordinate: PPOINT [%ld], PSET [%ld], PITEM [%ld]\n", workernum,  pc.parampointn, pc.psetn, pc.pitemn );
 		
 		pitem handledpitem = wprog.get_corresponding_pitem_from_workernum( pg, workernum );
-		fprintf(stdout, "Got handled pitem from that coordinate\n");
+		//fprintf(stdout, "Got handled pitem from that coordinate\n");
 
 
 		//Specifically, call it on the parampoint#, from pg.parampoint_memfsystems[ pc.parampointn ].
 		//REV: THIS will write to files! Modify to use a local (temporary) memfsys
 		varlist<std::string> result = handle_finished_work( pcmd, handledpitem, pg.parampoint_memfsystems[ pc.parampointn ], usedisk );
 		
-		fprintf(stdout, "MASTER: got result from worker [%ld]. Now marking done...\n", workernum);
+		//fprintf(stdout, "MASTER: got result from worker [%ld]. Now marking done...\n", workernum);
 		//need to mark it DONE in pitem representation.
 		wprog.mark_done( pc );
 		
-		fprintf(stdout, "MASTER: Marked done! Will now set result in PPOINT list\n");
+		//fprintf(stdout, "MASTER: Marked done! Will now set result in PPOINT list\n");
 		pg.set_result( pc, result );
 		
 		
-		fprintf(stdout, "MASTER: Finished set done. Now setting workingworkers targ to false\n");
+		//fprintf(stdout, "MASTER: Finished set done. Now setting workingworkers targ to false\n");
 		_workingworkers[ pcmd.SRC ] = false;
-		fprintf(stdout, "MASTER: ALl done handling received DONE\n");
+		//fprintf(stdout, "MASTER: ALl done handling received DONE\n");
 	      }
 	    else if( is_ready_for_work( pcmd ) == true )
 	      {
-		fprintf(stdout, "NO, IT WAS JUST READY (setting worker [%d] to FALSE)\n", pcmd.SRC);
+		//fprintf(stdout, "NO, IT WAS JUST READY (setting worker [%d] to FALSE)\n", pcmd.SRC);
 		//Contains READY cmd, just mark to not working.
 		_workingworkers[ pcmd.SRC ] = false;
 	      }
@@ -1430,13 +1430,13 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	//both work and worker available: farm it.
 	else
 	  {
-	    fprintf(stdout, "CASE: BOTH WORK AND A WORKER ARE AVAILABLE. WILL FARM\n");
+	    //fprintf(stdout, "CASE: BOTH WORK AND A WORKER ARE AVAILABLE. WILL FARM\n");
 
 	    //REV: This will only modify local worker-tabulating structs,
 	    //it will not do any actual work or communicate over MPI.
 	    size_t farmedworker = wprog.farm_work(_workingworkers);
 
-	    fprintf(stdout, "FARMED IT LOCALLY. Now will send data to slave\n");
+	    //fprintf(stdout, "FARMED IT LOCALLY. Now will send data to slave\n");
 	    parampoint_coord pc = wprog.farmed_status[ farmedworker ];
 
 	    //FARM TO THAT WORKER, i.e. send message to that rank.
@@ -1452,10 +1452,10 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	    master_to_slave( wprog.get_corresponding_pitem( pg, pc),
 			     farmedworker,
 			     pg.parampoint_memfsystems[pc.parampointn] );
-	    fprintf(stdout, "DONE master to slave.\n");
+	    //fprintf(stdout, "DONE master to slave.\n");
 	  }
       }
-    fprintf(stdout, "$ $ $ $ $ $ YOLOLOLOLO ALL DONE WITH WPROG!!! WOW!\n");
+    //fprintf(stdout, "$ $ $ $ $ $ YOLOLOLOLO ALL DONE WITH WPROG!!! WOW!\n");
   }
 
   

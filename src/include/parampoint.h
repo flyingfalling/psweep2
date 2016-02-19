@@ -29,7 +29,7 @@ struct seedgen
     std::vector<std::uint32_t> seeds(1);
     seq.generate(seeds.begin(), seeds.end());
 
-    fprintf( stdout, "GENERATED SEED: [%d]\n", seeds[0] );
+    //fprintf( stdout, "GENERATED SEED: [%d]\n", seeds[0] );
 
     return seeds[0];
   }
@@ -120,9 +120,9 @@ struct pitem
   //In new version, this may call from memory to speed things up.
   bool execute_cmd( fake_system& fakesys, memfsys& myfsys )
   {
-    fprintf(stdout, "Attempting to check ready in execute cmd\n");
+    //fprintf(stdout, "Attempting to check ready in execute cmd\n");
     std::vector< std::string > notready = check_ready( myfsys );
-    fprintf(stdout, "FINISHED to check ready in execute cmd\n");
+    //fprintf(stdout, "FINISHED to check ready in execute cmd\n");
 
     //FIRST, TRY TO CALL IT WITH USER THING.
     //REV: user might be trying to call a script with python or something...? E.g. pythong SCRIPT go...? In which case we better not find it lol.
@@ -130,13 +130,13 @@ struct pitem
     //std::vector<std::string> args = std::vector<std::string>( mycmd.begin()+1, mycmd.end() );
     //bool calledfake = fakesys.call_funct( ostensible_cmd, args );
     //REV: 10 Feb 2016 -- make it same as ARGV so user doesn't have to change much...
-    fprintf(stdout, "Attempting to call FAKESYS mycmd\n");
+    //fprintf(stdout, "Attempting to call FAKESYS mycmd\n");
     bool calledfake = fakesys.call_funct( ostensible_cmd, mycmd, myfsys );
-    fprintf(stdout, "SUCCESSFULLY to call FAKESYS mycmd\n");
+    //fprintf(stdout, "SUCCESSFULLY to call FAKESYS mycmd\n");
     
     if( calledfake == false )
       {
-	fprintf(stdout, "THINK I **DIDNT** call a fakesystem, i.e. will attempt real system()\n");
+	//fprintf(stdout, "THINK I **DIDNT** call a fakesystem, i.e. will attempt real system()\n");
 	std::string stderrfile = mydir+"/stderr";
 	std::string stdoutfile = mydir+"/stdout";
 	mycmd.push_back( "1>"+stdoutfile );
@@ -159,7 +159,7 @@ struct pitem
 	    exit(1);
 	  }
 
-	fprintf(stdout, "----EXECUTING [%s]\n", execute_string.c_str() );
+	//fprintf(stdout, "----EXECUTING [%s]\n", execute_string.c_str() );
 	
 	int sysret = system( execute_string.c_str() );
 	
@@ -259,7 +259,7 @@ struct pitem
 
 	std::string newfname = canonicalize_fname( newdir + "/" + newfnames[x] );
 
-	fprintf( stdout, "NEW FNAME IN RENAME-to-TARG: new fname [%s] (dir=[%s])\n", newfname.c_str(), newdir.c_str());
+	//fprintf( stdout, "NEW FNAME IN RENAME-to-TARG: new fname [%s] (dir=[%s])\n", newfname.c_str(), newdir.c_str());
 	replace_old_fnames_with_new( targvect, newfname, reqmatched ); //replaces mycmd inline.
 	replace_old_fnames_with_new( mycmd, newfname, cmdmatched ); //replaces mycmd inline.
 	
@@ -315,7 +315,7 @@ struct pitem
 	if(reqmatched.size() > 0)
 	  {
 	    std::string newfname = canonicalize_fname( newdir + "/" + newfnames[x] );
-	    fprintf(stdout, "FOUND MATCH!!!! New fname: [%s]  (newdir: [%s]\n", newfname.c_str() , newdir.c_str());
+	    //fprintf(stdout, "FOUND MATCH!!!! New fname: [%s]  (newdir: [%s]\n", newfname.c_str() , newdir.c_str());
 		    
 	    //found it, rename it.
 	    targstr = newfname;
@@ -362,7 +362,7 @@ struct pitem
     std::vector<size_t> matched=find_matching_files(fname, mycmd, marked);
 
     std::string newfname = newdir + "/" + fnametail;
-    fprintf(stdout, "In renamed_str_to_targ_dir, about to replace with [%s]\n", newfname.c_str());
+    //fprintf(stdout, "In renamed_str_to_targ_dir, about to replace with [%s]\n", newfname.c_str());
     replace_old_fnames_with_new( mycmd, newfname, matched ); //replaces mycmd inline.
 
     //Now replace SUCCESS itself.
@@ -394,7 +394,7 @@ struct pitem
     //REV: HERE. Note clear what to do. There is simply ONE old/new, which is input_file and how it was renamed specifically. So, I need to go through
     //it as if it was a CMD or required_files, and replace all renaemd references there. We determined old/new fnames from REBASE. So I need to make
     //sure to change INPUTFILE too? I.e. I need to be aware of changing INPUT file name. OK.
-    fprintf(stdout, "ORIG INPUT: [%s]\n", input_file.c_str());
+    //fprintf(stdout, "ORIG INPUT: [%s]\n", input_file.c_str());
     
     
     rename_to_targ(required_files, marked, olddir, newdir, oldfnames, newfnames);
@@ -402,7 +402,7 @@ struct pitem
     
     rename_str_to_targ(input_file, marked, olddir, newdir, oldfnames, newfnames);//, oldfnames);
 
-    fprintf(stdout, "REBASED INPUT: [%s]\n", input_file.c_str());
+    //fprintf(stdout, "REBASED INPUT: [%s]\n", input_file.c_str());
     
     //All MARKED not necessarily, because it might contain non-files in the string vector representing the command.
     
@@ -583,10 +583,10 @@ struct pitem
     //REV: Check existence in memfsys!!
     for(size_t f=0; f<required_files.size(); ++f)
       {
-	fprintf(stdout, " # # # CHECKING FOR EXISTENCE OF REQUIRED FILE: [%s]\n", required_files[f].c_str());
+	//fprintf(stdout, " # # # CHECKING FOR EXISTENCE OF REQUIRED FILE: [%s]\n", required_files[f].c_str());
 	bool checkdisk=true;
 	bool rdy= myfsys.check_existence( required_files[f], checkdisk );
-	fprintf(stdout, " X X X checked done\n");
+	//fprintf(stdout, " X X X checked done\n");
 	  
 	if (rdy == false )
 	  /*if( check_file_existence( required_files[f] ) == false ) */
@@ -900,7 +900,7 @@ struct executable_representation
   {
     //constructor. Constructs all the stuff, based on input script FILENAME?
 
-    fprintf(stdout, "trying to get contents from file [%s]\n", script_filename.c_str());
+    fprintf(stdout, "EXEC REPRESENT: trying to get contents from file [%s]\n", script_filename.c_str());
     std::string input = get_file_contents( script_filename  );
 
     fprintf(stdout, "GOT FILE CONTENTS FROM file [%s]; [%s]\n", script_filename.c_str(), input.c_str());
@@ -1111,7 +1111,7 @@ struct parampoint_generator
   {
     if( parampoints.size() < N )
       {
-	fprintf(stdout, "ERROR in get last N: parampoints size too small [%ld] for N [%ld]\n", parampoints.size(), N);
+	fprintf(stderr, "ERROR in get last N: parampoints size too small [%ld] for N [%ld]\n", parampoints.size(), N);
 	exit(1);
       }
     

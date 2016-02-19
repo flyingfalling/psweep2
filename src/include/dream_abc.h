@@ -107,11 +107,11 @@ struct dream_abc_state
 		 float64_t epsil=0.025,
 		 int64_t maxgens=1e5,
 		 int64_t numchains=10,
-		 int64_t ndelta=1,
+		 int64_t ndelta=3,
 		 float64_t bnoise=0.05,
 		 float64_t bstar=1e-6,
 		 float64_t rthresh=1.2,
-		 int64_t GRskip=10,
+		 int64_t GRskip=20,
 		 int64_t nCR=3,
 		 int64_t pCRskip=10,
 		 float64_t pjump=0.1
@@ -265,21 +265,21 @@ struct dream_abc_state
     START_GEN();
 
 
-    fprintf(stdout, "RUN GENERATION [%ld]: about to make proposals\n", get_param<int64_t>( t_gen ));
+    //fprintf(stdout, "RUN GENERATION [%ld]: about to make proposals\n", get_param<int64_t>( t_gen ));
     std::vector<std::vector<float64_t> > proposals = make_proposals( rg );
-    fprintf(stdout, "RUN GENERATION [%ld]: FINISHED to make proposals. Will compute fitnesses...\n", get_param<int64_t>( t_gen ));
+    //fprintf(stdout, "RUN GENERATION [%ld]: FINISHED to make proposals. Will compute fitnesses...\n", get_param<int64_t>( t_gen ));
     
     //2) Compute fitness of new proposals
     compute_generation_fitnesses( proposals, fs, pg );
-    fprintf(stdout, "RUN GENERATION [%ld]: FINISHED compute fitnesses...\n", get_param<int64_t>( t_gen ));
+    //fprintf(stdout, "RUN GENERATION [%ld]: FINISHED compute fitnesses...\n", get_param<int64_t>( t_gen ));
     
     compute_acceptance();
-    fprintf(stdout, "RUN GENERATION [%ld]: FINISHED compute acceptances...\n", get_param<int64_t>( t_gen ));
+    //fprintf(stdout, "RUN GENERATION [%ld]: FINISHED compute acceptances...\n", get_param<int64_t>( t_gen ));
     
 
     
     move_chains();
-    fprintf(stdout, "RUN GENERATION [%ld], FINISHED move chains!\n", get_param<int64_t>(t_gen));
+    //fprintf(stdout, "RUN GENERATION [%ld], FINISHED move chains!\n", get_param<int64_t>(t_gen));
     
     //Compute other things like GR, etc.
     //Update JUMP probabilities, CR, etc. based on USED CR indices etc.
@@ -311,26 +311,26 @@ struct dream_abc_state
     std::vector<size_t> movingdims;
     float64_t gamma;
 
-    fprintf(stdout, "ABC: will choose dims and pairs\n");
+    //fprintf(stdout, "ABC: will choose dims and pairs\n");
     choose_moving_dims_and_npairs( pairidxs, movingdims, gamma, rand_gen );
     
-    fprintf(stdout, "ABC: DONE: choose dims and pairs. Will now get slices from matrix history\n");
+    //fprintf(stdout, "ABC: DONE: choose dims and pairs. Will now get slices from matrix history\n");
     
     std::vector<std::vector<float64_t> > mypairs = state.get_matrix_row_slice<float64_t>( X_hist, pairidxs );
 
-    fprintf(stdout, "ABC: Got history slices\n");
+    //fprintf(stdout, "ABC: Got history slices\n");
     
     std::normal_distribution<float64_t> gdist(0, get_param<float64_t>( bstar_param ) );
     float64_t bwid = get_param<float64_t>( b_noise_param  );
     std::uniform_real_distribution<float64_t> udist(-bwid, bwid);
-
-    fprintf(stdout, "ABC: Made rand distrs\n");
+    
+    //    fprintf(stdout, "ABC: Made rand distrs\n");
     
     std::vector< std::vector<float64_t> > dimdiffs(  mypairs.size()/2, std::vector<float64_t>(proposal.size(), 0 ) );
     std::vector<float64_t> dimdiffs_total( proposal.size(), 0);
     std::vector<float64_t> dimdiffs_wnoise( proposal.size(), 0);
 
-    fprintf(stdout, "ABC: Made dim diffs vects\n");
+    //fprintf(stdout, "ABC: Made dim diffs vects\n");
     
     if(mypairs.size() % 2 != 0)
       {
@@ -429,19 +429,19 @@ struct dream_abc_state
     std::vector<std::vector<float64_t> > proposals;
     std::vector<std::vector<float64_t> > Xcurr = state.get_last_n_rows<float64_t>( X_hist, get_param<int64_t>(N_chains_param) );
 
-    fprintf(stdout, "MAKE PROPOSALS: Got last n rows of X [%ld]\n", get_param<int64_t>(N_chains_param));
+    //fprintf(stdout, "MAKE PROPOSALS: Got last n rows of X [%ld]\n", get_param<int64_t>(N_chains_param));
     for(size_t c=0; c<Xcurr.size(); ++c)
       {
-	fprintf(stdout, "Attempting to make proposal [%ld]\n", c);
+	//fprintf(stdout, "Attempting to make proposal [%ld]\n", c);
 	std::vector<float64_t> proposal = make_single_proposal( Xcurr[c], rand_gen );
-	fprintf(stdout, "FINISHED to make proposal [%ld]\n", c);
+	//fprintf(stdout, "FINISHED to make proposal [%ld]\n", c);
 	
 	proposals.push_back(proposal);
       }
 
-    fprintf(stdout, "Finished making all props, will update CR Cnts in make_all_proposals\n");
+    //fprintf(stdout, "Finished making all props, will update CR Cnts in make_all_proposals\n");
     update_CRcnts();
-    fprintf(stdout, "Finished update CR cnts...\n");
+    //fprintf(stdout, "Finished update CR cnts...\n");
     return proposals;
   }
 
@@ -574,7 +574,7 @@ struct dream_abc_state
     
     //Number to choose / nCR. I.e. lowest is 1.0/nCR.
     float64_t crval = (float64_t)(Didx+1) / (float64_t)get_param<int64_t>( nCR_param );
-    fprintf(stdout, "CRVAL is [%lf]\n", crval);
+    //fprintf(stdout, "CRVAL is [%lf]\n", crval);
     size_t ndims=get_param<int64_t>( d_dims_param );
     for(size_t d=0; d <ndims; ++d)
       {
@@ -611,8 +611,8 @@ struct dream_abc_state
     //Each pair gets the same pair of moving dims.
     moving_dims = choose_moving_dims( Didx, rand_gen );
 
-    fprintf(stdout, "In choose moving dims and npairs:\n");
-    print1dvec_row<size_t>( moving_dims );
+    //fprintf(stdout, "In choose moving dims and npairs:\n");
+    //print1dvec_row<size_t>( moving_dims );
     
     mypairs = draw_DE_pairs( tauidx+1, rand_gen );
     
@@ -695,21 +695,25 @@ struct dream_abc_state
   
   bool compute_GR()
   {
+    //fprintf(stdout, "Computing GR\n");
     int64_t timepoints = get_param<int64_t>(t_gen) / 2;
     if( timepoints < 2 )
       {
 	return false;
       }
-    size_t ndims = get_param<float64_t>( d_dims_param );
-    size_t nchains = get_param<float64_t>( N_chains_param );
+    //REV: Rofl, doesn't complain about the type...
+    size_t ndims = get_param<int64_t>( d_dims_param );
+    size_t nchains = get_param<int64_t>( N_chains_param );
     
     //Reconstruct the chain, and take only 2nd half
     
     //REV: This is a pain in the ass, because it has to be from the last
     //50%. So, it's not possible to incrementally do it I think.
     //However, I can at least incrementally compute STD as I go.
-    std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows<float64_t>( X_hist, timepoints*nchains );
 
+    //fprintf(stdout, "Getting last [%ld] rows of X_hist ([%ld] chains times [%ld] timepoints), which has [%ld] rows...\n", timepoints*nchains, nchains, timepoints, state.get_num_rows( X_hist) );
+    std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows<float64_t>( X_hist, timepoints*nchains );
+    
     std::vector< std::vector< float64_t> > each_chain_and_dim_means;
     std::vector< std::vector< float64_t> > each_chain_and_dim_vars;
     
@@ -811,7 +815,7 @@ struct dream_abc_state
   
   void update_pCR()
   {
-    fprintf(stdout, "UPDATING PCR!!!\n");
+    //fprintf(stdout, "UPDATING PCR!!!\n");
     std::vector<float64_t> DeltaCR = state.get_last_row<float64_t>( DeltaCR_hist );
     std::vector<int64_t> CRcnts = state.get_last_row<int64_t>( CR_cnts_hist );
 
@@ -856,6 +860,7 @@ struct dream_abc_state
     
     //TODO Write pCR
     state.add_row_to_matrix<float64_t>( pCR_hist, pCR );
+    //fprintf(stdout, "FINISHED Computed PCR!\n");
   }
 
   
@@ -878,7 +883,7 @@ struct dream_abc_state
     
     compute_generation_fitnesses( samples, fs, pg );
     
-    fprintf(stdout, "DREAM-ABC: MASTER: Finished: Computed fitnesses!\n");    
+    //fprintf(stdout, "DREAM-ABC: MASTER: Finished: Computed fitnesses!\n");    
     //piH_hist and rho_hist now contain the most recent chain computations!
     
     //Fill piX manually since we won't run an ACCEPT step here.
@@ -890,7 +895,7 @@ struct dream_abc_state
 
     init_population_mean_var();
     
-    fprintf(stdout, "FINISHED INIT POP\n");
+    //fprintf(stdout, "FINISHED INIT POP\n");
     
     END_GEN();
   } //end generate_init_pop
@@ -969,12 +974,12 @@ struct dream_abc_state
     std::vector< std::vector< float64_t> > Hfits = state.get_last_n_rows<float64_t>( piH_hist, nchains );
     std::vector< std::vector< float64_t> > Xfits = state.get_last_n_rows<float64_t>( piX_hist, nchains );
 
-    fprintf(stdout, "Computing acceptance: got Hfits and Xfits\n");
+    //fprintf(stdout, "Computing acceptance: got Hfits and Xfits\n");
     
     std::vector<int64_t> accept( nchains, 0 );
     for( size_t c=0; c<Hfits.size(); ++c )
       {
-	fprintf(stdout, "Computing for ACCEPT chain #[%ld]\n", c);
+	//fprintf(stdout, "Computing for ACCEPT chain #[%ld]\n", c);
 	if( Hfits[c][0] >= 0  )
 	  {
 	    accept[c] = 1; //TRUE
@@ -992,7 +997,7 @@ struct dream_abc_state
 	  }
 
 	state.add_row_to_matrix<int64_t>( accept_hist, std::vector<int64_t>(1, accept[c]) );
-	fprintf(stdout, "Added accept row to matrix #[%ld]\n", c);
+	//fprintf(stdout, "Added accept row to matrix #[%ld]\n", c);
       }
     //return accept;
   }
@@ -1034,10 +1039,10 @@ struct dream_abc_state
     //Make varlist from names and doubles...
     for(size_t x=0; x<vals.size(); ++x)
       {
-	fprintf(stdout, "TRYING TO COMPUTE:\n");
+	//fprintf(stdout, "TRYING TO COMPUTE:\n");
 	for(size_t y=0; y<vals[x].size(); ++y)
 	  {
-	    fprintf(stdout, "[%s] [%lf]\n", names[y].c_str(), vals[x][y]);
+	    // fprintf(stdout, "[%s] [%lf]\n", names[y].c_str(), vals[x][y]);
 	  }
 	varlist<std::string> vl;
 	vl.make_varlist<float64_t>(names, vals[x] );
@@ -1049,34 +1054,35 @@ struct dream_abc_state
     fs.comp_pp_list( pg, vls, sg );
 
 
-    fprintf(stdout, "Finished computing fitnesses! Fitness results is: [%ld]\n", pg.parampoint_vars.size() );
+    //fprintf(stdout, "Finished computing fitnesses! Fitness results is: [%ld]\n", pg.parampoint_vars.size() );
     //TODO REV: get results from RESULTS, specifically FITNESS? Just get from RESULTS (should be a varlist heh)
     //We know same order as varlists we gave, so OK.
     
     //std::vector<varlist<std::string> > results = pg.get_last_N_results( get_param<int64_t>(N_chains_param) );
     std::vector<varlist<std::string> > results = pg.get_last_N_results( vals.size() );
 
-    fprintf(stdout, "Got last N results\n");
+    //fprintf(stdout, "Got last N results\n");
     
     pg.cleanup_parampoints_upto( vals.size() );
 
-    fprintf(stdout, "Cleaned up last N results\n");
+    //fprintf(stdout, "Cleaned up last N results\n");
     
     //Add these guys to H.
     state.add_to_matrix<float64_t>( H_hist, state.get_varnames( H_hist ), vals );
 
-    fprintf(stdout, "Added to matrix...\n");
+    //fprintf(stdout, "Added to matrix...\n");
     std::vector<float64_t> fitnesses( results.size(), -66666.22222 );
-    
+
+    int64_t tgen = get_param<int64_t>(t_gen);
     //TODO: Append results to piX and piH
     for(size_t x=0; x<results.size(); ++x)
       {
-	fprintf(stdout, "Comping result [%ld]...\n", x);
+	//fprintf(stdout, "Comping result [%ld]...\n", x);
 	std::vector<float64_t> statdiv;
 	std::vector<float64_t> ed = compute_epsilon_divergence( compute_stat_abs( compute_stat_divergence( results[x], statdiv) ) );
-	fprintf(stdout, "Computed epsilon div [%ld]\n", x);
+	//fprintf(stdout, "Computed epsilon div [%ld]\n", x);
 	float64_t fit = compute_rho( ed );
-	fprintf(stdout, "Computed rho [%ld]\n", x);
+	fprintf(stdout, "GEN [%ld]: Computed rho chain [%ld] (%lf)\n", tgen, x, fit);
 	fitnesses[x] = fit;
 	
 	//The fitnesses are organized as column vectors...so I need to add "rows" one at a time lol...

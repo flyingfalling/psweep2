@@ -1097,6 +1097,11 @@ struct hdf5_collection
   template<typename T>
   std::vector<std::vector<T> > get_last_n_rows( const std::string& matname, const size_t& nr )
   {
+    if( nr == 0 )
+      {
+	fprintf(stderr, "ERROR: trying to get ZERO rows from last N rows...\n");
+	exit(1);
+      }
     size_t len = get_num_rows( matname );
     if( len < nr )
       {
@@ -1118,7 +1123,7 @@ struct hdf5_collection
 	exit(1);
       }
     size_t startrow = len-1;
-    size_t endrow = len-1; //Reads "include" the end row!!!!
+    //size_t endrow = len-1; //Reads "include" the end row!!!!
     return read_row<T>( matname, startrow );
   }
 
