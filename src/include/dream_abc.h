@@ -764,7 +764,7 @@ struct dream_abc_state
     //std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows<float64_t>( X_hist, timepoints*nchains );
 
     bool printme=false;
-    if( get_param<int64_t>( t_gen ) > 22900 )
+    if( false && get_param<int64_t>( t_gen ) > 22900 )
       {
 	printme=true;
       }
