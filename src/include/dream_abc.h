@@ -760,7 +760,7 @@ struct dream_abc_state
 
     //REV: This is the problem, we can't do this it will get too large. Need to do it incrementally... I.e. get nchains at a time.
     //std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows<float64_t>( X_hist, timepoints*nchains );
-    std::vector<std::vector<float64_t> > X_half_hist = state.read_row_range<float64_t>( X_hist, nrows-1-(timepoints*nchains), nrows-1-((timepoints-1)*nchains) );
+    std::vector<std::vector<float64_t> > X_half_hist = state.read_row_range<float64_t>( X_hist, nrows-(timepoints*nchains), nrows-((timepoints-1)*nchains) );
     
     std::vector< std::vector< float64_t> > each_chain_and_dim_means;
     std::vector< std::vector< float64_t> > each_chain_and_dim_vars;
@@ -787,6 +787,8 @@ struct dream_abc_state
 
 	fprintf(stdout, "(COMP GR) Will compute mean/variance for chain [%ld]\n", c);
 	size_t n=1;
+
+	size_t hstart = nrows-(timepoints*nchains);
 	for(size_t t=(nchains+c); t<(timepoints*nchains); t+=nchains)
 	  {
 	    ++n;
@@ -795,7 +797,7 @@ struct dream_abc_state
 		fprintf(stderr, "ERROR X half hist size too small for T (size=%ld), want (%ld)\n", X_half_hist.size(), t);
 		exit(1);
 	      }
-	    X_half_hist = state.read_row_range<float64_t>( X_hist, nrows-1-(timepoints*nchains)+(t*nchains), nrows-1-((timepoints-1)*nchains)+(t*nchains) );
+	    X_half_hist = state.read_row_range<float64_t>( X_hist, hstart+t, hstart+t+nchains );
 	    
 	    //for each dim
 	    for(size_t d=0; d<ndims; ++d)
