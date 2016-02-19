@@ -747,7 +747,7 @@ struct dream_abc_state
     //REV: Rofl, doesn't complain about the type...
     size_t ndims = get_param<int64_t>( d_dims_param );
     size_t nchains = get_param<int64_t>( N_chains_param );
-    
+    size_t nrows = state.get_num_rows( X_hist);
     //Reconstruct the chain, and take only 2nd half
     
     //REV: This is a pain in the ass, because it has to be from the last
@@ -756,8 +756,11 @@ struct dream_abc_state
 
     //fprintf(stdout, "Getting last [%ld] rows of X_hist ([%ld] chains times [%ld] timepoints), which has [%ld] rows...\n", timepoints*nchains, nchains, timepoints, state.get_num_rows( X_hist) );
     
-    fprintf(stdout, "Trying to get last [%ld] rows of Xhist (Xhist has [%ld] rows\n",timepoints*nchains, state.get_num_rows(X_hist) );
-    std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows<float64_t>( X_hist, timepoints*nchains );
+    //fprintf(stdout, "Trying to get last [%ld] rows of Xhist (Xhist has [%ld] rows\n",timepoints*nchains, state.get_num_rows(X_hist) );
+
+    //REV: This is the problem, we can't do this it will get too large. Need to do it incrementally... I.e. get nchains at a time.
+    //std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows<float64_t>( X_hist, timepoints*nchains );
+    std::vector<std::vector<float64_t> > X_half_hist = state.read_row_range<float64_t>( X_hist, nrows-timepoints*chains, nrows-(timepoints-1)*chains );
     
     std::vector< std::vector< float64_t> > each_chain_and_dim_means;
     std::vector< std::vector< float64_t> > each_chain_and_dim_vars;
@@ -792,6 +795,8 @@ struct dream_abc_state
 		fprintf(stderr, "ERROR X half hist size too small for T (size=%ld), want (%ld)\n", X_half_hist.size(), t);
 		exit(1);
 	      }
+	    X_half_hist = state.read_row_range<float64_t>( X_hist, nrows-(timepoints*chains)+(t*chains), nrows-(timepoints-1)*chains+(t*chains) );
+	    
 	    //for each dim
 	    for(size_t d=0; d<ndims; ++d)
 	      {
