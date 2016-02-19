@@ -548,7 +548,7 @@ struct matrix_props
       
     int ndims = origspace.getSimpleExtentDims( dims_out, NULL);
 
-    size_t ncolread = dims_out[1];
+    hsize_t ncolread = dims_out[1];
       
     if( endrow >= dims_out[0] )
       {
@@ -562,7 +562,7 @@ struct matrix_props
 	exit(1);
       }
     //If this is zero, we read only 1 row???
-    size_t nrowread = endrow-startrow+1; //+1 for reading single row
+    hsize_t nrowread = endrow-startrow+1; //+1 for reading single row
 
     //T vec[ nrowread ][ ncolread ];
     //Can I make it contiguous? I guess so...
