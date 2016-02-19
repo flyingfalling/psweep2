@@ -657,14 +657,29 @@ struct dream_abc_state
     if( get_param<int64_t>(nCR_param) > 1 )
       {
 	std::vector<size_t> chosen = multinomial_sample( pcr, 1, rand_gen ); //PCR is a problem...?
-	std::vector<size_t>::iterator it = std::find(chosen.begin(), chosen.end(), 1);
+	/*std::vector<size_t>::iterator it = std::find(chosen.begin(), chosen.end(), 1);
 	if( it == chosen.end() )
 	  {
 	    fprintf(stderr, "ERROR couldnt find chosen in multinomial!!!??!?!\n");
 	    exit(1);
 	  }
-	
-	return *it;
+	*/
+	size_t idx=0;
+	for(size_t x=0; x<pcr.size(); ++x)
+	  {
+	    if( chosen[x] == 1 )
+	      {
+		idx = x;
+	      }
+	  }
+	/*if( idx != *it )
+	  {
+	    fprintf(stderr, "ERROR, std FIND is not doing what the heck it should in chooseCRidx!!!\n");
+	    exit(1);
+	  }
+	*/
+	//return *it;
+	return idx;
 	//Find which one has 1 in it...
 	//return chosen[0];
       }
@@ -704,7 +719,15 @@ struct dream_abc_state
     //std::vector<float64_t> pdelta = get_vector<float64_t>( pdelta_state );
     std::vector<float64_t> pdelta = get_vector_param<float64_t>( pdelta_param );
     std::vector<size_t> npairs = multinomial_sample( pdelta, 1, rand_gen );
-    return (npairs[0]);
+    size_t idx=0;
+    for(size_t x=0; x<npairs.size(); ++x)
+      {
+	if(npairs[x] == 1)
+	  {
+	    idx=x;
+	  }
+      }
+    return idx;
   }
   
   std::vector<size_t> draw_DE_pairs( const size_t& npairs, std::default_random_engine& rand_gen )

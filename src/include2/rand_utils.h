@@ -96,6 +96,9 @@ std::vector<std::vector<T> > N_uniform(std::vector<T> mins, std::vector<T> maxes
 //REV: This adds a "1" to each category as it is sampled hahahaha. So if I only choose 1...
 std::vector<size_t> multinomial_sample( const std::vector<float64_t>& p, const size_t& nsamples, std::default_random_engine& rand_gen )
 {
+  //p.size() is 3 (i.e. same as nCR in his case, i.e. same as ncat
+  //1 is n.
+  
   //Call binomial sample multiple times. As in PDFLIB.
   //All probabilities are [0, 1]
   float64_t ptot = 0.0;
@@ -103,6 +106,7 @@ std::vector<size_t> multinomial_sample( const std::vector<float64_t>& p, const s
   {
     ptot = ptot + p[i];
   }
+  
   if ( 0.99999 < ptot ) 
   {
     std::cerr << std::endl;
@@ -119,7 +123,7 @@ std::vector<size_t> multinomial_sample( const std::vector<float64_t>& p, const s
   //Make binomial distribution.
   
   
-  for( size_t icat = 0; icat < ix.size() - 1; ++icat )
+  for( size_t icat = 0; icat < (ix.size() - 1); ++icat )
     {
       float64_t prob = p[icat] / ptot;
       std::binomial_distribution<size_t> bdist( ntot, prob );
@@ -131,7 +135,7 @@ std::vector<size_t> multinomial_sample( const std::vector<float64_t>& p, const s
 	  return ix;
 	}
       ntot -= ix[icat]; //only do this if it would be >0 (these are unsigned ints)
-      ptot = ptot - p[icat];
+      ptot -= p[icat];
     }
 
   //Final one is that...yea. Hm, I think probabilities are all messed up, I need to shift them over. Final one is assumed to be distance to 1.0...
