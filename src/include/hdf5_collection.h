@@ -541,6 +541,8 @@ struct matrix_props
       opendataset();
     //Basically create hyperslab, and then just read that to a correct size local thing.
     H5::DataSpace origspace = dataset.getSpace();
+
+    fprintf(stdout, "ORIGSPACE ID is: [%ld]\n", origspace.getId());
       
     int rank = origspace.getSimpleExtentNdims();
       
@@ -573,6 +575,8 @@ struct matrix_props
       
     //Tells size of vect in mem to write to.
     H5::DataSpace memspace(ndims, dimsmem);
+
+    fprintf(stdout, "MEMSPACE Id is [%ld]\n", memspace.getId());
     
     hsize_t offset[ndims] = { startrow, 0 };
     
