@@ -749,6 +749,8 @@ struct dream_abc_state
     size_t nchains = get_param<int64_t>( N_chains_param );
     size_t nrows = state.get_num_rows( X_hist);
     //Reconstruct the chain, and take only 2nd half
+
+    size_t hstart = nrows-(timepoints*nchains);
     
     //REV: This is a pain in the ass, because it has to be from the last
     //50%. So, it's not possible to incrementally do it I think.
@@ -760,62 +762,46 @@ struct dream_abc_state
 
     //REV: This is the problem, we can't do this it will get too large. Need to do it incrementally... I.e. get nchains at a time.
     //std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows<float64_t>( X_hist, timepoints*nchains );
-    std::vector<std::vector<float64_t> > X_half_hist = state.read_row_range<float64_t>( X_hist, nrows-(timepoints*nchains), nrows-((timepoints-1)*nchains) );
+    std::vector<std::vector<float64_t> > X_half_hist = state.read_row_range<float64_t>( X_hist, hstart, hstart+nchains-1 ); //e.g. zero to 10, if inclusive.
     
-    std::vector< std::vector< float64_t> > each_chain_and_dim_means;
-    std::vector< std::vector< float64_t> > each_chain_and_dim_vars;
-
-    fprintf(stdout, "Got history etc...is the problem that we don't have enough memory?\n");
-    
-    //for each chain:
+    std::vector< std::vector< float64_t> > each_chain_and_dim_means( nchains, std::vector<float64_t>( ndims ) ); //will fill with first value bc n=1
     for(size_t c=0; c<nchains; ++c)
       {
-	if(X_half_hist.size() <= c)
-	  {
-	    fprintf(stderr, "ERROR X half hist size too small\n");
-	    exit(1);
-	  }
-	//First time point is just n=1, i.e. just single value.
-	std::vector<float64_t> chainmean = X_half_hist[c];
-	if( chainmean.size() != ndims)
-	  {
-	    fprintf(stderr, "In compute mean from GR of chain [%ld], chainmean vect width is not correct size (should be ndims)\n", c);
-	      exit(1);
-	  }
-	std::vector<float64_t> chainvar( ndims, 0 );
-	std::vector<float64_t> chainM2n( ndims, 0 );
+	each_chain_and_dim_means[c] = X_half_hist[c];
+      }
+    std::vector< std::vector< float64_t> > each_chain_and_dim_vars( nchains, std::vector<float64_t>( ndims, 0 ) );
+    std::vector< std::vector< float64_t> > chainM2n( nchains, std::vector<float64_t>( ndims, 0 ) );
 
-	fprintf(stdout, "(COMP GR) Will compute mean/variance for chain [%ld]\n", c);
-	size_t n=1;
-
-	size_t hstart = nrows-(timepoints*nchains);
-	for(size_t t=(nchains+c); t<(timepoints*nchains); t+=nchains)
+    size_t n=1;
+    
+    //fprintf(stdout, "Got history etc...is the problem that we don't have enough memory?\n");
+    for(size_t t=1; t<timepoints; ++t) //(nchains+c); t<(timepoints*nchains); t+=nchains)
+      {
+	++n;
+	size_t tstart = t*nchains;
+	
+	X_half_hist = state.read_row_range<float64_t>( X_hist, hstart+tstart, hstart+tstart+nchains-1 );
+	
+	//for each chain:
+	for(size_t c=0; c<nchains; ++c)
 	  {
-	    ++n;
-	    if(X_half_hist.size() <= t)
+	    if(X_half_hist.size() <= c)
 	      {
-		fprintf(stderr, "ERROR X half hist size too small for T (size=%ld), want (%ld)\n", X_half_hist.size(), t);
+		fprintf(stderr, "ERROR X half hist size too small\n");
 		exit(1);
 	      }
-	    X_half_hist = state.read_row_range<float64_t>( X_hist, hstart+t, hstart+t+nchains );
 	    
 	    //for each dim
 	    for(size_t d=0; d<ndims; ++d)
 	      {
-		float64_t sample = X_half_hist[t][d];
-		float64_t newmean = incrementally_compute_mean( chainmean[d], sample, n);
-		float64_t newvar = incrementally_compute_var( chainmean[d], chainvar[d], newmean, sample, n, chainM2n[d] );
-		chainmean[d] = newmean;
-		chainvar[d] = newvar;
+		float64_t sample = X_half_hist[c][d];
+		float64_t newmean = incrementally_compute_mean( each_chain_and_dim_means[c][d], sample, n);
+		float64_t newvar = incrementally_compute_var( each_chain_and_dim_means[c][d], each_chain_and_dim_vars[c][d], newmean, sample, n, chainM2n[c][d] );
+		each_chain_and_dim_means[c][d] = newmean;
+		each_chain_and_dim_vars[c][d] = newvar;
 	      }
 	  }
-	each_chain_and_dim_means.push_back(chainmean);
-	each_chain_and_dim_vars.push_back(chainvar);
-	fprintf(stdout, "Chain [%ld] means and variances: ", c);
-	print1dvec_row<float64_t>( chainmean );
-	print1dvec_row<float64_t>( chainvar );
-	fprintf(stdout, "\n");
-      }
+      } //end for all timepoints
     
     std::vector<float64_t> variance_between_chain_means(ndims, 0);
     std::vector<float64_t> means(ndims, 0);
