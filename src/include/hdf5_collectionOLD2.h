@@ -216,42 +216,29 @@ std::string build_hdf5_path(std::vector< std::string >& path, std::string basepa
 
 struct matrix_props
 {
-  H5::H5File* myf=NULL;
   std::string name; //we use this as name of thing in H5 file.
   H5::DataSet dataset;
   std::vector<std::string> my_colnames;
   size_t my_nrows;
   size_t my_ncols;
   H5::DataType matrix_datatype;
-  
+
   const std::string __MATRIX_DATATYPE_NAME = "__MY_DATATYPE";
 
-  void opendataset()
-  {
-    dataset = myf->openDataSet( name );
-  }
-
-  void closedataset()
-  {
-    dataset.close();
-  }
-  
   std::string get_string_parameter( const std::string& pname )
   {
     H5TRY()
-      opendataset();
-    H5::Attribute attr = dataset.openAttribute( pname.c_str() ); 
-    H5::DataType datatype = attr.getDataType();
 
-     
-     
+      H5::Attribute attr = dataset.openAttribute( pname.c_str() ); 
+     H5::DataType datatype = attr.getDataType(); 
+    
     std::string strreadbuf("");
     attr.read(datatype, strreadbuf); 
-    closedataset();
-    std::string ret = strreadbuf; 
-    return ret;
 
-    H5CATCH()	  
+	  std::string ret = strreadbuf; 
+	  return ret;
+
+      H5CATCH()	  
 
   }
   
@@ -262,8 +249,7 @@ struct matrix_props
     H5::DataSpace attr_dataspace(H5S_SCALAR); // = H5::DataSpace (1, dims );
 
     H5::StrType datatype(0, H5T_VARIABLE);
-
-    opendataset();
+    
     H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
 						       datatype,
 						       attr_dataspace);
@@ -271,7 +257,6 @@ struct matrix_props
     //REV: Crap, I think I need to make sure to always write to a "known" type i.e. in file system space don't use NATIVE_LONG, bc it won't know what
     //it is on other side?
     attribute.write( datatype, val );
-    closedataset();
     H5CATCH()
     return;
   }
@@ -311,26 +296,25 @@ struct matrix_props
     //H5::Exception::dontPrint();
 
     H5TRY()
+        // HDF5 only understands vector of char* :-(
+        std::vector<const char*> arr_c_str;
+        for (size_t ii = 0; ii < strings.size(); ++ii)
+	  {
+	    arr_c_str.push_back(strings[ii].c_str());
+	  }
 
-      // HDF5 only understands vector of char* :-(
-      std::vector<const char*> arr_c_str;
-    for (size_t ii = 0; ii < strings.size(); ++ii)
-      {
-	arr_c_str.push_back(strings[ii].c_str());
-      }
+        //
+        //  one dimension
+        // 
+        hsize_t     str_dimsf[1] {arr_c_str.size()};
+        H5::DataSpace   dataspace(1, str_dimsf);
 
-    //
-    //  one dimension
-    // 
-    hsize_t     str_dimsf[1] {arr_c_str.size()};
-    H5::DataSpace   dataspace(1, str_dimsf);
+        // Variable length string
+        H5::StrType datatype(H5::PredType::C_S1, H5T_VARIABLE); 
+        H5::DataSet str_dataset = f.createDataSet(dsetname, datatype, dataspace);
 
-    // Variable length string
-    H5::StrType datatype(H5::PredType::C_S1, H5T_VARIABLE); 
-    H5::DataSet str_dataset = f.createDataSet(dsetname, datatype, dataspace);
-
-    str_dataset.write(arr_c_str.data(), datatype);
-    //str_dataset.close(); //Automatic at destructor!?
+        str_dataset.write(arr_c_str.data(), datatype);
+      
     H5CATCH()
   }
 
@@ -370,10 +354,7 @@ struct matrix_props
     //Need to know type?
     dataset =  f.createDataSet( dsetname, matrix_datatype,
 				dataspace, prop);
-    myf = &f;
-    
-    closedataset();
-    
+
     //REV: SET HERE, because we need dataset created already.
     add_string_parameter( __MATRIX_DATATYPE_NAME, datatype);
     
@@ -389,7 +370,6 @@ struct matrix_props
   void get_dset_size( size_t& _nrows, size_t& _ncols )
   {
     H5TRY()
-      opendataset();
     H5::DataSpace origspace = dataset.getSpace();
       
     int rank = origspace.getSimpleExtentNdims();
@@ -399,7 +379,6 @@ struct matrix_props
     int ndims = origspace.getSimpleExtentDims( dims_out, NULL);
     _nrows = dims_out[0];
     _ncols = dims_out[1];
-    closedataset();
     H5CATCH()
   }
 
@@ -423,11 +402,10 @@ struct matrix_props
   void add_data( const std::vector<std::string>& colnames, const std::vector<std::vector<T>>& toadd )
   {
     H5TRY()
-      opendataset();
     //Assume that order of colnames is same. Check that for sanity I guess.
     //Need to extend current dataset.
     H5::DataSpace origspace = dataset.getSpace();
-    
+
     int rank = origspace.getSimpleExtentNdims();
     /*
      * Get the dimension size of each dimension in the dataspace and
@@ -485,8 +463,6 @@ struct matrix_props
     dataset.write( vec.data(), matrix_datatype, toaddspace, origspace );
     
     my_nrows += dims_toadd[0];
-
-    closedataset();
     H5CATCH()
     //fprintf(stdout, "Finished writing\n");
   } //end add_data
@@ -496,7 +472,6 @@ struct matrix_props
   std::vector< std::vector<T> > read_whole_dataset()
   {
     H5TRY()
-      opendataset();
     H5::DataSpace origspace = dataset.getSpace();
 
     int rank = origspace.getSimpleExtentNdims();
@@ -525,8 +500,7 @@ struct matrix_props
 	    retvect[x][y] = vec[ x*retvect[x].size() + y ];
 	  }
       }
-
-    closedataset();
+      
     return retvect;
     H5CATCH()
   } //end read_whole_dataset
@@ -536,9 +510,8 @@ struct matrix_props
   template <typename T>
   std::vector< std::vector<T> > read_row_range( const size_t& startrow, const size_t& endrow)
   {
-    
+
     H5TRY()
-      opendataset();
     //Basically create hyperslab, and then just read that to a correct size local thing.
     H5::DataSpace origspace = dataset.getSpace();
       
@@ -590,7 +563,7 @@ struct matrix_props
 	    retvect[x][y] = vec[ x*retvect[x].size() + y ];
 	  }
       }
-    closedataset();
+
     return retvect;
     H5CATCH()
   } //end read_row_range
@@ -601,7 +574,6 @@ struct matrix_props
   {
 
     H5TRY()
-      opendataset();
     //Basically create hyperslab, and then just read that to a correct size local thing.
     H5::DataSpace origspace = dataset.getSpace();
       
@@ -655,7 +627,6 @@ struct matrix_props
     origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
     
     dataset.write( vec.data(), matrix_datatype, memspace, origspace );
-    closedataset();
     H5CATCH()
     return;
   } //end read_row_range
@@ -760,10 +731,8 @@ struct matrix_props
     //Load it from the existing file.
 
     //REV CHECKING IF ITS DSET OPEN/CLOSE that matters!!
-    //dataset = f.openDataSet( name );
-    opendataset();
-    myf=&f;
-    closedataset();
+    dataset = f.openDataSet( name );
+
     //I don't need TYPE to open the dataset (yet)
     load_datatype();
     
@@ -786,7 +755,6 @@ struct matrix_props
     //fprintf(stdout, "Will call colnameds with name [%s]?!\n", colnamesds.c_str());
     //colnames_dataset = f.openDataSet( colnamesds );
     my_colnames = read_string_dset( colnamesds, f );
-    
     H5CATCH()
   }
 
