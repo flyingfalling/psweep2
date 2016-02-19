@@ -69,7 +69,7 @@ test_fakesys.exe:  $(UNITTESTDIR)/test_fakesys.cpp $(HEADERFILES)
 #	h5c++ -c --verbose $(CFLAGS) $(INCLUDEFLAG) $(INCLUDEDIR)/hdf5_collection.cpp
 
 test_dream_abc.exe: $(UNITTESTDIR)/test_dream_abc.cpp $(HEADERFILES)
-	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dream_abc.exe $(UNITTESTDIR)/test_dream_abc.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5 -lhdf5_serial
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dream_abc.exe $(UNITTESTDIR)/test_dream_abc.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5 #-lhdf5_serial
 
 clean:
 	rm *.exe *.o
