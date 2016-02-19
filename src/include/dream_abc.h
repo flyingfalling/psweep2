@@ -787,6 +787,8 @@ struct dream_abc_state
 
 	fprintf(stdout, "(COMP GR) Will compute mean/variance for chain [%ld]\n", c);
 	size_t n=1;
+
+	size_t hstart = nrows-(timepoints*nchains);
 	for(size_t t=(nchains+c); t<(timepoints*nchains); t+=nchains)
 	  {
 	    ++n;
@@ -795,7 +797,7 @@ struct dream_abc_state
 		fprintf(stderr, "ERROR X half hist size too small for T (size=%ld), want (%ld)\n", X_half_hist.size(), t);
 		exit(1);
 	      }
-	    X_half_hist = state.read_row_range<float64_t>( X_hist, nrows-(timepoints*nchains)+(t*nchains), nrows-((timepoints-1)*nchains)+(t*nchains) );
+	    X_half_hist = state.read_row_range<float64_t>( X_hist, hstart+t, hstart+t+nchains );
 	    
 	    //for each dim
 	    for(size_t d=0; d<ndims; ++d)

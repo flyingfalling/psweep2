@@ -490,7 +490,8 @@ struct matrix_props
     return retvect;
   } //end read_whole_dataset
 
-  
+
+  //REV: This is ****INCLUSIVE***** of end row!!!!!
   template <typename T>
   std::vector< std::vector<T> > read_row_range( const size_t& startrow, const size_t& endrow)
   {
@@ -508,7 +509,7 @@ struct matrix_props
       
     if( endrow >= dims_out[0] )
       {
-	fprintf(stderr, "SUPER ERROR, trying to read past end of matrix\n");
+	fprintf(stderr, "SUPER ERROR, trying to read past end of matrix (requested endrow [%ld], but matrix size is [%ld])\n", endrow, dims_out[0]);
 	exit(1);
       }
 
