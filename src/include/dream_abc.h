@@ -730,7 +730,7 @@ struct dream_abc_state
     float64_t pgamma1 = get_param<float64_t>( p_jump_param );
     if( udist(rand_gen) < pgamma1 )
       {
-	fprintf(stdout, "PGAMMA IS 1!\n");
+	//fprintf(stdout, "PGAMMA IS 1!\n");
 	return ( 1.0 );
       }
     if( D < 1 || tau < 1)
