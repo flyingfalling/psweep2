@@ -155,7 +155,7 @@ int fakereadlastrow( H5::DataSet& ds, const int& previd )
   hid_t id2 = ds.getId();
   hid_t myspace = H5Dget_space(id2);
   H5::DataSpace origspace( myspace );
-
+  H5Sclose( myspace );
   //H5::DataSpace origspace = ds.getSpace();
 
   int rank = origspace.getSimpleExtentNdims();
@@ -190,7 +190,7 @@ int fakereadlastrow( H5::DataSet& ds, const int& previd )
      fprintf(stdout, "PREV ID: [%d] now ID: [%d] (origspace is: [%d])\n", previd, id, origspace.getId());
    }
 
-  H5Sclose( myspace );
+  
   //origspace.close();
   //memspace.close();
   
@@ -252,9 +252,10 @@ int main()
       
       id = fakereadlastrow(ds, id);
 	
-
+      
       //f.flush(H5F_SCOPE_GLOBAL);
     }
+  fprintf(stdout, "Finished all iters!\n");
   
   return 0;
 }
