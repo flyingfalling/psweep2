@@ -738,7 +738,7 @@ struct dream_abc_state
   
   bool compute_GR()
   {
-    fprintf(stdout, "Computing GR\n");
+    //fprintf(stdout, "Computing GR\n");
     int64_t timepoints = get_param<int64_t>(t_gen) / 2;
     if( timepoints < 2 )
       {
@@ -755,23 +755,8 @@ struct dream_abc_state
     //REV: This is a pain in the ass, because it has to be from the last
     //50%. So, it's not possible to incrementally do it I think.
     //However, I can at least incrementally compute STD as I go.
-
-    //fprintf(stdout, "Getting last [%ld] rows of X_hist ([%ld] chains times [%ld] timepoints), which has [%ld] rows...\n", timepoints*nchains, nchains, timepoints, state.get_num_rows( X_hist) );
     
-    //fprintf(stdout, "Trying to get last [%ld] rows of Xhist (Xhist has [%ld] rows\n",timepoints*nchains, state.get_num_rows(X_hist) );
-
-    //REV: This is the problem, we can't do this it will get too large. Need to do it incrementally... I.e. get nchains at a time.
-    //std::vector<std::vector<float64_t> > X_half_hist = state.get_last_n_rows<float64_t>( X_hist, timepoints*nchains );
-
-    bool printme=false;
-    if( false && get_param<int64_t>( t_gen ) > 22900 )
-      {
-	printme=true;
-      }
-    if(printme) fprintf(stdout, "About to get first chunk of guys, from [%ld] to [%ld]\n", hstart, hstart+nchains-1);
     std::vector<std::vector<float64_t> > X_half_hist = state.read_row_range<float64_t>( X_hist, hstart, hstart+nchains-1 ); //e.g. zero to 10, if inclusive.
-    if(printme) fprintf(stdout, "GOT first chunk of guys, from [%ld] to [%ld] (got [%ld] rows)\n", hstart, hstart+nchains-1, X_half_hist.size());
-
     
     std::vector< std::vector< float64_t> > each_chain_and_dim_means( nchains, std::vector<float64_t>( ndims ) ); //will fill with first value bc n=1
     for(size_t c=0; c<nchains; ++c)
@@ -782,20 +767,16 @@ struct dream_abc_state
     std::vector< std::vector< float64_t> > chainM2n( nchains, std::vector<float64_t>( ndims, 0 ) );
     
     size_t n=1;
-
-    fprintf(stdout, "Will compute out of [%ld] timepoints!\n", timepoints);
-    //REV: Print number of acceptances of the chains during this period too (might have DEVIATION of zero, which is the problem?)
     
-    //fprintf(stdout, "Got history etc...is the problem that we don't have enough memory?\n");
     for(size_t t=1; t<timepoints; ++t) //(nchains+c); t<(timepoints*nchains); t+=nchains)
       {
 	++n;
 	size_t tstart = t*nchains;
 
 	
-	if(printme) fprintf(stdout, "Getting timepoint [%ld] chunk of guys, from [%ld] to [%ld] (of [%ld])\n", t, hstart+tstart, hstart+tstart+nchains-1, timepoints);
+	
 	X_half_hist = state.read_row_range<float64_t>( X_hist, hstart+tstart, hstart+tstart+nchains-1 );
-	if(printme) fprintf(stdout, "GOT timepoint [%ld] of guys, from [%ld] to [%ld] (got [%ld] rows (of [%ld])\n", t, hstart+tstart, hstart+tstart+nchains-1, X_half_hist.size(), timepoints);
+	
 	
 	//for each chain:
 	for(size_t c=0; c<nchains; ++c)
@@ -810,21 +791,21 @@ struct dream_abc_state
 	    for(size_t d=0; d<ndims; ++d)
 	      {
 		float64_t sample = X_half_hist[c][d];
-		if(printme) fprintf(stdout, "Computing mean for dim [%ld]\n", d);
 		float64_t newmean = incrementally_compute_mean( each_chain_and_dim_means[c][d], sample, n);
-		if(printme) fprintf(stdout, "Computed mean for dim [%ld] (%lf). Now computing variance...\n", d, newmean);
 		float64_t newvar = incrementally_compute_var( each_chain_and_dim_means[c][d], each_chain_and_dim_vars[c][d], newmean, sample, n, chainM2n[c][d] );
-		if(printme) fprintf(stdout, "Computed variance for dim [%ld] (%lf)\n", d, newvar);
 		each_chain_and_dim_means[c][d] = newmean;
 		each_chain_and_dim_vars[c][d] = newvar;
-		if(printme) fprintf(stdout, "Set values\n");
-	      }
-	    if(printme) fprintf(stdout, "Finished computing for chain [%ld]\n", c);
-	  }
-	if(printme) fprintf(stdout, "Finished computing for all chains and all dims for timepoint [%ld] of [%ld]\n", t, timepoints);
-	
+	      } //end for all dims
+	  } //end for all chains
+	fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
+	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
+
+	fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
+	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
+
+	fprintf(stdout, "\n");
       } //end for all timepoints
-    
+
     std::vector<float64_t> variance_between_chain_means(ndims, 0);
     std::vector<float64_t> means(ndims, 0);
     
@@ -835,7 +816,11 @@ struct dream_abc_state
 	  {
 	    means[d] += each_chain_and_dim_means[c][d];
 	  }
+	
       }
+    fprintf(stdout, "(GR) MEAN among all chains: ");
+    print1dvec_row<float64_t>( means );
+    fprintf(stdout, "\n");
     
     vector_divide_constant<float64_t>( means, (float64_t)nchains );
     for(size_t c=0; c<nchains; ++c)
@@ -847,8 +832,15 @@ struct dream_abc_state
 	  }
       }
 
+    //This is VARIANCE of each chains mean from the mean of all the chains.
     
     vector_divide_constant<float64_t>(variance_between_chain_means, (float64_t)(nchains-1));
+    fprintf(stdout, "(GR) VARIANCE (std^2) among all chains: ");
+    print1dvec_row<float64_t>( variance_between_chain_means );
+    fprintf(stdout, "\n");
+    
+    
+    //Wait, what the heck? Multiply by #timepoints??!?!
     vector_multiply_constant<float64_t>(variance_between_chain_means, (float64_t)timepoints);
     
 
@@ -863,6 +855,9 @@ struct dream_abc_state
 	    mean_variance_all_chain_dim[d] += each_chain_and_dim_vars[c][d];
 	  }
       }
+
+    //This is the mean of the *variance* of each dimension. In other words, distance of each chains's variance, from the mean variance of all the chains
+    //This represents MEAN of VARIANCE
     vector_divide_constant<float64_t>( mean_variance_all_chain_dim, (float64_t)nchains );
 
     std::vector<float64_t> Rstat(ndims, 0);
