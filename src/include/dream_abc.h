@@ -114,7 +114,7 @@ struct dream_abc_state
 		 int64_t GRskip=20,
 		 int64_t nCR=3,
 		 int64_t pCRskip=10,
-		 float64_t pjump=0.2
+		 float64_t pjump=0.1
 		 )
   {
     state.new_collection( statefilename );
