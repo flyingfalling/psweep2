@@ -797,15 +797,19 @@ struct dream_abc_state
 		each_chain_and_dim_vars[c][d] = newvar;
 	      } //end for all dims
 	  } //end for all chains
-	fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
-	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
-
-	fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
-	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
-
-	fprintf(stdout, "\n");
+	
       } //end for all timepoints
 
+    for(size_t c=0; c<nchains; ++c)
+      {
+    fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
+    print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
+    
+    fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
+    print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
+    
+    fprintf(stdout, "\n");
+      }
     std::vector<float64_t> variance_between_chain_means(ndims, 0);
     std::vector<float64_t> means(ndims, 0);
     
