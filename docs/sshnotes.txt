@@ -1,0 +1,11 @@
+For git stuff.
+
+Need to generate key (id_rsa and id_rsa.pub).
+Make sure chmod 600 or 400?
+Copy PUBLIC one to target computers .ssh/authorized_hosts or something
+do ssh-keygen -p, to set a "passphrase" to protect your keys?! Not sure what this is for. Can leave blank. Not same pass word as target.
+do ssh-add [private_key_file] to add the private key file. This will prompt for passphrase if you set one.
+Now can login I think.
+
+Note you can manually login by doing
+ssh -i [private key file?] target
