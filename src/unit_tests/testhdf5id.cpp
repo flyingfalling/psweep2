@@ -138,10 +138,12 @@ std::vector<double> readlastrow( H5::DataSet& ds )
   return returnvect;
 }
 
-//H5::DataSpace memspace;
+H5::DataSpace memspace;
+H5::DataSpace origspace;
+
 int fakereadlastrow( H5::DataSet& ds, const int& previd )
 {
-  H5::DataSpace origspace = ds.getSpace();
+  origspace = ds.getSpace();
   int rank = origspace.getSimpleExtentNdims();
   hsize_t dims[rank];
   int ndims = origspace.getSimpleExtentDims( dims, NULL);
@@ -156,9 +158,9 @@ int fakereadlastrow( H5::DataSet& ds, const int& previd )
   hsize_t dimsmem[rank] = {1,  ncols};
   //H5::DataSpace memspace(rank, dimsmem);
   //H5::DataSpace* memspace = new H5::DataSpace(rank, dimsmem);
-
-  H5::DataSpace memspace = ds.getSpace();
   
+  //H5::DataSpace memspace = ds.getSpace();
+  memspace = ds.getSpace();
   memspace.setExtentSimple(rank, dimsmem);
   
   hsize_t offset[rank] = { targrowoffset, targcoloffset };
@@ -171,7 +173,7 @@ int fakereadlastrow( H5::DataSet& ds, const int& previd )
 
   //if(id % 1000000 == 0 )
   // {
-  //fprintf(stdout, "PREV ID: [%d] now ID: [%d] (origspace is: [%d])\n", previd, id, origspace.getId());
+  fprintf(stdout, "PREV ID: [%d] now ID: [%d] (origspace is: [%d])\n", previd, id, origspace.getId());
   //    }
 
   //memspace->close();
@@ -179,8 +181,8 @@ int fakereadlastrow( H5::DataSet& ds, const int& previd )
   //memspace.close();
   //memspace.~DataSpace();
 
-  origspace.close();
-  memspace.close();
+  //origspace.close();
+  //memspace.close();
   
   return id;
   
