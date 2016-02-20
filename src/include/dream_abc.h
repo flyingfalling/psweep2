@@ -631,15 +631,17 @@ struct dream_abc_state
 
     //Each pair gets the same pair of moving dims.
     moving_dims = choose_moving_dims( Didx, rand_gen );
-    if(gamma==1 && (moving_dims != ndims) )
-      {
-	fprintf(stderr, "REV* error, even though gamma==1, moving dims is not full!\n");
-	exit(1);
-      }
+    
     //fprintf(stdout, "In choose moving dims and npairs:\n");
     //print1dvec_row<size_t>( moving_dims );
     
     mypairs = draw_DE_pairs( tauidx+1, rand_gen );
+
+    if(gamma==1 && ( (moving_dims.size() != ndims) || mypairs.size() != 2 ))
+      {
+	fprintf(stderr, "REV* error, even though gamma==1, moving dims is not full!\n");
+	exit(1);
+      }
     
     //Assume we're pushing back to the correct "new" chain at the end.
     state.add_row_to_matrix<int64_t>( CR_used_hist, std::vector<int64_t>(1, Didx ));
@@ -806,10 +808,10 @@ struct dream_abc_state
 
     for(size_t c=0; c<nchains; ++c)
       {
-	fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
+	fprintf(stdout, "\n(GR) Chain [%ld] mean: ", c);
 	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
 	
-	fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
+	fprintf(stdout, "\n(GR) Chain [%ld] mean: ", c);
 	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
 	
 	fprintf(stdout, "\n");
