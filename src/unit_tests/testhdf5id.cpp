@@ -171,10 +171,10 @@ int fakereadlastrow( H5::DataSet& ds, const int& previd )
   int id =   memspace.getId();
   //int id =   memspace->getId();
 
-  //if(id % 1000000 == 0 )
-  // {
+  if(id % 1000000 == 0 )
+   {
   fprintf(stdout, "PREV ID: [%d] now ID: [%d] (origspace is: [%d])\n", previd, id, origspace.getId());
-  //    }
+      }
 
   //memspace->close();
   //delete memspace;
