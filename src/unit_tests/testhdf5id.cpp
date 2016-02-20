@@ -150,7 +150,7 @@ int fakereadlastrow( H5::DataSet& ds, const int& previd )
   hsize_t nrows=dims[0];
   hsize_t ncols=dims[1];
   std::vector<double> returnvect( ncols );
-
+  
   
   
   hsize_t targrowoffset = nrows-1;
