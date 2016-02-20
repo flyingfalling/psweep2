@@ -12,6 +12,15 @@
 //Because what the heck? Hopefully it won't cache it.
 
 
+H5::DataSpace getSpace( H5::DataSet& ds )
+{
+  hid_t id2 = ds.getId();
+  hid_t myspace = H5Dget_space(id2);
+  H5::DataSpace origspace( myspace );
+  H5Sclose( myspace );
+  return origspace;
+}
+
 void addrow( H5::DataSet& ds, const std::vector<double>& rowtowrite )
 {
   //Get the space (since it may have grown in length since last time of course )
@@ -152,10 +161,11 @@ std::vector<double> readlastrow( H5::DataSet& ds )
 int fakereadlastrow( H5::DataSet& ds, const int& previd )
 {
   
-  hid_t id2 = ds.getId();
+  /*hid_t id2 = ds.getId();
   hid_t myspace = H5Dget_space(id2);
   H5::DataSpace origspace( myspace );
-  H5Sclose( myspace );
+  H5Sclose( myspace );*/
+  H5::DataSpace origspace = getSpace( ds );
   //H5::DataSpace origspace = ds.getSpace();
 
   int rank = origspace.getSimpleExtentNdims();
