@@ -12,8 +12,6 @@
 //Because what the heck? Hopefully it won't cache it.
 
 
-hsize_t currid;
-
 void addrow( H5::DataSet& ds, const std::vector<double>& rowtowrite )
 {
   //Get the space (since it may have grown in length since last time of course )
@@ -140,6 +138,56 @@ std::vector<double> readlastrow( H5::DataSet& ds )
   return returnvect;
 }
 
+//H5::DataSpace memspace;
+int fakereadlastrow( H5::DataSet& ds, const int& previd )
+{
+  H5::DataSpace origspace = ds.getSpace();
+  int rank = origspace.getSimpleExtentNdims();
+  hsize_t dims[rank];
+  int ndims = origspace.getSimpleExtentDims( dims, NULL);
+  hsize_t nrows=dims[0];
+  hsize_t ncols=dims[1];
+  std::vector<double> returnvect( ncols );
+
+  
+  
+  hsize_t targrowoffset = nrows-1;
+  hsize_t targcoloffset = 0;
+  hsize_t dimsmem[rank] = {1,  ncols};
+  //H5::DataSpace memspace(rank, dimsmem);
+  //H5::DataSpace* memspace = new H5::DataSpace(rank, dimsmem);
+
+  H5::DataSpace memspace = ds.getSpace();
+  
+  memspace.setExtentSimple(rank, dimsmem);
+  
+  hsize_t offset[rank] = { targrowoffset, targcoloffset };
+  origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
+  
+  //REV: Would read here, but I don't for speed.
+  //ds.read( returnvect.data(), H5::PredType::NATIVE_DOUBLE, memspace, origspace );
+  int id =   memspace.getId();
+  //int id =   memspace->getId();
+
+  //if(id % 1000000 == 0 )
+  // {
+  //fprintf(stdout, "PREV ID: [%d] now ID: [%d] (origspace is: [%d])\n", previd, id, origspace.getId());
+  //    }
+
+  //memspace->close();
+  //delete memspace;
+  //memspace.close();
+  //memspace.~DataSpace();
+
+  origspace.close();
+  memspace.close();
+  
+  return id;
+  
+  
+  //return returnvect;
+}
+
 int main()
 {
   std::string fname = "testhdf5file.h5";
@@ -156,7 +204,7 @@ int main()
   H5::DataSpace dataspace( nranks, dims, max_dims );
   H5::DSetCreatPropList prop; //could set properties, but whatever.
   
-  const hsize_t nrows_chunk = 100; //Need to mess with CACHE size too!
+  const hsize_t nrows_chunk = 1; //Need to mess with CACHE size too!
   hsize_t  chunk_dims[nranks] = { nrows_chunk, ncols};
   prop.setChunk(nranks, chunk_dims);
 
@@ -166,22 +214,24 @@ int main()
 				    dataspace, prop);
   
 
+  size_t nrowstoadd=1;
   
-  
-  for(size_t t=0; t<200000; ++t)
+  for(size_t t=0; t<nrowstoadd; ++t)
     {
       std::vector<double> rowtowrite( ncols, (double)t );
       addrow( ds, rowtowrite );
     }
-  
+
+  int id=0;
   for(size_t t=0; t<10000000; ++t)
     {
-      if((t+1) % 1000 == 0 )
-	{
-	  fprintf(stdout, "Generation [%ld]\n", t);
-	}
       
-      readallrows( ds );
+      //readallrows( ds );
+      
+      //readlastrow();
+      
+      id = fakereadlastrow(ds, id);
+	
 
       //f.flush(H5F_SCOPE_GLOBAL);
     }
