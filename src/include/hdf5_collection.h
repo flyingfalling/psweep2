@@ -61,6 +61,16 @@ typedef long int int64_t;
 /*   return res; */
 /* } */
 
+H5::DataSpace getSpace( H5::DataSet& ds )
+{
+  hid_t id2 = ds.getId();
+  hid_t myspace = H5Dget_space(id2);
+  H5::DataSpace origspace( myspace );
+  H5Sclose( myspace );
+  return origspace;
+}
+
+
 std::vector<std::string> dummy_colnames( const size_t& size )
 {
   return std::vector<std::string>( size, "__NONAME" );
@@ -224,12 +234,6 @@ struct matrix_props
   size_t my_ncols;
   H5::DataType matrix_datatype;
 
-  H5::DataSpace memspace;
-  H5::DataSpace origspace;
-  H5::DataSpace toaddspace;
-  H5::DataSpace space;
-  H5::DataSpace dataspace;
-  H5::DataSpace attr_dataspace;
   const std::string __MATRIX_DATATYPE_NAME = "__MY_DATATYPE";
 
   void opendataset()
@@ -245,12 +249,10 @@ struct matrix_props
   std::string get_string_parameter( const std::string& pname )
   {
     H5TRY()
-      opendataset();
+    opendataset();
     H5::Attribute attr = dataset.openAttribute( pname.c_str() ); 
     H5::DataType datatype = attr.getDataType();
-
-     
-     
+         
     std::string strreadbuf("");
     attr.read(datatype, strreadbuf); 
     closedataset();
@@ -265,8 +267,8 @@ struct matrix_props
   {
     H5TRY()
 
-      //REV: MAKE THIS JUST RENAMED? Or is this reading an ID type to initialize it?
-      attr_dataspace = H5::DataSpace(H5S_SCALAR); // = H5::DataSpace (1, dims );
+    //REV: MAKE THIS JUST RENAMED? Or is this reading an ID type to initialize it?
+    H5::DataSpace attr_dataspace(H5S_SCALAR); // = H5::DataSpace (1, dims );
 
     H5::StrType datatype(0, H5T_VARIABLE);
 
@@ -321,7 +323,7 @@ struct matrix_props
     H5TRY()
 
       // HDF5 only understands vector of char* :-(
-      std::vector<const char*> arr_c_str;
+    std::vector<const char*> arr_c_str;
     for (size_t ii = 0; ii < strings.size(); ++ii)
       {
 	arr_c_str.push_back(strings[ii].c_str());
@@ -336,7 +338,7 @@ struct matrix_props
     //This is making a dataspace of 1 RANK and N dims in that rank. (3rd argument is NULL ptr...)
     //I can hack this by doing .setExtentSimple( RANK, DIMSINEACHRANK)
     //dataspace = H5::DataSpace(1, str_dimsf);
-    dataspace.setExtentSimple( 1, str_dimsf );
+    H5::DataSpace dataspace( 1, str_dimsf );
 
     // Variable length string
     H5::StrType datatype(H5::PredType::C_S1, H5T_VARIABLE); 
@@ -369,8 +371,8 @@ struct matrix_props
     //Create SPACE
     H5TRY()
     
-      //      dataspace = H5::DataSpace(ndims, dims, max_dims);
-      dataspace.setExtentSimple( ndims, dims, max_dims);
+    H5::DataSpace dataspace(ndims, dims, max_dims);
+    //dataspace.setExtentSimple( ndims, dims, max_dims);
     
     //Create PROPERTIES
     H5::DSetCreatPropList prop;
@@ -406,8 +408,9 @@ struct matrix_props
   void get_dset_size( size_t& _nrows, size_t& _ncols )
   {
     H5TRY()
-      opendataset();
-    origspace = dataset.getSpace();
+    opendataset();
+    //origspace = dataset.getSpace();
+    H5::DataSpace origspace = getSpace( dataset );
       
     int rank = origspace.getSimpleExtentNdims();
     //rank should be 2!?!!
@@ -441,10 +444,11 @@ struct matrix_props
   void add_data( const std::vector<std::string>& colnames, const std::vector<std::vector<T>>& toadd )
   {
     H5TRY()
-      opendataset();
+    opendataset();
     //Assume that order of colnames is same. Check that for sanity I guess.
     //Need to extend current dataset.
-    origspace = dataset.getSpace();
+    //origspace = dataset.getSpace();
+    H5::DataSpace origspace = getSpace( dataset );
     
     int rank = origspace.getSimpleExtentNdims();
     /*
@@ -474,14 +478,16 @@ struct matrix_props
     
     //DataSpace targspace2 = dataset.getSpace();
     //REV: get the new (hopefully updated) space...I.e. after extending it.
-    origspace = dataset.getSpace(); 
+    //origspace = dataset.getSpace();
+    origspace = getSpace( dataset );
 
     //Select the hyperslab to write to (in (now exteded) original space ).
     origspace.selectHyperslab( H5S_SELECT_SET, dims_toadd, offset );
 
     //Define the dataspace of the data to write.
     //toaddspace = H5::DataSpace( ndims, dims_toadd );
-    toaddspace.setExtentSimple(ndims, dims_toadd);
+    //toaddspace.setExtentSimple(ndims, dims_toadd);
+    H5::DataSpace toaddspace(ndims, dims_toadd );
 
     //REV: Make contiguous data...
     //Row first (i.e. same rows data is grouped) order...
@@ -520,7 +526,7 @@ struct matrix_props
   {
     H5TRY()
       opendataset();
-    origspace = dataset.getSpace();
+    H5::DataSpace origspace = getSpace( dataset );
 
     int rank = origspace.getSimpleExtentNdims();
       
@@ -564,7 +570,8 @@ struct matrix_props
     H5TRY()
       opendataset();
     //Basically create hyperslab, and then just read that to a correct size local thing.
-    origspace = dataset.getSpace();
+    //origspace = dataset.getSpace();
+    H5::DataSpace origspace = getSpace( dataset );
 
     //fprintf(stdout, "ORIGSPACE ID is: [%ld]\n", origspace.getId());
       
@@ -579,7 +586,7 @@ struct matrix_props
       
     if( endrow >= dims_out[0] )
       {
-	fprintf(stderr, "SUPER ERROR, trying to read past end of matrix (requested endrow [%ld], but matrix size is [%ld])\n", endrow, dims_out[0]);
+	fprintf(stderr, "SUPER ERROR, trying to read past end of matrix (requested endrow [%ld], but matrix size is [%lld])\n", endrow, dims_out[0]);
 	exit(1);
       }
 
@@ -600,7 +607,8 @@ struct matrix_props
       
     //Tells size of vect in mem to write to.
     //memspace=H5::DataSpace(ndims, dimsmem);
-    memspace.setExtentSimple(ndims, dimsmem);
+    //memspace.setExtentSimple(ndims, dimsmem);
+    H5::DataSpace memspace(ndims, dimsmem);
     
     //fprintf(stdout, "MEMSPACE Id is [%ld]\n", memspace.getId());
     
@@ -634,9 +642,10 @@ struct matrix_props
   {
 
     H5TRY()
-      opendataset();
+    opendataset();
     //Basically create hyperslab, and then just read that to a correct size local thing.
-    origspace = dataset.getSpace();
+    //origspace = dataset.getSpace();
+    H5::DataSpace origspace = getSpace(dataset);
       
     int rank = origspace.getSimpleExtentNdims();
       
@@ -682,8 +691,9 @@ struct matrix_props
     
     //Tells size of vect in mem to write to.
     //memspace = H5::DataSpace(ndims, dimsmem);
-    memspace.setExtentSimple(ndims,dimsmem);
-      
+    //memspace.setExtentSimple(ndims,dimsmem);
+    H5::DataSpace memspace( ndims, dimsmem);
+    
     hsize_t offset[ndims] = { startrow, 0 };
     
     origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
@@ -750,7 +760,7 @@ struct matrix_props
     H5::DataSet cdataset = f.openDataSet( dsname );
     
     
-    space = cdataset.getSpace();
+    H5::DataSpace space = getSpace( cdataset );
       
     int rank = space.getSimpleExtentNdims();
 
@@ -839,8 +849,7 @@ struct hdf5_collection
 {
   H5::H5File file; 
   std::string file_name;
-  H5::DataSpace attr_dataspace;
-  H5::DataSpace dataspace;
+  
   std::vector< matrix_props > matrices;
   
   const std::string PARAM_DSET_NAME = "__PARAMETERS";
@@ -888,8 +897,8 @@ struct hdf5_collection
     hsize_t numdims=1;
     hsize_t DIM1length=1;
     hsize_t dims[numdims] = { DIM1length };
-    //H5::DataSpace attr_dataspace = H5::DataSpace (1, dims );
-    attr_dataspace.setExtentSimple(1, dims);
+    H5::DataSpace attr_dataspace(1, dims );
+    //attr_dataspace.setExtentSimple(1, dims);
 
     H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
     H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
@@ -907,8 +916,8 @@ struct hdf5_collection
     hsize_t numdims=1;
     hsize_t DIM1length=1;
     hsize_t dims[numdims] = { DIM1length };
-    //    H5::DataSpace attr_dataspace = H5::DataSpace (1, dims );
-    attr_dataspace.setExtentSimple( 1, dims );
+    H5::DataSpace attr_dataspace(1, dims );
+    //attr_dataspace.setExtentSimple( 1, dims );
 
     H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
     H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
@@ -1024,8 +1033,8 @@ struct hdf5_collection
     dims[0] = 0;
 
     
-    //H5::DataSpace dataspace(ndims, dims);
-    dataspace.setExtentSimple(ndims, dims);
+    H5::DataSpace dataspace(ndims, dims);
+    //dataspace.setExtentSimple(ndims, dims);
     H5::DSetCreatPropList ds_creatplist;
     file.createDataSet( PARAM_DSET_NAME, H5::PredType::NATIVE_INT,
 			dataspace, ds_creatplist  );

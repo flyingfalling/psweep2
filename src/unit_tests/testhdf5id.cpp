@@ -12,6 +12,15 @@
 //Because what the heck? Hopefully it won't cache it.
 
 
+H5::DataSpace getSpace( H5::DataSet& ds )
+{
+  hid_t id2 = ds.getId();
+  hid_t myspace = H5Dget_space(id2);
+  H5::DataSpace origspace( myspace );
+  H5Sclose( myspace );
+  return origspace;
+}
+
 void addrow( H5::DataSet& ds, const std::vector<double>& rowtowrite )
 {
   //Get the space (since it may have grown in length since last time of course )
@@ -49,7 +58,15 @@ void addrow( H5::DataSet& ds, const std::vector<double>& rowtowrite )
 
 hsize_t getnrows( H5::DataSet& ds )
 {
-  H5::DataSpace origspace = ds.getSpace();
+
+  //REV: Hack to switch getSpace(); We want to manually drop the ID? Leak in 1.8.15...
+  //We do this by getting ID of ds, then manually getting space of it, and creating DataSpace with that ID?
+  hid_t id2 = ds.getId();
+  hid_t myspace = H5Dget_space(id2);
+  
+  //H5::DataSpace origspace = ds.getSpace();
+  H5::DataSpace origspace( myspace );
+  
   int rank = origspace.getSimpleExtentNdims();
   hsize_t dims[rank];
   int ndims = origspace.getSimpleExtentDims( dims, NULL);
@@ -138,12 +155,19 @@ std::vector<double> readlastrow( H5::DataSet& ds )
   return returnvect;
 }
 
-H5::DataSpace memspace;
-H5::DataSpace origspace;
+//H5::DataSpace memspace;
+//H5::DataSpace origspace;
 
 int fakereadlastrow( H5::DataSet& ds, const int& previd )
 {
-  origspace = ds.getSpace();
+  
+  /*hid_t id2 = ds.getId();
+  hid_t myspace = H5Dget_space(id2);
+  H5::DataSpace origspace( myspace );
+  H5Sclose( myspace );*/
+  H5::DataSpace origspace = getSpace( ds );
+  //H5::DataSpace origspace = ds.getSpace();
+
   int rank = origspace.getSimpleExtentNdims();
   hsize_t dims[rank];
   int ndims = origspace.getSimpleExtentDims( dims, NULL);
@@ -159,9 +183,9 @@ int fakereadlastrow( H5::DataSet& ds, const int& previd )
   //H5::DataSpace memspace(rank, dimsmem);
   //H5::DataSpace* memspace = new H5::DataSpace(rank, dimsmem);
   
-  //H5::DataSpace memspace = ds.getSpace();
-  memspace = ds.getSpace();
-  memspace.setExtentSimple(rank, dimsmem);
+  H5::DataSpace memspace(rank, dimsmem);
+    //memspace = ds.getSpace();
+    //memspace.setExtentSimple(rank, dimsmem);
   
   hsize_t offset[rank] = { targrowoffset, targcoloffset };
   origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
@@ -171,11 +195,11 @@ int fakereadlastrow( H5::DataSet& ds, const int& previd )
   int id =   memspace.getId();
   //int id =   memspace->getId();
 
-  if(id % 1000000 == 0 )
-   {
-  fprintf(stdout, "PREV ID: [%d] now ID: [%d] (origspace is: [%d])\n", previd, id, origspace.getId());
-      }
 
+  
+  //origspace.close();
+  //memspace.close();
+  
   //memspace->close();
   //delete memspace;
   //memspace.close();
@@ -234,9 +258,10 @@ int main()
       
       id = fakereadlastrow(ds, id);
 	
-
+      
       //f.flush(H5F_SCOPE_GLOBAL);
     }
+  fprintf(stdout, "Finished all iters!\n");
   
   return 0;
 }
