@@ -114,7 +114,7 @@ struct dream_abc_state
 		 int64_t GRskip=20,
 		 int64_t nCR=3,
 		 int64_t pCRskip=10,
-		 float64_t pjump=0.1
+		 float64_t pjump=0.8
 		 )
   {
     state.new_collection( statefilename );
@@ -631,7 +631,7 @@ struct dream_abc_state
 
     //Each pair gets the same pair of moving dims.
     moving_dims = choose_moving_dims( Didx, rand_gen );
-    if(gamma==1 && (moving_dims != ndims) )
+    if(gamma==1 && (moving_dims.size() != ndims) )
       {
 	fprintf(stderr, "REV* error, even though gamma==1, moving dims is not full!\n");
 	exit(1);
@@ -703,6 +703,7 @@ struct dream_abc_state
     float64_t pgamma1 = get_param<float64_t>( p_jump_param );
     if( udist(rand_gen) < pgamma1 )
       {
+	fprintf(stdout, "PGAMMA IS 1!\n");
 	return ( 1.0 );
       }
     if( D < 1 || tau < 1)
@@ -806,10 +807,10 @@ struct dream_abc_state
 
     for(size_t c=0; c<nchains; ++c)
       {
-	fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
+	fprintf(stdout, "\n(GR) Chain [%ld] mean: ", c);
 	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
 	
-	fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
+	fprintf(stdout, "\n(GR) Chain [%ld] mean: ", c);
 	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
 	
 	fprintf(stdout, "\n");
