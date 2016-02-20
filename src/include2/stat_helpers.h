@@ -10,7 +10,7 @@
 template <typename T>
 std::vector< T > indices_to_vector_slices(const std::vector< T >& source, const std::vector<size_t>& indices)
 {
-  std::vector<T > res( source.size() );
+  std::vector<T > res( indices.size() );
   for(size_t i=0; i<indices.size(); ++i)
     {
       if( indices[i] < source.size() )

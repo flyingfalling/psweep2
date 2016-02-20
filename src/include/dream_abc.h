@@ -114,7 +114,7 @@ struct dream_abc_state
 		 int64_t GRskip=20,
 		 int64_t nCR=3,
 		 int64_t pCRskip=10,
-		 float64_t pjump=0.8
+		 float64_t pjump=0.2
 		 )
   {
     state.new_collection( statefilename );
@@ -302,10 +302,15 @@ struct dream_abc_state
     END_GEN();
   }
 
-  std::vector<float64_t> make_single_proposal( const std::vector<float64_t>& parent, std::default_random_engine& rand_gen )
+  //std::vector<float64_t> make_single_proposal( const std::vector<float64_t>& parent, const std::vector<std::vector<float64_t>>& Xcurr, std::default_random_engine& rand_gen )
+  std::vector<float64_t> make_single_proposal( const size_t& mychainidx,
+					       const std::vector<std::vector<float64_t>>& Xcurr,
+					       std::default_random_engine& rand_gen )
   {
-    std::vector<float64_t> proposal = parent;
 
+    std::vector<float64_t> parent = Xcurr[mychainidx];
+    std::vector<float64_t> proposal = parent;
+    
     
     std::vector<size_t> pairidxs;
     std::vector<size_t> movingdims;
@@ -313,10 +318,13 @@ struct dream_abc_state
 
     //fprintf(stdout, "ABC: will choose dims and pairs\n");
     choose_moving_dims_and_npairs( pairidxs, movingdims, gamma, rand_gen );
-    
+
     //fprintf(stdout, "ABC: DONE: choose dims and pairs. Will now get slices from matrix history\n");
-    
-    std::vector<std::vector<float64_t> > mypairs = state.get_matrix_row_slice<float64_t>( X_hist, pairidxs );
+
+
+    //ROFL, this is wrong, it should get from CURRENT FUCKING ONE, i.e. N BACK IN HISTORY!!! Lololololol...I.e. xstate.
+    //std::vector<std::vector<float64_t> > mypairs = state.get_matrix_row_slice<float64_t>( X_hist, pairidxs );
+    std::vector<std::vector<float64_t> > mypairs = indices_to_vector_slices< std::vector<float64_t> >(Xcurr, pairidxs );
 
     //fprintf(stdout, "ABC: Got history slices\n");
     
@@ -388,12 +396,21 @@ struct dream_abc_state
 	
 	proposal[ actualdim ] += e_noise * gamma * diff + epsilon_noise;
       }
+    
+    
+    fprintf(stdout, "Chain [%ld] (gamma==[%lf]):\n", mychainidx, gamma);
+    print1dvec_row<float64_t>( parent );
+    print1dvec_row<float64_t>( proposal );
+    
   
     proposal = edge_handling( proposal, rand_gen );
+    
+    
     return proposal;
   }
 
-  std::vector<float64_t> edge_handling( const std::vector<float64_t>& proposal, std::default_random_engine& rand_gen )
+  std::vector<float64_t> edge_handling( const std::vector<float64_t>& proposal,
+					std::default_random_engine& rand_gen )
   {
     //CLAMP seems best, but will stack up if it keeps trying to go out the side
     //REFLECT will give right "distribution", but bad position...
@@ -434,18 +451,18 @@ struct dream_abc_state
     for(size_t c=0; c<Xcurr.size(); ++c)
       {
 	//fprintf(stdout, "Attempting to make proposal [%ld]\n", c);
-	std::vector<float64_t> proposal = make_single_proposal( Xcurr[c], rand_gen );
+	std::vector<float64_t> proposal = make_single_proposal( c, Xcurr, rand_gen ); //haha, could just send whole thing...and chain# Easier.
 	//fprintf(stdout, "FINISHED to make proposal [%ld]\n", c);
 	
 	proposals.push_back(proposal);
       }
 
-    for(size_t c=0; c<nchains; ++c)
+    /*for(size_t c=0; c<nchains; ++c)
       {
 	fprintf(stdout, "Chain [%ld]:\n", c);
 	print1dvec_row<float64_t>( Xcurr[c] );
 	print1dvec_row<float64_t>( proposals[c] );
-      }
+	}*/
     
     //fprintf(stdout, "Finished making all props, will update CR Cnts in make_all_proposals\n");
     update_CRcnts();
@@ -482,7 +499,12 @@ struct dream_abc_state
   }
 
   //https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
-  float64_t incrementally_compute_var( const float64_t& prevmean, const float64_t& prevvar, const float64_t& newmean, const float64_t& newsample, const int64_t& newn, float64_t& prevM2n )
+  float64_t incrementally_compute_var( const float64_t& prevmean,
+				       const float64_t& prevvar,
+				       const float64_t& newmean,
+				       const float64_t& newsample,
+				       const int64_t& newn,
+				       float64_t& prevM2n )
   {
     float64_t M2n = prevM2n + (newsample - prevmean) * (newsample - newmean);
     if(newn <= 1)
@@ -586,7 +608,8 @@ struct dream_abc_state
   
   
   //REV: Huh, there's probably a more intelligent way to do this than manually check each one?
-  std::vector<size_t> choose_moving_dims( const size_t& Didx,  std::default_random_engine& rand_gen ) 
+  std::vector<size_t> choose_moving_dims( const size_t& Didx,
+					  std::default_random_engine& rand_gen ) 
   {
     std::uniform_real_distribution<float64_t> udist(0.0, 1.0);
     
@@ -615,7 +638,10 @@ struct dream_abc_state
     return mymovingdims;
   }
   
-  void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs, std::vector<size_t>& moving_dims, float64_t& gamma, std::default_random_engine& rand_gen )
+  void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs,
+				      std::vector<size_t>& moving_dims,
+				      float64_t& gamma,
+				      std::default_random_engine& rand_gen )
   {
     size_t ndims = get_param<int64_t>( d_dims_param );
     size_t Didx = choose_CR_index( rand_gen );
@@ -631,13 +657,6 @@ struct dream_abc_state
 
     //Each pair gets the same pair of moving dims.
     moving_dims = choose_moving_dims( Didx, rand_gen );
-    if(gamma==1 && (moving_dims.size() != ndims) )
-      {
-	fprintf(stderr, "REV* error, even though gamma==1, moving dims is not full!\n");
-	exit(1);
-      }
-    //fprintf(stdout, "In choose moving dims and npairs:\n");
-    //print1dvec_row<size_t>( moving_dims );
     
     mypairs = draw_DE_pairs( tauidx+1, rand_gen );
 
@@ -701,7 +720,9 @@ struct dream_abc_state
   }
   
   //REV: dprime/D is the number of moving dimensions, tau is the number of pairs being used...
-  float64_t compute_gamma_nonsnooker(const size_t& tau, const size_t& D, std::default_random_engine& rand_gen )
+  float64_t compute_gamma_nonsnooker(const size_t& tau,
+				     const size_t& D,
+				     std::default_random_engine& rand_gen )
   {
 
     std::uniform_real_distribution<float64_t> udist(0.0, 1.0);
@@ -742,7 +763,8 @@ struct dream_abc_state
     return idx;
   }
   
-  std::vector<size_t> draw_DE_pairs( const size_t& npairs, std::default_random_engine& rand_gen )
+  std::vector<size_t> draw_DE_pairs( const size_t& npairs,
+				     std::default_random_engine& rand_gen )
   {
     return choose_k_indices_from_N_no_replace( get_param<int64_t>(N_chains_param), npairs*2, rand_gen );
   }
