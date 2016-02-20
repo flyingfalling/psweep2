@@ -640,6 +640,12 @@ struct dream_abc_state
     //print1dvec_row<size_t>( moving_dims );
     
     mypairs = draw_DE_pairs( tauidx+1, rand_gen );
+
+    if(gamma==1 && ( (moving_dims.size() != ndims) || mypairs.size() != 2 ))
+      {
+	fprintf(stderr, "REV* error, even though gamma==1, moving dims is not full!\n");
+	exit(1);
+      }
     
     //Assume we're pushing back to the correct "new" chain at the end.
     state.add_row_to_matrix<int64_t>( CR_used_hist, std::vector<int64_t>(1, Didx ));
