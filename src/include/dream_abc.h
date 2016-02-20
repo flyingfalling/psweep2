@@ -617,6 +617,7 @@ struct dream_abc_state
   
   void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs, std::vector<size_t>& moving_dims, float64_t& gamma, std::default_random_engine& rand_gen )
   {
+    size_t ndims = get_param<int64_t>( d_dims_param );
     size_t Didx = choose_CR_index( rand_gen );
     size_t tauidx = draw_num_DE_pairs( rand_gen );
     gamma = compute_gamma_nonsnooker( tauidx+1, Didx+1, rand_gen );
@@ -630,7 +631,11 @@ struct dream_abc_state
 
     //Each pair gets the same pair of moving dims.
     moving_dims = choose_moving_dims( Didx, rand_gen );
-
+    if(gamma==1 && (moving_dims != ndims) )
+      {
+	fprintf(stderr, "REV* error, even though gamma==1, moving dims is not full!\n");
+	exit(1);
+      }
     //fprintf(stdout, "In choose moving dims and npairs:\n");
     //print1dvec_row<size_t>( moving_dims );
     
@@ -797,10 +802,10 @@ struct dream_abc_state
 		each_chain_and_dim_vars[c][d] = newvar;
 	      } //end for all dims
 	  } //end for all chains
-	fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
+	fprintf(stdout, "\n(GR) Chain [%ld] mean: ", c);
 	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
 
-	fprintf(stdout, "\n(GR) Chain [%ld] mean: ");
+	fprintf(stdout, "\n(GR) Chain [%ld] mean: ", c);
 	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
 
 	fprintf(stdout, "\n");
@@ -818,11 +823,12 @@ struct dream_abc_state
 	  }
 	
       }
+    vector_divide_constant<float64_t>( means, (float64_t)nchains );
     fprintf(stdout, "(GR) MEAN among all chains: ");
     print1dvec_row<float64_t>( means );
     fprintf(stdout, "\n");
     
-    vector_divide_constant<float64_t>( means, (float64_t)nchains );
+    
     for(size_t c=0; c<nchains; ++c)
       {
 	for(size_t d=0; d<ndims; ++d)
