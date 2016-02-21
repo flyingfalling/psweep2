@@ -886,8 +886,7 @@ struct hdf5_collection
     hsize_t DIM1length=1;
     hsize_t dims[numdims] = { DIM1length };
     H5::DataSpace attr_dataspace(1, dims );
-    //attr_dataspace.setExtentSimple(1, dims);
-
+    
     H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
     H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
 						   H5::PredType::NATIVE_LONG, 
@@ -905,8 +904,7 @@ struct hdf5_collection
     hsize_t DIM1length=1;
     hsize_t dims[numdims] = { DIM1length };
     H5::DataSpace attr_dataspace(1, dims );
-    //attr_dataspace.setExtentSimple( 1, dims );
-
+    
     H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
     H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
 						       /*H5::PredType::IEEE_F64BE*/ H5::PredType::NATIVE_DOUBLE , 
