@@ -235,12 +235,12 @@ struct matrix_props
   H5::DataType matrix_datatype;
 
   const std::string __MATRIX_DATATYPE_NAME = "__MY_DATATYPE";
-
+  
   void opendataset()
   {
     dataset = myf->openDataSet( name );
   }
-
+  
   void closedataset()
   {
     dataset.close();
@@ -249,13 +249,13 @@ struct matrix_props
   std::string get_string_parameter( const std::string& pname )
   {
     H5TRY()
-    opendataset();
+      //opendataset();
     H5::Attribute attr = dataset.openAttribute( pname.c_str() ); 
     H5::DataType datatype = attr.getDataType();
          
     std::string strreadbuf("");
     attr.read(datatype, strreadbuf); 
-    closedataset();
+    //closedataset();
     std::string ret = strreadbuf; 
     return ret;
 
@@ -272,7 +272,7 @@ struct matrix_props
 
     H5::StrType datatype(0, H5T_VARIABLE);
 
-    opendataset();
+    //opendataset();
     H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
 						       datatype,
 						       attr_dataspace);
@@ -280,8 +280,8 @@ struct matrix_props
     //REV: Crap, I think I need to make sure to always write to a "known" type i.e. in file system space don't use NATIVE_LONG, bc it won't know what
     //it is on other side?
     attribute.write( datatype, val );
-    //attr_dataspace.close();
-    closedataset();
+    
+    //closedataset();
     H5CATCH()
     return;
   }
@@ -345,7 +345,6 @@ struct matrix_props
     H5::DataSet str_dataset = f.createDataSet(dsetname, datatype, dataspace);
 
     str_dataset.write(arr_c_str.data(), datatype);
-    //dataspace.close();
     //str_dataset.close(); //Automatic at destructor!?
     H5CATCH()
   }
@@ -388,8 +387,7 @@ struct matrix_props
     dataset =  f.createDataSet( dsetname, matrix_datatype,
 				dataspace, prop);
     myf = &f;
-    //dataspace.close();
-    closedataset();
+    //closedataset();
     
     //REV: SET HERE, because we need dataset created already.
     add_string_parameter( __MATRIX_DATATYPE_NAME, datatype);
@@ -408,7 +406,7 @@ struct matrix_props
   void get_dset_size( size_t& _nrows, size_t& _ncols )
   {
     H5TRY()
-    opendataset();
+      //opendataset();
     //origspace = dataset.getSpace();
     H5::DataSpace origspace = getSpace( dataset );
       
@@ -420,7 +418,7 @@ struct matrix_props
     _nrows = dims_out[0];
     _ncols = dims_out[1];
     //origspace.close();
-    closedataset();
+    //closedataset();
     H5CATCH()
   }
 
@@ -444,7 +442,7 @@ struct matrix_props
   void add_data( const std::vector<std::string>& colnames, const std::vector<std::vector<T>>& toadd )
   {
     H5TRY()
-    opendataset();
+      //opendataset();
     //Assume that order of colnames is same. Check that for sanity I guess.
     //Need to extend current dataset.
     //origspace = dataset.getSpace();
@@ -513,9 +511,7 @@ struct matrix_props
     dataset.write( vec.data(), matrix_datatype, toaddspace, origspace );
     
     my_nrows += dims_toadd[0];
-    //origspace.close();
-    //toaddspace.close();
-    closedataset();
+    //closedataset();
     H5CATCH()
     //fprintf(stdout, "Finished writing\n");
   } //end add_data
@@ -525,7 +521,7 @@ struct matrix_props
   std::vector< std::vector<T> > read_whole_dataset()
   {
     H5TRY()
-      opendataset();
+      //opendataset();
     H5::DataSpace origspace = getSpace( dataset );
 
     int rank = origspace.getSimpleExtentNdims();
@@ -554,9 +550,7 @@ struct matrix_props
 	    retvect[x][y] = vec[ x*retvect[x].size() + y ];
 	  }
       }
-    //origspace.close();
-    //toaddspace.close();
-    closedataset();
+    //closedataset();
     return retvect;
     H5CATCH()
   } //end read_whole_dataset
@@ -568,7 +562,7 @@ struct matrix_props
   {
     
     H5TRY()
-      opendataset();
+      //opendataset();
     //Basically create hyperslab, and then just read that to a correct size local thing.
     //origspace = dataset.getSpace();
     H5::DataSpace origspace = getSpace( dataset );
@@ -629,9 +623,7 @@ struct matrix_props
 	  }
       }
 
-    //memspace.close();
-    //origspace.close();
-    closedataset();
+    //closedataset();
     return retvect;
     H5CATCH()
   } //end read_row_range
@@ -642,7 +634,7 @@ struct matrix_props
   {
 
     H5TRY()
-    opendataset();
+      //opendataset();
     //Basically create hyperslab, and then just read that to a correct size local thing.
     //origspace = dataset.getSpace();
     H5::DataSpace origspace = getSpace(dataset);
@@ -690,8 +682,6 @@ struct matrix_props
     hsize_t dimsmem[ndims] = {nrowwrite, ncolwrite};
     
     //Tells size of vect in mem to write to.
-    //memspace = H5::DataSpace(ndims, dimsmem);
-    //memspace.setExtentSimple(ndims,dimsmem);
     H5::DataSpace memspace( ndims, dimsmem);
     
     hsize_t offset[ndims] = { startrow, 0 };
@@ -699,9 +689,7 @@ struct matrix_props
     origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
     
     dataset.write( vec.data(), matrix_datatype, memspace, origspace );
-    //origspace.close();
-    //memspace.close();
-    closedataset();
+    //closedataset();
     H5CATCH()
     return;
   } //end read_row_range
@@ -757,7 +745,7 @@ struct matrix_props
   std::vector<std::string> read_string_dset( const std::string& dsname, H5::H5File& f )
   {
     H5TRY()
-    H5::DataSet cdataset = f.openDataSet( dsname );
+      H5::DataSet cdataset = f.openDataSet( dsname );
     
     
     H5::DataSpace space = getSpace( cdataset );
@@ -809,7 +797,7 @@ struct matrix_props
     //dataset = f.openDataSet( name );
     opendataset();
     myf=&f;
-    closedataset();
+    //closedataset();
     //I don't need TYPE to open the dataset (yet)
     load_datatype();
     

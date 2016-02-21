@@ -1,0 +1,5 @@
+REV: Make it so global names can be passed into config scripts
+REV: Make it so that we can do Mii san time series
+REV: Make it so we can work totally from memory. Make it so that means are done by another C++ funct.
+REV: Make it run on GPU for mad speed.
+REV: Make hdf5 not do the open/close thing for datasets. Reduce string reads/rights, optimize searches of large vectors for strings...
