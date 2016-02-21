@@ -12,7 +12,7 @@ LIBS=-L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 #default: test_cmd_script_parser.exe
 #default: test_parampoint.exe
 #default: test_searchalgo.exe
-default: test_dream_abc.exe
+default: test_dream_abc_z.exe
 
 HEADERFILES=$(INCLUDEDIR)/$* $(INCLUDE2DIR)/$*
 
@@ -70,6 +70,11 @@ test_fakesys.exe:  $(UNITTESTDIR)/test_fakesys.cpp $(HEADERFILES)
 
 test_dream_abc.exe: $(UNITTESTDIR)/test_dream_abc.cpp $(HEADERFILES)
 	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dream_abc.exe $(UNITTESTDIR)/test_dream_abc.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5 #-lhdf5_serial
+
+
+test_dream_abc_z.exe: $(UNITTESTDIR)/test_dream_abc_z.cpp $(HEADERFILES)
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dream_abc_z.exe $(UNITTESTDIR)/test_dream_abc_z.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5 #-lhdf5_serial
+
 
 testhdf5id.exe: $(UNITTESTDIR)/testhdf5id.cpp
 	h5c++ $(CFLAGS) $(UNITTESTDIR)/testhdf5id.cpp -o testhdf5id.exe

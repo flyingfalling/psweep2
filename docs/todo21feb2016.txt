@@ -10,3 +10,6 @@ REV: Make it run on GPU for mad speed. Need to sample available GPUs and use tho
      is waiting for GPU...wow that will be hard to code in current paradigm.
 
 ### REV: Make hdf5 not do the open/close thing for datasets. Reduce string reads/rights, optimize searches of large vectors for strings...
+
+REV: Code DREAM-ABC-Z and use the history instead? Hopefully that will slightly reduce the bias from the current population. Equivalent to increasing
+     number of chains, but only from standpoint of proposal selection. I guess that's OK. Also starting mix is "larger".

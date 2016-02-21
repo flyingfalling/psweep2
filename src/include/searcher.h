@@ -61,7 +61,9 @@
 
 #include <utility_functs.h>
 
+
 #include <dream_abc.h>
+#include <dream_abc_z.h>
 //#include <boost/cstdfloat.hpp>
 //#include <stdfloat.h>
 //#include <stdint.h>
@@ -512,13 +514,56 @@ struct searcher
 			  *fs
 			  );
       }
-    else if( searchtype.compare( "MT-DREAM-zs" ) == 0 )
+    else if( searchtype.compare( "DREAM-ABCz" ) == 0 )
       {
-      
+	std::string varname = "ABC_TEST_MIN_MAX_FILE";
+	std::string minmaxfname = params.getTvar( varname );
+
+	std::string obsdatafname = "ABC_TEST_OBSERV_DATA_FILE";
+	std::string observfname = params.getTvar( obsdatafname );
+	
+	
+	bool hascolnames = true;
+	data_table dtable( minmaxfname, hascolnames );
+	data_table obsvdtable( observfname, hascolnames );
+	
+	fprintf(stdout, "Trying to get VARNAMEs\n");
+	std::vector<std::string> varnames = dtable.get_col( "NAME" );
+	
+	fprintf(stdout, "Got varnames\n");
+	std::vector<double> mins = data_table::to_float64( dtable.get_col( "MIN" ) );
+	fprintf(stdout, "Got mins\n");
+	std::vector<double> maxes = data_table::to_float64( dtable.get_col( "MAX" ) );
+	fprintf(stdout, "Got maxes\n");
+	
+	std::string statefname = "dreamsearch_state.state";
+	
+	//Make a random "problem"
+	size_t ndims = varnames.size();
+
+
+	fprintf(stdout, "Getting observ data from [%s]\n", observfname.c_str() );
+	std::vector<std::string> obsv_varnames = obsvdtable.get_col( "NAME" );
+	std::vector<double> obsv_vals = data_table::to_float64( obsvdtable.get_col( "VAL" ) ); //REV: this will just be ERROR and 0 for me... heh.
+	
+	search_dream_abc_z( statefname,
+			    varnames,
+			    mins,
+			    maxes,
+			    obsv_varnames,
+			    obsv_vals,
+			    pg,
+			    *fs
+			    );
+      }
+    else if( searchtype.compare( "MT-DREAMz" ) == 0 )
+      {
+	fprintf(stderr, "REV: Error, requested search algo MT-DREAMz is not implemented yet!\n");
+	exit(1);
       }
     else
       {
-	fprintf(stderr, "REV: ERROR, search type [%s] not found\n", searchtype.c_str() );
+	fprintf(stderr, "REV: ERROR, search algorithm type [%s] not found\n", searchtype.c_str() );
       }
   
     fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");

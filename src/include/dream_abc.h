@@ -471,12 +471,19 @@ struct dream_abc_state
     
     return newproposal;
   }
+
   
+  std::vector<std::vector<float64_t> > get_current_gen()
+  {
+    size_t nchains = get_param<int64_t>(N_chains_param);
+    return ( state.get_last_n_rows<float64_t>( X_hist, nchains ) );
+  }
+
   std::vector<std::vector< float64_t> > make_proposals(std::default_random_engine& rand_gen)
   {
     size_t nchains = get_param<int64_t>(N_chains_param);
     std::vector<std::vector<float64_t> > proposals;
-    std::vector<std::vector<float64_t> > Xcurr = state.get_last_n_rows<float64_t>( X_hist, nchains );
+    std::vector<std::vector<float64_t> > Xcurr = get_current_gen(); //state.get_last_n_rows<float64_t>( X_hist, nchains );
 
     //fprintf(stdout, "MAKE PROPOSALS: Got last n rows of X [%ld]\n", get_param<int64_t>(N_chains_param));
     for(size_t c=0; c<Xcurr.size(); ++c)
@@ -1407,18 +1414,3 @@ void search_dream_abc( const std::string& statefilename,
 
 
 
-struct dream_abc_searcher
-{
-  //Has some local variables to define parameters of search
-  //and some other guys to determine current state of search.
-  
-  
-  //At any rate we need to do generations.
-  
-  dream_abc_searcher()
-  {
-    
-  }
-  
-  
-}; //end dream_abc_searcher
