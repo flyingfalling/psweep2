@@ -914,13 +914,40 @@ struct dream_abc_state
     //W = 1/chains * SUM(j->chains) s2(j) //mean of variances.
     
     
+    //T=#timepoints
+    //C=#chains
+    //I Have computed:
+    //REV: Note my variance_between_chain_means is multiplied by T.
+    // (T-1)/T + ((C+1)/(C*T))*( var_btw_chain_means / mean_var_all_chain_dim )
+
+    //(T-1)/T + (C/C*T + 1/C*T)* ( var_btw_chain_means/mean_var_all_chain_dim )
+    
+    
+    //V / W
+    //((1-(1/T))*W + (1/T)*B)   / W
+    //((1-(1/T))*( mean_var_all_chain_dim ) + ( (1/T)* (var_btw_chain_means) )
+    //Note, all div by W, so:
+    //(1-(1/T)) + (((1/T) * (var_btw_chain_means)) / mean_var_all_chain_dim)
+    
+
+    //REV: My first term is equilvanet( 1-(1/x) == (x-1)/x )
+
+    //Now, is: (C/C*T + 1/C*T) ==
+    //(1/T) ? ( C+1  / C*T ) (C/C*T + 1/(C*T) = 1/T + 1/(C*T). So I may have been off by a factor of 1/(C*T), which is negligible...oops.
+    //(C/(C*T) + 1/(C*T)) == (C+1)/(C*T).
+
+        
+    
     bool wouldconverge = true;
     for(size_t d=0; d<ndims; ++d)
       {
 	if(mean_variance_all_chain_dim[d] > 0)
 	  {
-	    Rstat[d] = (float64_t)(timepoints-1)/(float64_t)timepoints +
+	    /*Rstat[d] = (float64_t)(timepoints-1)/(float64_t)timepoints +
 	      ( (float64_t)(nchains+1)/(float64_t)(nchains*timepoints) ) *
+	      ( (float64_t)variance_between_chain_means[d] / (float64_t)mean_variance_all_chain_dim[d] );*/
+	    Rstat[d] = (float64_t)(timepoints-1)/(float64_t)timepoints +
+	      ( (float64_t)1.0/(float64_t)(timepoints) ) *
 	      ( (float64_t)variance_between_chain_means[d] / (float64_t)mean_variance_all_chain_dim[d] );
 	    
 	    Rstat[d] = sqrt( Rstat[d] );
