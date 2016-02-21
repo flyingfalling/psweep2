@@ -104,17 +104,17 @@ struct dream_abc_state
 		 const std::vector<float64_t>& maxes,
 		 const std::vector<std::string>& observation_varnames,
 		 const std::vector<float64_t>& observation_stats,
-		 float64_t epsil=0.025,
+		 float64_t epsil=0.05,
 		 int64_t maxgens=1e5,
 		 int64_t numchains=50,
 		 int64_t ndelta=3,
-		 float64_t bnoise=0.05,
+		 float64_t bnoise=0.025,
 		 float64_t bstar=1e-6,
 		 float64_t rthresh=1.2,
-		 int64_t GRskip=20,
+		 int64_t GRskip=50,
 		 int64_t nCR=3,
 		 int64_t pCRskip=10,
-		 float64_t pjump=0.05
+		 float64_t pjump=0.1
 		 )
   {
     state.new_collection( statefilename );
@@ -838,8 +838,8 @@ struct dream_abc_state
 	fprintf(stdout, "\n(GR) Chain [%ld] mean: ", c);
 	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
 	
-	fprintf(stdout, "\n(GR) Chain [%ld] mean: ", c);
-	print1dvec_row<float64_t>( each_chain_and_dim_means[c] );
+	fprintf(stdout, "\n(GR) Chain [%ld] variance: ", c);
+	print1dvec_row<float64_t>( each_chain_and_dim_vars[c] );
 	
 	fprintf(stdout, "\n");
       }
@@ -853,7 +853,7 @@ struct dream_abc_state
 	  {
 	    means[d] += each_chain_and_dim_means[c][d];
 	  }
-	
+
       }
     vector_divide_constant<float64_t>( means, (float64_t)nchains );
     fprintf(stdout, "(GR) MEAN among all chains: ");
@@ -877,8 +877,8 @@ struct dream_abc_state
     print1dvec_row<float64_t>( variance_between_chain_means );
     fprintf(stdout, "\n");
     
-    
-    //Wait, what the heck? Multiply by #timepoints??!?!
+                              
+    //Wait, what the heck? Multiply by #timepoints??!?! (REV: This is because later we do N/(N-1) or some shit?
     vector_multiply_constant<float64_t>(variance_between_chain_means, (float64_t)timepoints);
     
 
@@ -893,12 +893,26 @@ struct dream_abc_state
 	    mean_variance_all_chain_dim[d] += each_chain_and_dim_vars[c][d];
 	  }
       }
-
+    
     //This is the mean of the *variance* of each dimension. In other words, distance of each chains's variance, from the mean variance of all the chains
     //This represents MEAN of VARIANCE
     vector_divide_constant<float64_t>( mean_variance_all_chain_dim, (float64_t)nchains );
 
+    fprintf(stdout, "GR: Mean of the variance among all chains:   ");
+    print1dvec_row<float64_t>( mean_variance_all_chain_dim );
+    
     std::vector<float64_t> Rstat(ndims, 0);
+
+    //REV: SHould be:
+    //R = SQRT(VAR(THETA) / W)
+    //VAR(THETA)=(1-(1/T))*W + (1/T)*B
+    //B=(T/(chains-1))* SUM(j->chains)(chainmean(j)-meanallchains) //variance of CHAIN MEANS (times T)
+    //meanallchains = (1/chains)*SUM(j->chains)(chainmean(j))    //mean among all chain means
+    //chainmean(j) = (1/T)*SUM(i->T)chain(ij)     //mean of chain j
+    //chain(ij) is timepoint i of chain j      //value of chain j at timepoint i
+    //s2(j) = 1/(T-1)*SUM(i->T)(chain(ij) - chainmean(j) )    //variance of chain j
+    //W = 1/chains * SUM(j->chains) s2(j) //mean of variances.
+    
     
     bool wouldconverge = true;
     for(size_t d=0; d<ndims; ++d)
