@@ -1,3 +1,6 @@
+REV: Make so I can change pertinent parameters without re-compiling.
+Either make config script, or allow cmd line passing of e.g. -statefname, -load, -nchains, etc..
+
 REV: Make it so global names can be passed into config scripts
 
 REV: Make it so that we can do Mii san time series
@@ -13,3 +16,31 @@ REV: Make it run on GPU for mad speed. Need to sample available GPUs and use tho
 
 REV: Code DREAM-ABC-Z and use the history instead? Hopefully that will slightly reduce the bias from the current population. Equivalent to increasing
      number of chains, but only from standpoint of proposal selection. I guess that's OK. Also starting mix is "larger".
+
+REV: Random seed distribution doesn't work correctly (just add 1 or something?)
+
+
+NOTE: Issue is that "representing" distribution with population is not good because e.g. with 2 peaks, you will often have moves of "zero", or of between the two, but nothing else.
+
+REV: With ABC, we ALWAYS only go UP in fitness, which is the problem. After we've found a good one, we no longer can follow "gradients" in a sense, i.e. we won't jump to a new region, because there is no jump-back probability...
+
+This might be even more of a problem since we have very stochastic models...
+But, convergence of straight ABC to *one* of the (acceptable) solutions is very fast...however, note that GR statistic fails if there are more than
+one because there simply aren't enough jumps between them because there aren't enough good PROPOSALS between them.
+
+REV: Could I add an "exploration" thing that pushes them apart more if they are clustered? Ugh, we might miss something...
+
+We can start with a prior more biased on the other side too I guess? I.e. randomly sample from them? But then there will be more in areas where there
+were more evals of performant models.
+
+NOTE: Even if a chain switches just right, it doesn't switch that often. So it's more like:
+
+gens +------>
+
+                               ---------------------------------
+C1 ----------------------------
+
+and not:
+
+      ------    - -------      - --    -   --         - --- ----
+C1 ---      ---- -       ------ -  ---- ---  --------- -   -     
