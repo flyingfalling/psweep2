@@ -403,13 +403,14 @@ struct dream_abc_state
     print1dvec_row<float64_t>( proposal );
     
   
-    proposal = edge_handling( proposal, rand_gen );
+    proposal = edge_handling( proposal, "FOLD", rand_gen );
     
     
     return proposal;
   }
 
   std::vector<float64_t> edge_handling( const std::vector<float64_t>& proposal,
+					const std::string& boundstype,
 					std::default_random_engine& rand_gen )
   {
     //CLAMP seems best, but will stack up if it keeps trying to go out the side
@@ -419,22 +420,52 @@ struct dream_abc_state
     std::vector<float64_t> dim_mins = get_vector_param<float64_t>( dim_mins_param );
     std::vector<float64_t> dim_maxes = get_vector_param<float64_t>( dim_maxes_param );
     std::uniform_real_distribution<float64_t> udist(0.0, 1.0);
-    
-    for(size_t d=0; d<proposal.size(); ++d)
+
+    //REV: Could "Clamp" or just straight random sample...but clamp causes problems due to all clustering right on edge. Reflect kind of does this too
+    //but better estimates "local width"? Uniform is most "fair"?
+
+    if( boundstype.compare( "REFLECT" ) == 0 )
       {
-	if(proposal[d] > dim_maxes[d])
+	for(size_t d=0; d<proposal.size(); ++d)
 	  {
-	    newproposal[d] = (2.0 * dim_maxes[d]) - proposal[d];
-	  }
-	else if(proposal[d] < dim_mins[d])
-	  {
-	    newproposal[d] = (2.0 * dim_mins[d]) - proposal[d];
-	  }
+	    if(proposal[d] > dim_maxes[d])
+	      {
+		newproposal[d] = (2.0 * dim_maxes[d]) - proposal[d]; //dimmax - ( proposal-dimmax ). =  dimmax - proposal + dimmax. = 2*dimmax - proposal.
+	      }
+	    else if(proposal[d] < dim_mins[d])
+	      {
+		newproposal[d] = (2.0 * dim_mins[d]) - proposal[d]; //should be: ( proposal-dimmin ). E.g. 0 - 5, it is out -5. So need to go back +5.
+		//So, 2*5 = 10, minus 0 = 10. i.e. 5 inside. If mins=-5, and I'm out -10, that is -10. Minus -10 is +10 = 0, which is +5 from min. OK.
+	      }
 	
-	//if still, just uniform (e.g. because of excessively large / small jumps that takes it "back out the other side" )
-	if(newproposal[d] > dim_maxes[d] || newproposal[d] < dim_mins[d])
+	    //if still, just uniform (e.g. because of excessively large / small jumps that takes it "back out the other side" )
+	    if(newproposal[d] > dim_maxes[d] || newproposal[d] < dim_mins[d])
+	      {
+		newproposal[d] = dim_mins[d] + (dim_maxes[d] - dim_mins[d]) * udist( rand_gen );
+	      }
+	  }
+      }
+    else if( boundstype.compare( "FOLD" ) == 0 )
+      {
+	for(size_t d=0; d<proposal.size(); ++d)
 	  {
-	    newproposal[d] = dim_mins[d] + (dim_maxes[d] - dim_mins[d]) * udist( rand_gen );
+	    if(proposal[d] > dim_maxes[d])
+	      {
+		newproposal[d] = proposal[d] - dim_maxes[d]; //This will give how much it is outside. Add this to dimmin.
+		newproposal[d] = dim_mins[d] + newproposal[d];
+	      }
+	    else if(proposal[d] < dim_mins[d])
+	      {
+		newproposal[d] = proposal[d] - dim_mins[d]; //-5 min and -10, this will give -10 + 5 = -5. So, correct is dimmax + -5
+		//If 5 min and -5 proposal, (i.e. -10 outside), will be -5 - 5 = -10. So will be -10 from maxes. OK.
+		newproposal[d] = dim_maxes[d] + newproposal[d];
+	      }
+	
+	    //if still, just uniform (e.g. because of excessively large / small jumps that takes it "back out the other side" )
+	    if(newproposal[d] > dim_maxes[d] || newproposal[d] < dim_mins[d])
+	      {
+		newproposal[d] = dim_mins[d] + (dim_maxes[d] - dim_mins[d]) * udist( rand_gen );
+	      }
 	  }
       }
     
