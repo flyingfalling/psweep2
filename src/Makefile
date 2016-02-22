@@ -75,6 +75,9 @@ test_dream_abc.exe: $(UNITTESTDIR)/test_dream_abc.cpp $(HEADERFILES)
 test_dream_abc_z.exe: $(UNITTESTDIR)/test_dream_abc_z.cpp $(HEADERFILES)
 	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dream_abc_z.exe $(UNITTESTDIR)/test_dream_abc_z.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5 #-lhdf5_serial
 
+test_dreamabc_enum.exe: $(UNITTESTDIR)/test_dreamabc_enum.cpp $(HEADERFILES)
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dreamabc_enum.exe $(UNITTESTDIR)/test_dreamabc_enum.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5 #-lhdf5_serial
+
 runtestabc: test_dream_abc.exe
 	mpirun -n 2 ./test_dream_abc.exe 1>stdout0 2>stderr0 &
 
