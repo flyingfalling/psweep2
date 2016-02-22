@@ -256,6 +256,7 @@ struct dream_abc_state
     while( get_param<int64_t>( t_gen ) < maxgens )
       {
 	run_generation(fs, pg);
+	//Backup every 10th generation?
       }
   }
 
@@ -285,6 +286,16 @@ struct dream_abc_state
     //Update JUMP probabilities, CR, etc. based on USED CR indices etc.
     update_DeltaCR();
     
+
+
+    cleanup_gen();
+    
+        
+    END_GEN();
+  }
+
+  void cleanup_gen()
+  {
     int64_t tgen = get_param<int64_t>(t_gen);
     int64_t crskip = get_param<int64_t>(pCR_skip_param );
     int64_t grskip = get_param<int64_t>(GR_skip_param );
@@ -298,8 +309,12 @@ struct dream_abc_state
       {
 	bool wouldconverge = compute_GR();
       }
+
+    if( (tgen+1) % backupskip == 0 )
+      {
+	state.backup();
+      }
     
-    END_GEN();
   }
 
   //std::vector<float64_t> make_single_proposal( const std::vector<float64_t>& parent, const std::vector<std::vector<float64_t>>& Xcurr, std::default_random_engine& rand_gen )

@@ -1,6 +1,12 @@
 REV: Make so I can change pertinent parameters without re-compiling.
 Either make config script, or allow cmd line passing of e.g. -statefname, -load, -nchains, etc..
 
+REV: BACKUP!!! Make it backup (do a CP, need 2 backups to ensure always having a "good" copy).
+After finish writing to BU-0, copy current one to BU-1, and set some marker for it. We have finished writing to BU-0, so that one should be good. Problem is if an error occurred in the copy. nah there shouldn't be a problem? Anyway, next
+time step we want to open that one? No... at any rate, failing partway is the way. If we SET the start marker? Hm, just need 1 BU after all.
+
+REV: Single-chain tracking of convergence (in case they do not jump between modes orz). Once the mean (normalized) of all dims stops moving? Nah, won't work unless we can normalize them well.
+
 REV: Make it so global names can be passed into config scripts
 
 REV: Make it so that we can do Mii san time series

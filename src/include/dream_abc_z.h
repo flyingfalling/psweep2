@@ -107,57 +107,19 @@ struct dream_abc_z_state : public dream_abc_state
   }
 
   
-  
-  //@OVERLOAD (added last step to thin Z with K)
-  void run_generation(filesender& fs, parampoint_generator& pg)
+  void cleanup_gen()
   {
-    //1) Generate proposals (including jump, choosing CR, choosing DELTA, etc.)
-    START_GEN();
 
-
-    //fprintf(stdout, "RUN GENERATION [%ld]: about to make proposals\n", get_param<int64_t>( t_gen ));
-    std::vector<std::vector<float64_t> > proposals = make_proposals( rg );
-    //fprintf(stdout, "RUN GENERATION [%ld]: FINISHED to make proposals. Will compute fitnesses...\n", get_param<int64_t>( t_gen ));
-    
-    //2) Compute fitness of new proposals
-    compute_generation_fitnesses( proposals, fs, pg );
-    //fprintf(stdout, "RUN GENERATION [%ld]: FINISHED compute fitnesses...\n", get_param<int64_t>( t_gen ));
-    
-    compute_acceptance();
-    //fprintf(stdout, "RUN GENERATION [%ld]: FINISHED compute acceptances...\n", get_param<int64_t>( t_gen ));
-    
-
-    
-    move_chains();
-    //fprintf(stdout, "RUN GENERATION [%ld], FINISHED move chains!\n", get_param<int64_t>(t_gen));
-    
-    //Compute other things like GR, etc.
-    //Update JUMP probabilities, CR, etc. based on USED CR indices etc.
-    update_DeltaCR();
-    
     int64_t tgen = get_param<int64_t>(t_gen);
-    int64_t crskip = get_param<int64_t>(pCR_skip_param );
-    int64_t grskip = get_param<int64_t>(GR_skip_param );
-    int64_t Kskip = get_param<int64_t>( K_Zthin_param );
-
-    if( (tgen+1) % crskip == 0 )
-      {
-	update_pCR();
-      }
-    
-    if( (tgen+1) % grskip == 0)
-      {
-	bool wouldconverge = compute_GR();
-      }
-
     if( (tgen+1) % Kskip == 0 )
       {
 	add_current_gen_to_Z();
+	fprintf(stdout, "ADDING ROWS TO Z!\n");
       }
     
-    END_GEN();
+    dream_abc_state::cleanup_gen();
   }
-
+  
   void add_current_gen_to_Z()
   {
     std::vector<std::vector<float64_t>> Xcurr = get_current_gen();
