@@ -12,7 +12,7 @@ LIBS=-L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 #default: test_cmd_script_parser.exe
 #default: test_parampoint.exe
 #default: test_searchalgo.exe
-default: test_dream_abc_z.exe
+default: test_dream_abc_z.exe test_dream_abc.exe
 
 HEADERFILES=$(INCLUDEDIR)/$* $(INCLUDE2DIR)/$*
 
