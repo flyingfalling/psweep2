@@ -83,8 +83,8 @@ struct dream_abc_state
   D( nCR_param );
   D( pCR_skip_param );
   D( p_jump_param );
-
-    
+  D( backup_regularity_param );
+  
   D( dim_names_param );
   D( dim_mins_param );
   D( dim_maxes_param );
@@ -98,7 +98,7 @@ struct dream_abc_state
   D( PRE_GEN_ITER );
   D( POST_GEN_ITER );
   
-  void new_state(const std::string& statefilename,
+  virtual void new_state(const std::string& statefilename,
 		 const std::vector<std::string>& varnames,
 		 const std::vector<float64_t>& mins,
 		 const std::vector<float64_t>& maxes,
@@ -114,7 +114,8 @@ struct dream_abc_state
 		 int64_t GRskip=50,
 		 int64_t nCR=3,
 		 int64_t pCRskip=10,
-		 float64_t pjump=0.05
+		 float64_t pjump=0.05,
+		 float64_t backupskip=10
 		 )
   {
     state.new_collection( statefilename );
@@ -150,7 +151,9 @@ struct dream_abc_state
     state.add_float64_parameter( p_jump_param, pjump );
     
     state.add_int64_parameter( t_gen, 0 );
-        
+
+    state.add_int64_parameter( backup_regularity_param,  backupskip );
+    
     state.add_float64_matrix( X_hist, varnames );
     state.add_float64_matrix( piX_hist, 1);
     state.add_float64_matrix( H_hist, varnames );
@@ -294,12 +297,13 @@ struct dream_abc_state
     END_GEN();
   }
 
-  void cleanup_gen()
+  virtual void cleanup_gen()
   {
     int64_t tgen = get_param<int64_t>(t_gen);
     int64_t crskip = get_param<int64_t>(pCR_skip_param );
     int64_t grskip = get_param<int64_t>(GR_skip_param );
-
+    int64_t backupskip = get_param<int64_t>(backup_regularity_param);
+    
     if( (tgen+1) % crskip == 0 )
       {
 	update_pCR();
@@ -318,11 +322,13 @@ struct dream_abc_state
   }
 
   //std::vector<float64_t> make_single_proposal( const std::vector<float64_t>& parent, const std::vector<std::vector<float64_t>>& Xcurr, std::default_random_engine& rand_gen )
-  std::vector<float64_t> make_single_proposal( const size_t& mychainidx,
+  virtual std::vector<float64_t> make_single_proposal( const size_t& mychainidx,
 					       const std::vector<std::vector<float64_t>>& Xcurr,
 					       std::default_random_engine& rand_gen )
   {
 
+    fprintf(stdout, "CALLING MAKE_SINGLE_PROPOSAL (in DREAM ABC)\n");
+    
     std::vector<float64_t> parent = Xcurr[mychainidx];
     std::vector<float64_t> proposal = parent;
     
@@ -340,7 +346,7 @@ struct dream_abc_state
     //ROFL, this is wrong, it should get from CURRENT FUCKING ONE, i.e. N BACK IN HISTORY!!! Lololololol...I.e. xstate.
     //std::vector<std::vector<float64_t> > mypairs = state.get_matrix_row_slice<float64_t>( X_hist, pairidxs );
     std::vector<std::vector<float64_t> > mypairs = indices_to_vector_slices< std::vector<float64_t> >(Xcurr, pairidxs );
-
+    
     //fprintf(stdout, "ABC: Got history slices\n");
     
     std::normal_distribution<float64_t> gdist(0, get_param<float64_t>( bstar_param ) );
@@ -493,7 +499,7 @@ struct dream_abc_state
     size_t nchains = get_param<int64_t>(N_chains_param);
     return ( state.get_last_n_rows<float64_t>( X_hist, nchains ) );
   }
-
+  
   std::vector<std::vector< float64_t> > make_proposals(std::default_random_engine& rand_gen)
   {
     size_t nchains = get_param<int64_t>(N_chains_param);
@@ -691,7 +697,7 @@ struct dream_abc_state
     return mymovingdims;
   }
   
-  void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs,
+  virtual void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs,
 				      std::vector<size_t>& moving_dims,
 				      float64_t& gamma,
 				      std::default_random_engine& rand_gen )
@@ -1079,7 +1085,7 @@ struct dream_abc_state
   
   
   
-  void generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg )
+  virtual void generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg )
   {
 
     START_GEN();
@@ -1336,16 +1342,27 @@ struct dream_abc_state
     
     sg.seed( seed );
   }
+
+  void initialize( )
+  {
+    init_random();
+  }
+
+  void initialize(const long& seed )
+  {
+    init_random(seed);
+  }
+  
   
   //CTOR
   dream_abc_state()
   {
-    init_random();    
+    initialize();
   }
 
   dream_abc_state( const long& seed) //Seed?
   {
-    init_random(seed);
+    initialize( seed );
   }
   
 };

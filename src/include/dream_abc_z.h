@@ -91,13 +91,14 @@ struct dream_abc_z_state : public dream_abc_state
 		  int64_t pCRskip=10,
 		  float64_t pjump=0.1,
 		  int64_t M0d_mult=100,
-		  int64_t Kthin=5 )
+		  int64_t Kthin=5,
+		  int64_t backupskip=10)
   {
     dream_abc_state::new_state( statefilename, varnames,
-			       mins, maxes, observation_varnames,
-			       observation_stats, epsil, maxgens,
-			       numchains, ndelta, bnoise, bstar,
-			       rthresh, GRskip, nCR, pCRskip, pjump );
+				mins, maxes, observation_varnames,
+				observation_stats, epsil, maxgens,
+				numchains, ndelta, bnoise, bstar,
+				rthresh, GRskip, nCR, pCRskip, pjump, backupskip );
 
 
     state.add_float64_matrix( Z_hist, varnames );
@@ -106,11 +107,49 @@ struct dream_abc_z_state : public dream_abc_state
     state.add_int64_parameter( M_param, 0 );
   }
 
+  //@OVERLOAD (REV: No changes, just need to make sure it uses "this" class's cleanup_gen())
+  void run_generation(filesender& fs, parampoint_generator& pg)
+  {
+    //1) Generate proposals (including jump, choosing CR, choosing DELTA, etc.)
+    START_GEN();
+
+
+    //fprintf(stdout, "RUN GENERATION [%ld]: about to make proposals\n", get_param<int64_t>( t_gen ));
+    std::vector<std::vector<float64_t> > proposals = make_proposals( rg );
+    //fprintf(stdout, "RUN GENERATION [%ld]: FINISHED to make proposals. Will compute fitnesses...\n", get_param<int64_t>( t_gen ));
+    
+    //2) Compute fitness of new proposals
+    compute_generation_fitnesses( proposals, fs, pg );
+    //fprintf(stdout, "RUN GENERATION [%ld]: FINISHED compute fitnesses...\n", get_param<int64_t>( t_gen ));
+    
+    compute_acceptance();
+    //fprintf(stdout, "RUN GENERATION [%ld]: FINISHED compute acceptances...\n", get_param<int64_t>( t_gen ));
+    
+
+    
+    move_chains();
+    //fprintf(stdout, "RUN GENERATION [%ld], FINISHED move chains!\n", get_param<int64_t>(t_gen));
+    
+    //Compute other things like GR, etc.
+    //Update JUMP probabilities, CR, etc. based on USED CR indices etc.
+    update_DeltaCR();
+    
+
+
+    cleanup_gen();
+    
+        
+    END_GEN();
+  }
+
   
+  //@OVERLOAD
   void cleanup_gen()
   {
 
     int64_t tgen = get_param<int64_t>(t_gen);
+    int64_t Kskip = get_param<int64_t>( K_Zthin_param );
+    
     if( (tgen+1) % Kskip == 0 )
       {
 	add_current_gen_to_Z();
@@ -131,6 +170,7 @@ struct dream_abc_z_state : public dream_abc_state
 					       const std::vector<std::vector<float64_t>>& Xcurr,
 					       std::default_random_engine& rand_gen )
   {
+    fprintf(stdout, "CALLING MAKE_SINGLE_PROPOSAL (IN DREAM ABC **Z**)\n");
     
     std::vector<float64_t> parent = Xcurr[mychainidx];
     std::vector<float64_t> proposal = parent;
@@ -265,34 +305,34 @@ struct dream_abc_z_state : public dream_abc_state
     return newproposal;
   }
   
-  std::vector<std::vector< float64_t> > make_proposals(std::default_random_engine& rand_gen)
-  {
-    size_t nchains = get_param<int64_t>(N_chains_param);
-    std::vector<std::vector<float64_t> > proposals;
-    std::vector<std::vector<float64_t> > Xcurr = state.get_last_n_rows<float64_t>( X_hist, nchains );
+  /* std::vector<std::vector< float64_t> > make_proposals(std::default_random_engine& rand_gen) */
+  /* { */
+  /*   size_t nchains = get_param<int64_t>(N_chains_param); */
+  /*   std::vector<std::vector<float64_t> > proposals; */
+  /*   std::vector<std::vector<float64_t> > Xcurr = get_current_gen(); */
 
-    //fprintf(stdout, "MAKE PROPOSALS: Got last n rows of X [%ld]\n", get_param<int64_t>(N_chains_param));
-    for(size_t c=0; c<Xcurr.size(); ++c)
-      {
-	//fprintf(stdout, "Attempting to make proposal [%ld]\n", c);
-	std::vector<float64_t> proposal = make_single_proposal( c, Xcurr, rand_gen ); //haha, could just send whole thing...and chain# Easier.
-	//fprintf(stdout, "FINISHED to make proposal [%ld]\n", c);
+  /*   //fprintf(stdout, "MAKE PROPOSALS: Got last n rows of X [%ld]\n", get_param<int64_t>(N_chains_param)); */
+  /*   for(size_t c=0; c<Xcurr.size(); ++c) */
+  /*     { */
+  /* 	//fprintf(stdout, "Attempting to make proposal [%ld]\n", c); */
+  /* 	std::vector<float64_t> proposal = make_single_proposal( c, Xcurr, rand_gen ); //haha, could just send whole thing...and chain# Easier. */
+  /* 	//fprintf(stdout, "FINISHED to make proposal [%ld]\n", c); */
 	
-	proposals.push_back(proposal);
-      }
+  /* 	proposals.push_back(proposal); */
+  /*     } */
 
-    /*for(size_t c=0; c<nchains; ++c)
-      {
-	fprintf(stdout, "Chain [%ld]:\n", c);
-	print1dvec_row<float64_t>( Xcurr[c] );
-	print1dvec_row<float64_t>( proposals[c] );
-	}*/
+  /*   /\*for(size_t c=0; c<nchains; ++c) */
+  /*     { */
+  /* 	fprintf(stdout, "Chain [%ld]:\n", c); */
+  /* 	print1dvec_row<float64_t>( Xcurr[c] ); */
+  /* 	print1dvec_row<float64_t>( proposals[c] ); */
+  /* 	}*\/ */
     
-    //fprintf(stdout, "Finished making all props, will update CR Cnts in make_all_proposals\n");
-    update_CRcnts();
-    //fprintf(stdout, "Finished update CR cnts...\n");
-    return proposals;
-  }
+  /*   //fprintf(stdout, "Finished making all props, will update CR Cnts in make_all_proposals\n"); */
+  /*   update_CRcnts(); */
+  /*   //fprintf(stdout, "Finished update CR cnts...\n"); */
+  /*   return proposals; */
+  /* } */
 
   void update_CRcnts()
   {
@@ -464,43 +504,43 @@ struct dream_abc_z_state : public dream_abc_state
   }
 
 
-  //REV: @OVERLOAD (now calling different (overloaded) version of
-  //draw_DE_pairs...
-  //Other than that it is same).
-  void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs,
-				      std::vector<size_t>& moving_dims,
-				      float64_t& gamma,
-				      std::default_random_engine& rand_gen )
-  {
-    size_t ndims = get_param<int64_t>( d_dims_param );
-    size_t Didx = choose_CR_index( rand_gen );
-    size_t tauidx = draw_num_DE_pairs( rand_gen );
-    gamma = compute_gamma_nonsnooker( tauidx+1, Didx+1, rand_gen );
-    if( gamma == 1.0 )
-      {
-	//Didx = get_param<int64_t>(d_dims_param) - 1; //-1 bc its idx.
-	//REV: OH NO, *probability* of selecting any given dim in d_dims_param is ONE, so we want nCR-1, because that way (nCR/(nCR-1+1)) == 1
-	Didx = get_param<int64_t>( nCR_param ) - 1;
-	tauidx = 0;
-      }
+  /* //REV: @OVERLOAD (now calling different (overloaded) version of */
+  /* //draw_DE_pairs... */
+  /* //Other than that it is same). */
+  /* void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs, */
+  /* 				      std::vector<size_t>& moving_dims, */
+  /* 				      float64_t& gamma, */
+  /* 				      std::default_random_engine& rand_gen ) */
+  /* { */
+  /*   size_t ndims = get_param<int64_t>( d_dims_param ); */
+  /*   size_t Didx = choose_CR_index( rand_gen ); */
+  /*   size_t tauidx = draw_num_DE_pairs( rand_gen ); */
+  /*   gamma = compute_gamma_nonsnooker( tauidx+1, Didx+1, rand_gen ); */
+  /*   if( gamma == 1.0 ) */
+  /*     { */
+  /* 	//Didx = get_param<int64_t>(d_dims_param) - 1; //-1 bc its idx. */
+  /* 	//REV: OH NO, *probability* of selecting any given dim in d_dims_param is ONE, so we want nCR-1, because that way (nCR/(nCR-1+1)) == 1 */
+  /* 	Didx = get_param<int64_t>( nCR_param ) - 1; */
+  /* 	tauidx = 0; */
+  /*     } */
     
-    //Each pair gets the same pair of moving dims.
-    moving_dims = choose_moving_dims( Didx, rand_gen );
+  /*   //Each pair gets the same pair of moving dims. */
+  /*   moving_dims = choose_moving_dims( Didx, rand_gen ); */
     
-    mypairs = draw_DE_pairs( tauidx+1, rand_gen );
+  /*   mypairs = draw_DE_pairs( tauidx+1, rand_gen ); */
 
-    if(gamma==1 && ( (moving_dims.size() != ndims) || mypairs.size() != 2 ))
-      {
-	fprintf(stderr, "REV* error, even though gamma==1, moving dims is not full!\n");
-	exit(1);
-      }
+  /*   if(gamma==1 && ( (moving_dims.size() != ndims) || mypairs.size() != 2 )) */
+  /*     { */
+  /* 	fprintf(stderr, "REV* error, even though gamma==1, moving dims is not full!\n"); */
+  /* 	exit(1); */
+  /*     } */
     
-    //Assume we're pushing back to the correct "new" chain at the end.
-    state.add_row_to_matrix<int64_t>( CR_used_hist, std::vector<int64_t>(1, Didx ));
+  /*   //Assume we're pushing back to the correct "new" chain at the end. */
+  /*   state.add_row_to_matrix<int64_t>( CR_used_hist, std::vector<int64_t>(1, Didx )); */
     
                 
-    return;
-  }
+  /*   return; */
+  /* } */
 
   //@OVERLOAD
   std::vector<size_t> draw_DE_pairs( const size_t& npairs,
@@ -553,19 +593,18 @@ struct dream_abc_z_state : public dream_abc_state
     END_GEN();
   } //end generate_init_pop
   
-    //CTOR
-  //Automatically call parent
- dream_abc_z_state()
-   : dream_abc_state()
+  //CTOR
+  //REV: **DO NOT CALL PARENT CONSTRUCTOR IT WILL BREAK THINGS B/C BASE CLASS FUNCTIONS CALLING OVERRIDDEN FUNCTIONS WILL NO LONGER CALL
+  //THE OVERRIDDEN VERSION!!!! **
+  dream_abc_z_state()
     {
-      
+      initialize();
     }
   
- dream_abc_z_state( const long& seed)
-   : dream_abc_state( seed )
-  {
-    
-  }
+  dream_abc_z_state( const long& seed)
+    {
+      initialize(seed);
+    }
   
 };
 
