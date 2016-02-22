@@ -1148,6 +1148,7 @@ struct hdf5_collection
     std::string bufname = "__" + file_name;
 
     file.flush(H5F_SCOPE_GLOBAL);
+    usleep(100000);
     
     fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", file_name.c_str(), bufname.c_str() );
 
@@ -1265,9 +1266,11 @@ struct hdf5_collection
   void backup( )
   {
 
+    fprintf(stderr, "Calling backup\n");
     if(!backup_initialized)
       {
 	initialize_backup();
+	return;
       }
     
     //Automatically backups to "__"+file_name
@@ -1286,7 +1289,8 @@ struct hdf5_collection
     //H5::H5File tmpfile( bufname,  );
     backup_matrices( tmpc );
     backup_parameters( tmpc );
-    
+
+    //Flush the file of the tmp guy and hope it's blocking.
     
     return;
   }
