@@ -1267,7 +1267,9 @@ struct hdf5_collection
 
     if(!backup_initialized)
       {
+	//REV: PROBLEM the copy takes some time initially (it's not blocking until filesystem copy is done?!?!)
 	initialize_backup();
+	return; 
       }
     
     //Automatically backups to "__"+file_name
@@ -1586,10 +1588,17 @@ struct hdf5_collection
     
     for(size_t x=0; x<toload.size(); ++x)
       {
+	if(toload[x][0] != '/')
+	  {
+	    fprintf(stdout, "ERROR?!?!?! in load matrix [%s], first char is not slash?\n", toload[x].c_str() );
+	    exit(1);
+	  }
 	fprintf(stdout, "Trying to load: [%s]\n", toload[x].c_str() );
 	if( toload[x].size() > 1 )
 	  {
-	    if( toload[x][1] != '_' && toload[x][2] != '_' )
+	    
+	    //First char is '/'?!
+	    if( !( toload[x][1] == '_' && toload[x][2] == '_') )
 	      {
 		fprintf(stdout, "Loading it because it is not a varnames i.e. __\n");
 		load_matrix( toload[x] );
