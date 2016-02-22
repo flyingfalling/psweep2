@@ -1183,26 +1183,37 @@ struct hdf5_collection
   //Will update targ.
   //Could check other things, but won't for now ;)
   //REV: Can do everything internally?
-  void update_matrix( matrix_props& newmat, matrix_props& targmat )
+  void update_matrix( matrix_props& newmat, hdf5_collection& col )
   {
-    
-    if( newmat.get_nrows() > targmat.get_nrows()  )
+    std::vector<size_t> locs = col.find_matrix( newmat.name );
+    if(locs.size() != 1 )
       {
-	size_t rowsdiff = newmat.get_nrows() - targmat.get_nrows();
-	H5::DataType mytype = targmat.dataset.getDataType();
+	fprintf(stderr, "Could not find matrix [%s] in target backup collection!\n", newmat.name.c_str() );
+	exit(1);
+      }
+    size_t i = locs[0];
+    //What the hell make a copy of it why not? Lol... problem is when the
+    //other guy exits it might cause a problem? At cleanup time?
+    
+    std::string targmatname = newmat.name;
+    if( newmat.get_nrows() > col.matrices[i].get_nrows() )
+      {
+	//size_t rowsdiff = newmat.get_nrows() - targmat.get_nrows();
+	size_t rowsdiff = newmat.get_nrows() - col.matrices[i].get_nrows();
+	H5::DataType mytype = col.matrices[i].dataset.getDataType();
 	if( mytype == H5::PredType::NATIVE_DOUBLE)
 	  {
 	    std::vector< std::vector< float64_t > > toadd =
 	      newmat.get_last_n_rows<float64_t>( rowsdiff );
 
-	    targmat.add_data<float64_t>( toadd );
+	    col.matrices[i].add_data<float64_t>( toadd );
 	  }
 	else if(mytype == H5::PredType::NATIVE_LONG)
 	  {
 	    std::vector< std::vector< int64_t > > toadd =
 	      newmat.get_last_n_rows<int64_t>( rowsdiff );
 	    
-	    targmat.add_data<int64_t>( toadd );
+	    col.matrices[i].add_data<int64_t>( toadd );
 	  }
 	else
 	  {
@@ -1211,7 +1222,7 @@ struct hdf5_collection
 	  }
 	//Need to update by adding rows. NEED TO KNOW TYPE
       }
-    else if ( newmat.get_nrows() == targmat.get_nrows() )
+    else if ( newmat.get_nrows() == col.matrices[i].get_nrows() )
       {
 	return;
 	//we assume in no case is a vector updated without adding rows.
@@ -1244,7 +1255,7 @@ struct hdf5_collection
       }
     for(size_t m=0; m<matrices.size(); ++m)
       {
-	update_matrix( matrices[m], targc.matrices[m] );
+	update_matrix( matrices[m] );
       }
   }
 
@@ -1655,6 +1666,8 @@ struct hdf5_collection
     matrices[ locs[0] ].enumerate_to_file( fout, thinrate, startpoint );
     fclose2( fout );
   }
+
+
   
   
     
