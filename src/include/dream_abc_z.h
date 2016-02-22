@@ -74,31 +74,34 @@ struct dream_abc_z_state : public dream_abc_state
 
   //@OVERLOAD
   void new_state ( const std::string& statefilename,
-		  const std::vector<std::string>& varnames,
-		  const std::vector<float64_t>& mins,
-		  const std::vector<float64_t>& maxes,
-		  const std::vector<std::string>& observation_varnames,
-		  const std::vector<float64_t>& observation_stats,
-		  float64_t epsil=1.0, //0.05,
-		  int64_t maxgens=1e5,
-		  int64_t numchains=40,
-		  int64_t ndelta=3,
-		  float64_t bnoise=0.05,
-		  float64_t bstar=1e-6,
-		  float64_t rthresh=1.2,
-		  int64_t GRskip=50,
-		  int64_t nCR=3,
-		  int64_t pCRskip=10,
-		  float64_t pjump=0.1,
-		  int64_t M0d_mult=100,
-		  int64_t Kthin=5,
-		  int64_t backupskip=10)
+		   const std::vector<std::string>& varnames,
+		   const std::vector<float64_t>& mins,
+		   const std::vector<float64_t>& maxes,
+		   const std::vector<std::string>& observation_varnames,
+		   const std::vector<float64_t>& observation_stats,
+		   float64_t epsil=2.0, //0.05,
+		   int64_t maxgens=2e4,
+		   int64_t numchains=100,
+		   int64_t ndelta=3,
+		   float64_t bnoise=0.05,
+		   float64_t bstar=1e-6,
+		   float64_t rthresh=1.2,
+		   int64_t GRskip=50,
+		   int64_t nCR=3,
+		   int64_t pCRskip=10,
+		   float64_t pjump=0.05,
+		   int64_t backupskip=10,
+		   int64_t M0d_mult=100,
+		   int64_t Kthin=5
+		   )
+		   
   {
     dream_abc_state::new_state( statefilename, varnames,
 				mins, maxes, observation_varnames,
 				observation_stats, epsil, maxgens,
 				numchains, ndelta, bnoise, bstar,
-				rthresh, GRskip, nCR, pCRskip, pjump, backupskip );
+				rthresh, GRskip, nCR, pCRskip, pjump,
+				backupskip );
 
 
     state.add_float64_matrix( Z_hist, varnames );

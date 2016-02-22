@@ -99,24 +99,24 @@ struct dream_abc_state
   D( POST_GEN_ITER );
   
   virtual void new_state(const std::string& statefilename,
-		 const std::vector<std::string>& varnames,
-		 const std::vector<float64_t>& mins,
-		 const std::vector<float64_t>& maxes,
-		 const std::vector<std::string>& observation_varnames,
-		 const std::vector<float64_t>& observation_stats,
-		 float64_t epsil=2.0,
-		 int64_t maxgens=2e4,
-		 int64_t numchains=100,
-		 int64_t ndelta=3,
-		 float64_t bnoise=0.05,
-		 float64_t bstar=1e-6,
-		 float64_t rthresh=1.2,
-		 int64_t GRskip=50,
-		 int64_t nCR=3,
-		 int64_t pCRskip=10,
-		 float64_t pjump=0.05,
-		 float64_t backupskip=10
-		 )
+			 const std::vector<std::string>& varnames,
+			 const std::vector<float64_t>& mins,
+			 const std::vector<float64_t>& maxes,
+			 const std::vector<std::string>& observation_varnames,
+			 const std::vector<float64_t>& observation_stats,
+			 float64_t epsil=2.0,
+			 int64_t maxgens=2e4,
+			 int64_t numchains=100,
+			 int64_t ndelta=3,
+			 float64_t bnoise=0.05,
+			 float64_t bstar=1e-6,
+			 float64_t rthresh=1.2,
+			 int64_t GRskip=50,
+			 int64_t nCR=3,
+			 int64_t pCRskip=10,
+			 float64_t pjump=0.05,
+			 float64_t backupskip=10
+			 )
   {
     state.new_collection( statefilename );
     
