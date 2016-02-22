@@ -1588,7 +1588,7 @@ struct hdf5_collection
     
     for(size_t x=0; x<toload.size(); ++x)
       {
-	if(toload[x][0] != '/')
+	if(toload[x].c_str()[0] != '/')
 	  {
 	    fprintf(stdout, "ERROR?!?!?! in load matrix [%s], first char is not slash?\n", toload[x].c_str() );
 	    exit(1);
@@ -1596,12 +1596,15 @@ struct hdf5_collection
 	fprintf(stdout, "Trying to load: [%s]\n", toload[x].c_str() );
 	if( toload[x].size() > 1 )
 	  {
-	    
 	    //First char is '/'?!
-	    if( !( toload[x][1] == '_' && toload[x][2] == '_') )
+	    if( !( toload[x].c_str()[1] == '_' && toload[x].c_str()[2] == '_') )
 	      {
 		fprintf(stdout, "Loading it because it is not a varnames i.e. __\n");
 		load_matrix( toload[x] );
+	      }
+	    else
+	      {
+		fprintf(stdout, "SKIPPING because first 2 characters after / are underscores [%s]\n", toload[x].c_str());
 	      }
 	  }
 	else if( toload[x].size() > 0 )
