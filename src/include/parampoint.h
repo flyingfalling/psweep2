@@ -18,12 +18,14 @@
 struct seedgen
 {
   std::seed_seq seq;
+    
   void seed( const long& seedval )
   {
     seq = std::seed_seq( {seedval} );
   }
 
   //Hopefully it keeps state...?
+  //REV: Generate random int in here from our chain and use it as seed...not very beautiful, but same as doing seeds(1)
   std::uint32_t nextseed()
   {
     std::vector<std::uint32_t> seeds(1);

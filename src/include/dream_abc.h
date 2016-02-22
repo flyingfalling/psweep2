@@ -192,10 +192,15 @@ struct dream_abc_state
   {
     state.load_collection( file );
 
+    fprintf(stdout, "Finished loading HDF5 collection [%s]\n", file.c_str() );
     //Check HDF5 file is "sane", i.e. that all matrices have appropriate length given t_current_gen etc. If not, we will try the equivalent BU file.
     bool sane = issane( );
-    
-    if(sane == false && file.c_str()[0] != '_' && file.c_str()[1] != '_' )
+
+    if(sane)
+      {
+	return;
+      }
+    else if(sane == false && file.c_str()[0] != '_' && file.c_str()[1] != '_' )
       {
 	std::string bufname = "__" + file;
 	state.load_collection( bufname );
@@ -1370,6 +1375,7 @@ struct dream_abc_state
 
   void enumerate_to_file( const std::string& matname, const std::string& fname, const size_t& thinrate, const size_t& startpoint )
   {
+    fprintf(stdout, "Enumerating matrix [%s] to file: [%s], thinrate [%ld], startpoint [%ld]\n", matname.c_str(), fname.c_str(), thinrate, startpoint );
     state.enumerate_matrix_to_file( matname, fname, thinrate, startpoint );
   }
   
@@ -1382,23 +1388,26 @@ struct dream_abc_state
     
     //REV: This separates for all chains? Ahhhhhhh Need to do that ;)
     size_t nchains = get_param<int64_t>( N_chains_param );
-
+    
     //compute starting point from starting gen;
     size_t startpoint = nchains*startgen;
 
     //REV: Would really like to add a column at beginning telling generation... since it's row-first though, that's nasty...
     for(size_t c=0; c<nchains; ++c)
       {
+
+	
 	size_t startpointc = c+startpoint;
 
-	std::string Xfname = fnamebase + "_Xhist_" + std::to_string(c);
-	std::string piXfname = fnamebase + "_piXhist_" + std::to_string(c);
-
+	std::string Xfname = fnamebase + "Xhist_" + std::to_string(c);
+	std::string piXfname = fnamebase + "piXhist_" + std::to_string(c);
+	fprintf(stdout, "Printing chain [%ld] Xhist to [%s] and piXhist to [%s]\n", c, Xfname.c_str(), piXfname.c_str());
+	
 	enumerate_to_file( X_hist, Xfname, nchains*genskiprate, startpointc);
 	enumerate_to_file( piX_hist, piXfname, nchains*genskiprate, startpointc);
       }
 
-    std::string GRfname = fnamebase + "_GRhist";
+    std::string GRfname = fnamebase + "GRhist";
     enumerate_to_file( GR_hist, GRfname , 1, 0); //could compute from GR_skip, but meh.
 
     return;

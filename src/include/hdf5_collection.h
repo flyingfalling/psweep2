@@ -1,3 +1,5 @@
+//REV: Attributes are not being appropriately written to HDF5 file although they are available in memory after they are created?
+
 //REv: Need to make sure matrices are in their own group (?) otherwise param dataset will be treated as if it is a matrix thing at load time.
 //Also the __names thing is problem?
 
@@ -17,6 +19,8 @@
 
 #include <H5Cpp.h>
 #include <string_manip.h>
+
+#include <vector_utils.h>
 
 typedef double float64_t;
 typedef long int int64_t;
@@ -226,7 +230,6 @@ std::string build_hdf5_path(std::vector< std::string >& path, std::string basepa
 
 struct matrix_props
 {
-  H5::H5File* myf=NULL;
   std::string name; //we use this as name of thing in H5 file.
   H5::DataSet dataset;
   std::vector<std::string> my_colnames;
@@ -236,26 +239,16 @@ struct matrix_props
 
   const std::string __MATRIX_DATATYPE_NAME = "__MY_DATATYPE";
   
-  void opendataset()
-  {
-    dataset = myf->openDataSet( name );
-  }
-  
-  void closedataset()
-  {
-    dataset.close();
-  }
-  
+    
   std::string get_string_parameter( const std::string& pname )
   {
     H5TRY()
-      //opendataset();
+      
     H5::Attribute attr = dataset.openAttribute( pname.c_str() ); 
     H5::DataType datatype = attr.getDataType();
          
     std::string strreadbuf("");
     attr.read(datatype, strreadbuf); 
-    //closedataset();
     std::string ret = strreadbuf; 
     return ret;
 
@@ -272,7 +265,7 @@ struct matrix_props
 
     H5::StrType datatype(0, H5T_VARIABLE);
 
-    //opendataset();
+    
     H5::Attribute attribute = dataset.createAttribute( pname.c_str(),
 						       datatype,
 						       attr_dataspace);
@@ -281,18 +274,18 @@ struct matrix_props
     //it is on other side?
     attribute.write( datatype, val );
     
-    //closedataset();
+
     H5CATCH()
     return;
   }
 
   //Loads datatype from file.
-  void load_datatype()
+  /*void load_datatype()
   {
     std::string tmpdatatype = get_string_parameter( __MATRIX_DATATYPE_NAME );
     fprintf(stdout, "LOADED MATRIX (datatype [%s])\n", tmpdatatype.c_str() ) ;
     set_datatype( tmpdatatype );
-  }
+    }*/
   
   void set_datatype( const std::string& dtype )
   {
@@ -324,9 +317,9 @@ struct matrix_props
 
       // HDF5 only understands vector of char* :-(
     std::vector<const char*> arr_c_str;
-    for (size_t ii = 0; ii < strings.size(); ++ii)
+    for (size_t i = 0; i < strings.size(); ++i)
       {
-	arr_c_str.push_back(strings[ii].c_str());
+	arr_c_str.push_back(strings[i].c_str());
       }
 
     //
@@ -384,13 +377,14 @@ struct matrix_props
       
     //REV: assume its always native double..ugh. Sometimes I'll write ints though. Just do doubles for now...
     //Need to know type?
+    
     dataset =  f.createDataSet( dsetname, matrix_datatype,
 				dataspace, prop);
-    myf = &f;
-    //closedataset();
+
+
     
     //REV: SET HERE, because we need dataset created already.
-    add_string_parameter( __MATRIX_DATATYPE_NAME, datatype);
+    //add_string_parameter( __MATRIX_DATATYPE_NAME, datatype);
     
     hsize_t vardim1=_colnames.size();
     
@@ -508,7 +502,9 @@ struct matrix_props
       
     //dataset.write( toadd.data(), H5::PredType::NATIVE_DOUBLE, toaddspace, origspace );
     //dataset.write( vec.data(), H5::PredType::NATIVE_DOUBLE, toaddspace, origspace );
-    dataset.write( vec.data(), matrix_datatype, toaddspace, origspace );
+    //dataset.write( vec.data(), matrix_datatype, toaddspace, origspace );
+    H5::DataType mytype = dataset.getDataType();
+    dataset.write( vec.data(), mytype, toaddspace, origspace );
     
     my_nrows += dims_toadd[0];
     //closedataset();
@@ -540,7 +536,8 @@ struct matrix_props
     //T vec[dims_out[0]][dims_out[1]];
     std::vector<T> vec( dims_out[0]*dims_out[1] );
     //dataset.read( retvect.data(), H5::PredType::NATIVE_DOUBLE );
-    dataset.read( vec.data(), matrix_datatype );
+    H5::DataType mytype = dataset.getDataType();
+    dataset.read( vec.data(), mytype );
 
     for(size_t x=0; x<retvect.size(); ++x)
       {
@@ -555,7 +552,14 @@ struct matrix_props
     H5CATCH()
   } //end read_whole_dataset
 
-
+  template <typename T>
+  std::vector<std::vector< T> > get_last_n_rows( const size_t& nrows )
+  {
+    size_t endrow = my_nrows;
+    size_t startrow = endrow - nrows;
+    return read_row_range<T>( startrow, endrow );
+  }
+  
   //REV: This is ****INCLUSIVE***** of end row!!!!!
   template <typename T>
   std::vector< std::vector<T> > read_row_range( const size_t& startrow, const size_t& endrow)
@@ -609,8 +613,9 @@ struct matrix_props
     hsize_t offset[ndims] = { startrow, 0 };
     
     origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
-    
-    dataset.read( vec.data(), matrix_datatype, memspace, origspace );
+
+    H5::DataType mytype = dataset.getDataType();
+    dataset.read( vec.data(), mytype, memspace, origspace );
     
     std::vector<std::vector<T>> retvect( nrowread, std::vector<T>(ncolread) );
     
@@ -687,8 +692,9 @@ struct matrix_props
     hsize_t offset[ndims] = { startrow, 0 };
     
     origspace.selectHyperslab( H5S_SELECT_SET, dimsmem, offset );
-    
-    dataset.write( vec.data(), matrix_datatype, memspace, origspace );
+
+    H5::DataType mytype = dataset.getDataType();
+    dataset.write( vec.data(), mytype, memspace, origspace );
     //closedataset();
     H5CATCH()
     return;
@@ -752,8 +758,10 @@ struct matrix_props
 	fprintf(f, "%s ", my_colnames[x].c_str() );
       }
     fprintf(f, "\n");
+
+    H5::DataType mytype = dataset.getDataType();
     
-    if( matrix_datatype == H5::PredType::NATIVE_DOUBLE )
+    if( mytype == H5::PredType::NATIVE_DOUBLE )
       {
 	std::vector<std::vector<float64_t> > ret = read_whole_dataset<float64_t>();
 	for( size_t x=startpoint; x<ret.size(); x+=skip )
@@ -786,7 +794,8 @@ struct matrix_props
   std::vector<std::string> read_string_dset( const std::string& dsname, H5::H5File& f )
   {
     H5TRY()
-      H5::DataSet cdataset = f.openDataSet( dsname );
+
+    H5::DataSet cdataset = f.openDataSet( dsname );
     
     
     H5::DataSpace space = getSpace( cdataset );
@@ -831,16 +840,15 @@ struct matrix_props
     //double up?
     std::vector<std::string> tokenized = tokenize_string(matname, "/", false);
     name = tokenized[tokenized.size()-1];
+    fprintf(stdout, "In load matrix: will try to load name [%s]\n", name.c_str());
     
     //Load it from the existing file.
-
+    
     //REV CHECKING IF ITS DSET OPEN/CLOSE that matters!!
-    //dataset = f.openDataSet( name );
-    opendataset();
-    myf=&f;
-    //closedataset();
+    dataset = f.openDataSet( name );
+    
     //I don't need TYPE to open the dataset (yet)
-    load_datatype();
+    //load_datatype();
     
     get_dset_size( my_nrows, my_ncols );
     
@@ -880,18 +888,47 @@ struct hdf5_collection
   std::string file_name;
   
   std::vector< matrix_props > matrices;
+  std::vector< std::string > parameters; //Just a list of their names. To make backing up easier. Load it when I "load"?
   
   const std::string PARAM_DSET_NAME = "__PARAMETERS";
-  const std::string DATA_GRP_NAME = "__DATA";
+  const std::string PARAM_GRP_NAME = "__PARAMETERS";
+  //const std::string DATA_GRP_NAME = "__DATA";
+
+  bool backup_initialized=false;
+  
+  
+  template <typename T>
+  void Xset_numeric_parameter( const std::string& pname, const T& val )
+  {
+    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
+
+    //REV: USe GETDATATYPE (should return H5::PredType::BLAH!?!?!). Great! So only set data type at creation heh.
+    H5::Attribute attr = dataset.openAttribute( pname.c_str() );
+    H5::DataType type = attr.getDataType();
+    attr.write(type, &val);
+
+    //int i=1;
+    //dataset.write( &i, H5::PredType::NATIVE_INT );
+
+    //REV: AH crap, need to write the dataset or the parameter will not be written to the file? Or is it because the dataset is empty.
+    return;
+  }
 
   template <typename T>
   void set_numeric_parameter( const std::string& pname, const T& val )
   {
-    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
-        
-    H5::Attribute attr = dataset.openAttribute( pname.c_str() );
-    H5::DataType type = attr.getDataType();
-    attr.write(type, &val);
+    H5::Group group = file.openGroup( PARAM_GRP_NAME );
+
+    //REV: USe GETDATATYPE (should return H5::PredType::BLAH!?!?!). Great! So only set data type at creation heh.
+    H5::DataSet ds = group.openDataSet( pname );
+    H5::DataSpace dataspace = getSpace( ds );
+    H5::DataType type = ds.getDataType();
+    ds.write(&val, type, dataspace);
+
+    //int i=1;
+    //dataset.write( &i, H5::PredType::NATIVE_INT );
+
+    //REV: AH crap, need to write the dataset or the parameter will not be written to the file? Or is it because the dataset is empty.
     return;
   }
 
@@ -921,7 +958,7 @@ struct hdf5_collection
     return ret;
   }
   
-  void add_int64_parameter( const std::string& pname, const int64_t& val )
+  void Xadd_int64_parameter( const std::string& pname, const int64_t& val )
   {
     hsize_t numdims=1;
     hsize_t DIM1length=1;
@@ -936,10 +973,47 @@ struct hdf5_collection
     //REV: Crap, I think I need to make sure to always write to a "known" type i.e. in file system space don't use NATIVE_LONG, bc it won't know what
     //it is on other side?
     attribute.write( H5::PredType::NATIVE_LONG, &val );
+    
+    parameters.push_back( pname );
+    
+    return;
+  }
+
+  void add_int64_parameter( const std::string& pname, const int64_t& val )
+  {
+    hsize_t numdims=1;
+    hsize_t DIM1length=1;
+    hsize_t dims[numdims] = { DIM1length };
+    H5::DataSpace dataspace(1, dims );
+
+    H5::Group group = file.openGroup( PARAM_GRP_NAME );
+    H5::DataSet dataset = group.createDataSet( pname, H5::PredType::NATIVE_LONG, dataspace  ); //REV: Need properties?
+    
+    dataset.write(  &val, H5::PredType::NATIVE_LONG, dataspace );
+    
+    parameters.push_back( pname );
+    
     return;
   }
 
   void add_float64_parameter( const std::string& pname, const float64_t& val )
+  {
+    hsize_t numdims=1;
+    hsize_t DIM1length=1;
+    hsize_t dims[numdims] = { DIM1length };
+    H5::DataSpace dataspace(1, dims );
+
+    H5::Group group = file.openGroup( PARAM_GRP_NAME );
+    H5::DataSet dataset = group.createDataSet( pname, H5::PredType::NATIVE_DOUBLE, dataspace  ); //REV: Need properties?
+    
+    dataset.write(  &val, H5::PredType::NATIVE_DOUBLE, dataspace );
+    
+    parameters.push_back( pname );
+    
+    return;
+  }
+  
+  void Xadd_float64_parameter( const std::string& pname, const float64_t& val )
   {
     hsize_t numdims=1;
     hsize_t DIM1length=1;
@@ -954,10 +1028,13 @@ struct hdf5_collection
     //REV: Crap, I think I need to make sure to always write to a "known" type i.e. in file system space don't use NATIVE_LONG, bc it won't know what
     //it is on other side?
     attribute.write( H5::PredType::NATIVE_DOUBLE, &val );
+
+    parameters.push_back( pname );
+    
     return;
   }
   
-  void add_string_parameter( const std::string& pname, const std::string& val )
+  void Xadd_string_parameter( const std::string& pname, const std::string& val )
   {
     //hsize_t numdims=1;
     //hsize_t DIM1length=1;
@@ -975,11 +1052,29 @@ struct hdf5_collection
     //REV: Crap, I think I need to make sure to always write to a "known" type i.e. in file system space don't use NATIVE_LONG, bc it won't know what
     //it is on other side?
     attribute.write( datatype, val );
+
+    parameters.push_back( pname );
+    
     return;
   }
 
   template <typename T>
   T get_numeric_parameter( const std::string& pname )
+  {
+    H5::Group group = file.openGroup( PARAM_GRP_NAME );
+    H5::DataSet ds = group.openDataSet( pname );
+    H5::DataSpace dataspace = getSpace( ds );
+    H5::DataType type = ds.getDataType();
+    
+    T ret;
+    
+    ds.read(&ret, type, dataspace );
+    
+    return ret;
+  }
+  
+  template <typename T>
+  T Xget_numeric_parameter( const std::string& pname )
   {
     H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
     // Open attribute and read its contents
@@ -993,48 +1088,11 @@ struct hdf5_collection
     H5::Attribute attr = dataset.openAttribute( pname.c_str() );
     H5::DataType type = attr.getDataType();
     attr.read(type, &ret);
-    
-    return ret;
-  }
 
-  int64_t get_int64_parameter( const std::string& pname )
-  {
-    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
-    // Open attribute and read its contents
-    //hsize_t numdims=1;
-    //hsize_t DIM1length=1;
-    //hsize_t dims[numdims] = { DIM1length };
-    //DataSpace attr_dataspace = DataSpace (1, dims );
-
-    int64_t ret;
-    
-    H5::Attribute attr = dataset.openAttribute( pname.c_str() );
-    H5::DataType type = attr.getDataType();
-    attr.read(type, &ret);
-    
     return ret;
   }
   
-  float64_t get_float64_parameter( const std::string& pname )
-  {
-    H5::DataSet dataset = file.openDataSet( PARAM_DSET_NAME );
-    // Open attribute and read its contents
-    //hsize_t numdims=1;
-    //hsize_t DIM1length=1;
-    //hsize_t dims[numdims] = { DIM1length };
-    //DataSpace attr_dataspace = DataSpace (1, dims );
-
-    float64_t ret;
-    
-    H5::Attribute attr = dataset.openAttribute( pname.c_str() );
-    H5::DataType type = attr.getDataType();
-    attr.read(type, &ret);
-    
-    return ret;
-    
-  }
-
-  std::string get_string_parameter( const std::string& pname )
+  std::string Xget_string_parameter( const std::string& pname )
   {
     // Set up read buffer for attribute
     
@@ -1057,14 +1115,19 @@ struct hdf5_collection
   {
     hsize_t  ndims=1;
     hsize_t  dims[ndims];
-    dims[0] = 0;
-
+    dims[0] = 1;
+    
     
     H5::DataSpace dataspace(ndims, dims);
     //dataspace.setExtentSimple(ndims, dims);
     H5::DSetCreatPropList ds_creatplist;
     file.createDataSet( PARAM_DSET_NAME, H5::PredType::NATIVE_INT,
 			dataspace, ds_creatplist  );
+  }
+
+  void make_parameters_grp()
+  {
+    file.createGroup( PARAM_GRP_NAME ); //Don't need to write yet.
   }
   
     // either load from memory, or create a new one.
@@ -1073,7 +1136,13 @@ struct hdf5_collection
     
   }
 
-  void backup( )
+  void initialize_backup()
+  {
+    backupCOPY(); //performs raw copy. Should not be larger than max size...?
+    backup_initialized=true;
+  }
+  
+  void backupCOPY( )
   {
     //Automatically backups to "__"+file_name
     std::string bufname = "__" + file_name;
@@ -1081,7 +1150,136 @@ struct hdf5_collection
     file.flush(H5F_SCOPE_GLOBAL);
     
     fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", file_name.c_str(), bufname.c_str() );
+
+    //REV: Sendfile requires file size be < 2GB!!!!!!!!!
     copy_file( file_name, bufname );
+    return;
+  }
+  
+  void update_parameter( const std::string& newparam, hdf5_collection& newcol )
+  {
+    H5::Group grp = file.openGroup( PARAM_GRP_NAME );
+    H5::DataSet ds = grp.openDataSet( newparam );
+    H5::DataType type = ds.getDataType();
+
+    if(type == H5::PredType::NATIVE_DOUBLE )
+      {
+	float64_t v = get_numeric_parameter<float64_t>( newparam );
+	newcol.set_numeric_parameter<float64_t>( newparam, v );
+      }
+    else if (type == H5::PredType::NATIVE_LONG )
+      {
+	float64_t v = get_numeric_parameter<int64_t>( newparam );
+	newcol.set_numeric_parameter<int64_t>( newparam, v );
+      }
+    else
+      {
+	fprintf(stderr, "ERROR in update_param in backup, unknown type\n");
+	exit(1);
+      }
+  }
+  
+  
+  //Will update targ.
+  //Could check other things, but won't for now ;)
+  //REV: Can do everything internally?
+  void update_matrix( matrix_props& newmat, matrix_props& targmat )
+  {
+    
+    if( newmat.get_nrows() > targmat.get_nrows()  )
+      {
+	size_t rowsdiff = newmat.get_nrows() - targmat.get_nrows();
+	H5::DataType mytype = targmat.dataset.getDataType();
+	if( mytype == H5::PredType::NATIVE_DOUBLE)
+	  {
+	    std::vector< std::vector< float64_t > > toadd =
+	      newmat.get_last_n_rows<float64_t>( rowsdiff );
+
+	    targmat.add_data<float64_t>( toadd );
+	  }
+	else if(mytype == H5::PredType::NATIVE_LONG)
+	  {
+	    std::vector< std::vector< int64_t > > toadd =
+	      newmat.get_last_n_rows<int64_t>( rowsdiff );
+	    
+	    targmat.add_data<int64_t>( toadd );
+	  }
+	else
+	  {
+	    fprintf(stderr, "ERROR, unknown type in update_matrix for backup\n");
+	    exit(1);
+	  }
+	//Need to update by adding rows. NEED TO KNOW TYPE
+      }
+    else if ( newmat.get_nrows() == targmat.get_nrows() )
+      {
+	return;
+	//we assume in no case is a vector updated without adding rows.
+	//I.e. there are no pure "state" vectors!
+	//We could do a check for #rows==1 and do it that way...?
+      }
+    else
+      {
+	fprintf(stderr, "ERROR, backup has MORE rows?!?!?!!\n");
+	exit(1);
+      }
+  }
+  
+  //REV: Could be more intelligent and match them, i.e. take difference...
+  //whatever for now.
+  void backup_matrices(hdf5_collection& targc)
+  {
+    if( matrices.size() != targc.matrices.size() )
+      {
+	fprintf(stderr, "WHOA in backup matrices! Not same number of matrices of source file: [%s] (%ld) and target [%s] (%ld)\n", file_name.c_str(), matrices.size(), targc.file_name.c_str(), targc.matrices.size() );
+	exit(1);
+      }
+    for(size_t m=0; m<matrices.size(); ++m)
+      {
+	update_matrix( matrices[m], targc.matrices[m] );
+      }
+  }
+
+  void backup_parameters( hdf5_collection& targc )
+  {
+    if( parameters.size() != targc.parameters.size() )
+      {
+	fprintf(stderr, "WHOA in backup parameters! Not same number of parameters of source file: [%s] (%ld) and target [%s] (%ld)\n", file_name.c_str(), parameters.size(), targc.file_name.c_str(), targc.parameters.size() );
+	exit(1);
+      }
+    for(size_t m=0; m<parameters.size(); ++m)
+      {
+	update_parameter( parameters[m], targc );
+      }
+  }
+  
+  //Assumes backup file exists (it was copied RAW after first generation! I.e. on creation, we copy it.)
+  void backup( )
+  {
+
+    if(!backup_initialized)
+      {
+	initialize_backup();
+      }
+    
+    //Automatically backups to "__"+file_name
+    std::string bufname = "__" + file_name;
+    
+    //REV: More efficient method to backup (and gets rid of 2GB max file size from sendfile() haha...damn that's stupid.
+    //Only copies DIFFERENCES. If matrix is LARGER, it only copies the difference in rows at the end.
+    //For all parameters, it copies them.
+    fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", file_name.c_str(), bufname.c_str() );
+
+    hdf5_collection tmpc;
+    tmpc.load_collection( bufname );
+
+    //We can now do sets etc. based on diffs.
+
+    //H5::H5File tmpfile( bufname,  );
+    backup_matrices( tmpc );
+    backup_parameters( tmpc );
+    
+    
     return;
   }
   
@@ -1090,7 +1288,8 @@ struct hdf5_collection
   {
     file = H5::H5File( fname, H5F_ACC_TRUNC );
     file_name = fname;
-    make_parameters_dataspace();
+    make_parameters_grp();
+    //make_parameters_dataspace();
   }
   
   void add_float64_matrix(const std::string& matname, const std::vector<std::string>& varnames )
@@ -1348,19 +1547,55 @@ struct hdf5_collection
     return (matrices[ locs[0] ].read_row_range<T>( row, row )[0]);
   }
 
+  void load_params()
+  {
+    //Just save it as char matrix OK.
+    parameters = enumerate_hdf5_dir( file, "/" + PARAM_GRP_NAME );;
+    fprintf(stdout, "Loaded parameters!\n");
+    //print1dvec_row<std::string>( parameters );
+    for(size_t x=0; x<parameters.size(); ++x)
+      {
+	fprintf(stdout, "[%s]\n", parameters[x].c_str());
+      }
+    return ;
+  }
+  
   //Opens existing as user specifies. Loads all the matrix_props etc. as user expects.
   void load_collection( const std::string& fname )
   {
     file = H5::H5File( fname, H5F_ACC_RDWR );
     file_name = fname;
     //Read all the datasets in there. That requires me enumerating them.
+
+    load_params();
     
     std::vector<std::string> toload = matrix_names_from_file();
+    fprintf(stdout, "LOAD COLLECTION: Got list of names of items to load.\n");
     for(size_t x=0; x<toload.size(); ++x)
       {
-	if( toload[x][0] != '_' && toload[x][1] != '_' )
+	fprintf( stdout, "[%s]\n", toload[x].c_str() );
+      }
+    
+    for(size_t x=0; x<toload.size(); ++x)
+      {
+	fprintf(stdout, "Trying to load: [%s]\n", toload[x].c_str() );
+	if( toload[x].size() > 1 )
 	  {
+	    if( toload[x][1] != '_' && toload[x][2] != '_' )
+	      {
+		fprintf(stdout, "Loading it because it is not a varnames i.e. __\n");
+		load_matrix( toload[x] );
+	      }
+	  }
+	else if( toload[x].size() > 0 )
+	  {
+	    fprintf(stdout, "Loading it (it is of length 1)\n");
 	    load_matrix( toload[x] );
+	  }
+	else
+	  {
+	    fprintf(stderr, "File name is empty!? [%s]\n", toload[x].c_str() );
+	    exit(1);
 	  }
       }
   }
@@ -1393,8 +1628,8 @@ struct hdf5_collection
       {
 	fprintf(stderr, "ERROR Couldn't find requested matrix name (dataset) [%s] in matrices, or there were multiple (Found [%ld])\n", matname.c_str(), locs.size());
       }
-
-    FILE* fout = fopen2( matname.c_str(), "w" );
+    
+    FILE* fout = fopen2( fname.c_str(), "w" );
     
     //matrices[ locs[0] ].enumerate_to_file<T>( fname, thinrate );
     matrices[ locs[0] ].enumerate_to_file( fout, thinrate, startpoint );

@@ -43,9 +43,13 @@ void dotest( hdf5_collection& col )
   fprintf(stdout, "\n");
 
 
-  fprintf(stdout, "Got STRPARAM (should be STRPARAM_VAL): [%s]\n", col.get_string_parameter("STRPARAM").c_str() );//, "STRPARAM_VAL");
-  fprintf(stdout, "Got FPARAM (should be 666.6): [%lf]\n", col.get_float64_parameter("F64PARAM") ); //, 666.6);
-  fprintf(stdout, "Got IPARAM (should be 2): [%ld]\n", col.get_int64_parameter("I64PARAM") ); //, 2);
+  //fprintf(stdout, "Got STRPARAM (should be STRPARAM_VAL): [%s]\n", col.get_string_parameter("STRPARAM").c_str() );//, "STRPARAM_VAL");
+  //fprintf(stdout, "Got FPARAM (should be 666.6): [%lf]\n", col.get_float64_parameter("F64PARAM") ); //, 666.6);
+  //fprintf(stdout, "Got IPARAM (should be 2): [%ld]\n", col.get_int64_parameter("I64PARAM") ); //, 2);
+
+  //fprintf(stdout, "Got STRPARAM (should be STRPARAM_VAL): [%s]\n", col.get_string_parameter("STRPARAM").c_str() );//, "STRPARAM_VAL");
+  fprintf(stdout, "Got FPARAM (should be 666.6): [%lf]\n", col.get_numeric_parameter<double>("F64PARAM") ); //, 666.6);
+  fprintf(stdout, "Got IPARAM (should be 2): [%ld]\n", col.get_numeric_parameter<long int>("I64PARAM") ); //, 2);
   
 }
 
@@ -96,6 +100,8 @@ void buildfile(const std::string& testfname)
   col.enumerate_matrix<double>( mat1n );
   col.enumerate_matrix<double>( mat2n );
 
+  col.backup();
+  
   //add to mat1
   col.add_to_matrix<double>(mat1n, varnames1, dat1_2);
   col.enumerate_matrix<double>( mat1n );
@@ -110,23 +116,24 @@ void buildfile(const std::string& testfname)
   col.add_to_matrix<double>(mat1n, varnames1, dat1_3);
   col.enumerate_matrix<double>( mat1n );
   col.enumerate_matrix<double>( mat2n );
-
+  
   fprintf(stdout, "OVERWRITING MAT1 LINE 2!\n");
   col.write_row( mat1n, 1, overwrt2 );
   
+  col.backup();
   
   //Add to imat
   col.add_to_matrix<long int>(imat2n, varnames2, idat1_1);
   col.enumerate_matrix<double>( mat1n );
   col.enumerate_matrix<double>( mat2n );
   col.enumerate_matrix<long int>( imat2n );
-
+  
   fprintf(stdout, "REV: Making parameters.\n");
   
-  col.add_string_parameter("STRPARAM", "STRPARAM_VAL");
+  //col.add_string_parameter("STRPARAM", "STRPARAM_VAL");
   col.add_float64_parameter("F64PARAM", 666.6);
   col.add_int64_parameter("I64PARAM", 2);
-
+  
   col.backup();
   
   dotest( col );
