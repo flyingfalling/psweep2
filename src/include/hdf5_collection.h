@@ -713,35 +713,76 @@ struct matrix_props
     fprintf(stdout, "\n");
   }
 
+  template <typename T>
+  void enumerate_to_file( const std::string& fname,  const size_t& thinrate=1, const size_t& startpoint=0 )
+  {
+    fprintf(stdout, "Will enum data set from matrix [%s]:\n\n", name.c_str());
+
+    std::ofstream outfile;
+    //Non binary...
+    open_ofstream( fname, outfile, std::ios_base::trunc );
+    
+    //REV: This may destroy memory if it's too big...
+    std::vector<std::vector<T> > ret = read_whole_dataset<T>();
+    for(size_t x=startpoint; x<ret.size(); x+=thinrate)
+      {
+	if(ret[x].size() == 0)
+	  {
+	    fprintf(stderr, "ERROR in enumerate to file: no columns?!\n");
+	    exit(1);
+	  }
+	
+	outfile << ret[x][0];
+	for(size_t y=1; y<ret[x].size(); ++y)
+	  {
+	    outfile << " " << ret[x][y];
+	    //fprintf(stdout, "%lf ", ret[x][y]);
+	  }
+	outfile << std::endl;
+      }
+    outfile << std::endl;
+  }
+
   
   //Need to do this incrementally incase there is a problem
-  template <typename T>
-  void enumerate_to_file( FILE* f, size_t skip=1 )
+  void enumerate_to_file( FILE* f, const size_t& skip=1, const size_t& startpoint=0 )
   {
-    std::vector<std::vector<T> > ret = read_whole_dataset<T>();
     for(size_t x=0; x<my_colnames.size(); ++x)
       {
 	fprintf(f, "%s ", my_colnames[x].c_str() );
       }
     fprintf(f, "\n");
     
-    for( size_t x=1; x<ret.size(); x+=skip )
+    if( matrix_datatype == H5::PredType::NATIVE_DOUBLE )
       {
-	for(size_t y=0; y<ret[x].size(); ++y)
+	std::vector<std::vector<float64_t> > ret = read_whole_dataset<float64_t>();
+	for( size_t x=startpoint; x<ret.size(); x+=skip )
 	  {
-	    if( matrix_datatype == H5::PredType::NATIVE_DOUBLE )
+	    fprintf(f, "%lf", ret[x][0]);
+	    for(size_t y=1; y<ret[x].size(); ++y)
 	      {
-		fprintf(f, "%lf ", ret[x][y]);
+		fprintf(f, " %lf", ret[x][y]);
 	      }
-	    else
-	      {
-		fprintf(f, "%ld ", ret[x][y]);
-	      }
+	    fprintf(f, "\n");
 	  }
-	fprintf(f, "\n");
       }
-  }
+    else
+      {
+	std::vector<std::vector<int64_t> > ret = read_whole_dataset<int64_t>();
+	for( size_t x=startpoint; x<ret.size(); x+=skip )
+	  {
+	    fprintf(f, "%ld", ret[x][0]);
+	    for(size_t y=1; y<ret[x].size(); ++y)
+	      {
+		fprintf(f, " %ld", ret[x][y]);
+	      }
+	    fprintf(f, "\n");
+	  }
+      }
 
+  } //end enumerate_to_file
+
+  
   std::vector<std::string> read_string_dset( const std::string& dsname, H5::H5File& f )
   {
     H5TRY()
@@ -1344,5 +1385,22 @@ struct hdf5_collection
       }
     matrices[ locs[0] ].enumerate<T>();
   }
+
+  void enumerate_matrix_to_file( const std::string& matname, const std::string& fname,  const size_t& thinrate=1, const size_t& startpoint=0 )
+  {
+    std::vector< size_t > locs = find_matrix( matname );
+    if(locs.size() != 1)
+      {
+	fprintf(stderr, "ERROR Couldn't find requested matrix name (dataset) [%s] in matrices, or there were multiple (Found [%ld])\n", matname.c_str(), locs.size());
+      }
+
+    FILE* fout = fopen2( matname.c_str(), "w" );
+    
+    //matrices[ locs[0] ].enumerate_to_file<T>( fname, thinrate );
+    matrices[ locs[0] ].enumerate_to_file( fout, thinrate, startpoint );
+    fclose2( fout );
+  }
   
+  
+    
 };

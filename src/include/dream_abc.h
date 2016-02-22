@@ -1364,7 +1364,46 @@ struct dream_abc_state
   {
     initialize( seed );
   }
+
+
+  //Sample from X_hist etc.
+
+  void enumerate_to_file( const std::string& matname, const std::string& fname, const size_t& thinrate, const size_t& startpoint )
+  {
+    state.enumerate_matrix_to_file( matname, fname, thinrate, startpoint );
+  }
   
+  //Note, do we only want to do it after convergence?
+  void enumerate_X_GR_fitness( const std::string& dir, const size_t& genskiprate=10, const size_t& startgen=0 )
+  {
+    make_directory( dir );
+    std::string fnamebase = dir + "/";
+    
+    
+    //REV: This separates for all chains? Ahhhhhhh Need to do that ;)
+    size_t nchains = get_param<int64_t>( N_chains_param );
+
+    //compute starting point from starting gen;
+    size_t startpoint = nchains*startgen;
+
+    //REV: Would really like to add a column at beginning telling generation... since it's row-first though, that's nasty...
+    for(size_t c=0; c<nchains; ++c)
+      {
+	size_t startpointc = c+startpoint;
+
+	std::string Xfname = fnamebase + "_Xhist_" + std::to_string(c);
+	std::string piXfname = fnamebase + "_piXhist_" + std::to_string(c);
+
+	enumerate_to_file( X_hist, Xfname, nchains*genskiprate, startpointc);
+	enumerate_to_file( piX_hist, piXfname, nchains*genskiprate, startpointc);
+      }
+
+    std::string GRfname = fnamebase + "_GRhist";
+    enumerate_to_file( GR_hist, GRfname , 1, 0); //could compute from GR_skip, but meh.
+
+    return;
+  }
+    
 };
 
 

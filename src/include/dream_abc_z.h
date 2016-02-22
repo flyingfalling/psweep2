@@ -114,6 +114,8 @@ struct dream_abc_z_state : public dream_abc_state
   {
     std::vector<std::vector<float64_t>> Xcurr = get_current_gen();
     state.add_to_matrix<float64_t>( Z_hist, state.get_varnames(Z_hist), Xcurr );
+    size_t Mval = get_param<int64_t>( M_param );
+    set_param( M_param, (Mval+Xcurr.size()) );
     return;
   }
   
@@ -121,7 +123,7 @@ struct dream_abc_z_state : public dream_abc_state
   //@OVERLOAD
   void cleanup_gen()
   {
-
+    
     int64_t tgen = get_param<int64_t>(t_gen);
     int64_t Kskip = get_param<int64_t>( K_Zthin_param );
     
