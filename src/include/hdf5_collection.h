@@ -1255,7 +1255,7 @@ struct hdf5_collection
       }
     for(size_t m=0; m<matrices.size(); ++m)
       {
-	update_matrix( matrices[m] );
+	update_matrix( matrices[m], targc );
       }
   }
 
