@@ -100,6 +100,8 @@ void buildfile(const std::string& testfname)
   col.enumerate_matrix<double>( mat1n );
   col.enumerate_matrix<double>( mat2n );
 
+  col.backup();
+  
   //add to mat1
   col.add_to_matrix<double>(mat1n, varnames1, dat1_2);
   col.enumerate_matrix<double>( mat1n );
@@ -114,17 +116,18 @@ void buildfile(const std::string& testfname)
   col.add_to_matrix<double>(mat1n, varnames1, dat1_3);
   col.enumerate_matrix<double>( mat1n );
   col.enumerate_matrix<double>( mat2n );
-
+  
   fprintf(stdout, "OVERWRITING MAT1 LINE 2!\n");
   col.write_row( mat1n, 1, overwrt2 );
   
+  col.backup();
   
   //Add to imat
   col.add_to_matrix<long int>(imat2n, varnames2, idat1_1);
   col.enumerate_matrix<double>( mat1n );
   col.enumerate_matrix<double>( mat2n );
   col.enumerate_matrix<long int>( imat2n );
-
+  
   fprintf(stdout, "REV: Making parameters.\n");
   
   //col.add_string_parameter("STRPARAM", "STRPARAM_VAL");

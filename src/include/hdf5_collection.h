@@ -552,7 +552,14 @@ struct matrix_props
     H5CATCH()
   } //end read_whole_dataset
 
-
+  template <typename T>
+  std::vector<std::vector< T> > get_last_n_rows( const size_t& nrows )
+  {
+    size_t endrow = my_nrows;
+    size_t startrow = endrow - nrows;
+    return read_row_range<T>( startrow, endrow );
+  }
+  
   //REV: This is ****INCLUSIVE***** of end row!!!!!
   template <typename T>
   std::vector< std::vector<T> > read_row_range( const size_t& startrow, const size_t& endrow)
@@ -887,6 +894,7 @@ struct hdf5_collection
   const std::string PARAM_GRP_NAME = "__PARAMETERS";
   //const std::string DATA_GRP_NAME = "__DATA";
 
+  bool backup_initialized=false;
   
   
   template <typename T>
@@ -1131,6 +1139,7 @@ struct hdf5_collection
   void initialize_backup()
   {
     backupCOPY(); //performs raw copy. Should not be larger than max size...?
+    backup_initialized=true;
   }
   
   void backupCOPY( )
@@ -1147,30 +1156,112 @@ struct hdf5_collection
     return;
   }
   
-  void backup_matrix( const std::string& matname )
+  void update_parameter( const std::string& newparam, hdf5_collection& newcol )
   {
-    //TODO!
+    H5::Group grp = file.openGroup( PARAM_GRP_NAME );
+    H5::DataSet ds = grp.openDataSet( newparam );
+    H5::DataType type = ds.getDataType();
+
+    if(type == H5::PredType::NATIVE_DOUBLE )
+      {
+	float64_t v = get_numeric_parameter<float64_t>( newparam );
+	newcol.set_numeric_parameter<float64_t>( newparam, v );
+      }
+    else if (type == H5::PredType::NATIVE_LONG )
+      {
+	float64_t v = get_numeric_parameter<int64_t>( newparam );
+	newcol.set_numeric_parameter<int64_t>( newparam, v );
+      }
+    else
+      {
+	fprintf(stderr, "ERROR in update_param in backup, unknown type\n");
+	exit(1);
+      }
+  }
+  
+  
+  //Will update targ.
+  //Could check other things, but won't for now ;)
+  //REV: Can do everything internally?
+  void update_matrix( matrix_props& newmat, matrix_props& targmat )
+  {
     
-    //Will (load) a copy of the OLD state file to a new state, and iterate through
-    //  matrices in lockstep. If something was added, there is a problem...
-    //  No, much easier to just iterate through data spaces? problem is with PARAMETERs etc.
-    // I know correct ones on THIS side, so I can iterate through them from THIS side!
-    // This saves me from having to know other side! Get attribute list from __PARAMETERS?!
-    //Still need to iterate. Ugh.
+    if( newmat.get_nrows() > targmat.get_nrows()  )
+      {
+	size_t rowsdiff = newmat.get_nrows() - targmat.get_nrows();
+	H5::DataType mytype = targmat.dataset.getDataType();
+	if( mytype == H5::PredType::NATIVE_DOUBLE)
+	  {
+	    std::vector< std::vector< float64_t > > toadd =
+	      newmat.get_last_n_rows<float64_t>( rowsdiff );
+
+	    targmat.add_data<float64_t>( toadd );
+	  }
+	else if(mytype == H5::PredType::NATIVE_LONG)
+	  {
+	    std::vector< std::vector< int64_t > > toadd =
+	      newmat.get_last_n_rows<int64_t>( rowsdiff );
+	    
+	    targmat.add_data<int64_t>( toadd );
+	  }
+	else
+	  {
+	    fprintf(stderr, "ERROR, unknown type in update_matrix for backup\n");
+	    exit(1);
+	  }
+	//Need to update by adding rows. NEED TO KNOW TYPE
+      }
+    else if ( newmat.get_nrows() == targmat.get_nrows() )
+      {
+	return;
+	//we assume in no case is a vector updated without adding rows.
+	//I.e. there are no pure "state" vectors!
+	//We could do a check for #rows==1 and do it that way...?
+      }
+    else
+      {
+	fprintf(stderr, "ERROR, backup has MORE rows?!?!?!!\n");
+	exit(1);
+      }
+  }
+  
+  //REV: Could be more intelligent and match them, i.e. take difference...
+  //whatever for now.
+  void backup_matrices(hdf5_collection& targc)
+  {
+    if( matrices.size() != targc.matrices.size() )
+      {
+	fprintf(stderr, "WHOA in backup matrices! Not same number of matrices of source file: [%s] (%ld) and target [%s] (%ld)\n", file_name.c_str(), matrices.size(), targc.file_name.c_str(), targc.matrices.size() );
+	exit(1);
+      }
+    for(size_t m=0; m<matrices.size(); ++m)
+      {
+	update_matrix( matrices[m], targc.matrices[m] );
+      }
   }
 
-
-  void backup_matrices()
+  void backup_parameters( hdf5_collection& targc )
   {
-  }
-
-  void backup_parameters()
-  {
+    if( parameters.size() != targc.parameters.size() )
+      {
+	fprintf(stderr, "WHOA in backup parameters! Not same number of parameters of source file: [%s] (%ld) and target [%s] (%ld)\n", file_name.c_str(), parameters.size(), targc.file_name.c_str(), targc.parameters.size() );
+	exit(1);
+      }
+    for(size_t m=0; m<parameters.size(); ++m)
+      {
+	update_parameter( parameters[m], targc );
+      }
   }
   
   //Assumes backup file exists (it was copied RAW after first generation! I.e. on creation, we copy it.)
   void backup( )
   {
+
+    if(!backup_initialized)
+      {
+	initialize_backup();
+      }
+    
     //Automatically backups to "__"+file_name
     std::string bufname = "__" + file_name;
     
@@ -1178,10 +1269,15 @@ struct hdf5_collection
     //Only copies DIFFERENCES. If matrix is LARGER, it only copies the difference in rows at the end.
     //For all parameters, it copies them.
     fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", file_name.c_str(), bufname.c_str() );
-    
+
+    hdf5_collection tmpc;
+    tmpc.load_collection( bufname );
+
+    //We can now do sets etc. based on diffs.
+
     //H5::H5File tmpfile( bufname,  );
-    backup_matrices();
-    backup_parameters();
+    backup_matrices( tmpc );
+    backup_parameters( tmpc );
     
     
     return;
