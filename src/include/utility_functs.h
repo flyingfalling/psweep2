@@ -145,7 +145,7 @@ std::string get_file_contents(const std::string filename)
 }
 
 //REV: modified this to remove "mode" since it will always just be READ?
-inline void open_ifstream( std::string fname, std::ifstream& f, std::ios_base::openmode mode=std::ios_base::in, size_t tries=10, long timeout_us=10000 )
+void open_ifstream( std::string fname, std::ifstream& f, std::ios_base::openmode mode=std::ios_base::in, size_t tries=10, long timeout_us=10000 )
 {
   f.open(fname);
   size_t i=0;
@@ -174,7 +174,8 @@ inline void open_ifstream( std::string fname, std::ifstream& f, std::ios_base::o
 
 //void open_ofstream( std::ofstream& f, ios_base::openmode mode )
 
-inline void open_ofstream( std::string fname, std::ofstream& f, std::ios_base::openmode mode=std::ios_base::app, size_t tries=10, long timeout_us=10000 )
+//inline void open_ofstream( std::string fname, std::ofstream& f, std::ios_base::openmode mode=std::ios_base::app, size_t tries=10, long timeout_us=10000 )
+void open_ofstream( std::string fname, std::ofstream& f, std::ios_base::openmode mode=std::ios_base::app, size_t tries=10, long timeout_us=10000 )
 {
   //std::ofstream f;
   f.open(fname); //, mode);
@@ -204,7 +205,7 @@ inline void open_ofstream( std::string fname, std::ofstream& f, std::ios_base::o
 }
 
 //void open_fstream( std::fstream& f, ios_base::openmode mode )
-inline void open_fstream( std::string fname, std::fstream& f, std::ios_base::openmode mode =  std::ios_base::app | std::ios_base::in, size_t tries=10, long timeout_us=10000 )
+void open_fstream( std::string fname, std::fstream& f, std::ios_base::openmode mode =  std::ios_base::app | std::ios_base::in, size_t tries=10, long timeout_us=10000 )
 {
   //std::fstream f;
   f.open(fname, mode);
@@ -233,7 +234,7 @@ inline void open_fstream( std::string fname, std::fstream& f, std::ios_base::ope
   
 }
 
-inline void close_ifstream( std::ifstream& f, size_t tries=10, long timeout_us=10000 )
+void close_ifstream( std::ifstream& f, size_t tries=10, long timeout_us=10000 )
 {
   f.close();
   size_t i=0;
@@ -259,7 +260,7 @@ inline void close_ifstream( std::ifstream& f, size_t tries=10, long timeout_us=1
   
 }
 
-inline void close_ofstream( std::ofstream& f, size_t tries=10, long timeout_us=10000 )
+void close_ofstream( std::ofstream& f, size_t tries=10, long timeout_us=10000 )
 {
    f.close();
   size_t i=0;
@@ -284,7 +285,7 @@ inline void close_ofstream( std::ofstream& f, size_t tries=10, long timeout_us=1
     };
 }
 
-inline void close_fstream( std::fstream& f, size_t tries=10, long timeout_us=10000 )
+void close_fstream( std::fstream& f, size_t tries=10, long timeout_us=10000 )
 {
    f.close();
   size_t i=0;
@@ -309,7 +310,7 @@ inline void close_fstream( std::fstream& f, size_t tries=10, long timeout_us=100
     };
 }
 
-inline FILE* fopen2(const char* fn, std::string m, size_t tries=10, long timeout_us=10000 )
+FILE* fopen2(const char* fn, std::string m, size_t tries=10, long timeout_us=10000 )
 {
   FILE* r = fopen(fn, m.c_str());
   size_t i=0;
@@ -336,7 +337,7 @@ inline FILE* fopen2(const char* fn, std::string m, size_t tries=10, long timeout
   return r;
 }
 
-inline void fclose2( FILE* f, size_t tries=10, long timeout_us=10000 )
+void fclose2( FILE* f, size_t tries=10, long timeout_us=10000 )
 {
   int r = fclose( f );
   size_t i=0;
