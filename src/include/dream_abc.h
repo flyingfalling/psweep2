@@ -321,14 +321,21 @@ struct dream_abc_state
     
   }
 
-  //std::vector<float64_t> make_single_proposal( const std::vector<float64_t>& parent, const std::vector<std::vector<float64_t>>& Xcurr, std::default_random_engine& rand_gen )
-  virtual std::vector<float64_t> make_single_proposal( const size_t& mychainidx,
+  //REV: Better to make a "pure virtual" and not derive from dream_abc...but some shared one?
+  virtual std::vector<std::vector<float64_t> > get_mypairs_vectors( const std::vector<size_t>& pairidxs )
+  {
+    //For normal dream ABC, get current gen
+    std::vector<std::vector<float64_t>> Xcurr = get_current_gen();
+    std::vector<std::vector<float64_t> > mypairs = indices_to_vector_slices< std::vector<float64_t> >(Xcurr, pairidxs );
+    return mypairs;
+    
+  }
+  
+  std::vector<float64_t> make_single_proposal( const size_t& mychainidx,
 					       const std::vector<std::vector<float64_t>>& Xcurr,
 					       std::default_random_engine& rand_gen )
   {
 
-    fprintf(stdout, "CALLING MAKE_SINGLE_PROPOSAL (in DREAM ABC)\n");
-    
     std::vector<float64_t> parent = Xcurr[mychainidx];
     std::vector<float64_t> proposal = parent;
     
@@ -337,29 +344,22 @@ struct dream_abc_state
     std::vector<size_t> movingdims;
     float64_t gamma;
 
-    //fprintf(stdout, "ABC: will choose dims and pairs\n");
     choose_moving_dims_and_npairs( pairidxs, movingdims, gamma, rand_gen );
 
-    //fprintf(stdout, "ABC: DONE: choose dims and pairs. Will now get slices from matrix history\n");
-
-
-    //ROFL, this is wrong, it should get from CURRENT FUCKING ONE, i.e. N BACK IN HISTORY!!! Lololololol...I.e. xstate.
-    //std::vector<std::vector<float64_t> > mypairs = state.get_matrix_row_slice<float64_t>( X_hist, pairidxs );
-    std::vector<std::vector<float64_t> > mypairs = indices_to_vector_slices< std::vector<float64_t> >(Xcurr, pairidxs );
+    fprintf(stdout, "Pair idxs: ");
+    print1dvec_row<size_t>( pairidxs );
     
-    //fprintf(stdout, "ABC: Got history slices\n");
+    std::vector<std::vector<float64_t> > mypairs = get_mypairs_vectors( pairidxs );
     
+        
     std::normal_distribution<float64_t> gdist(0, get_param<float64_t>( bstar_param ) );
     float64_t bwid = get_param<float64_t>( b_noise_param  );
     std::uniform_real_distribution<float64_t> udist(-bwid, bwid);
-    
-    //    fprintf(stdout, "ABC: Made rand distrs\n");
     
     std::vector< std::vector<float64_t> > dimdiffs(  mypairs.size()/2, std::vector<float64_t>(proposal.size(), 0 ) );
     std::vector<float64_t> dimdiffs_total( proposal.size(), 0);
     std::vector<float64_t> dimdiffs_wnoise( proposal.size(), 0);
 
-    //fprintf(stdout, "ABC: Made dim diffs vects\n");
     
     if(mypairs.size() % 2 != 0)
       {
@@ -697,7 +697,7 @@ struct dream_abc_state
     return mymovingdims;
   }
   
-  virtual void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs,
+  void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs,
 				      std::vector<size_t>& moving_dims,
 				      float64_t& gamma,
 				      std::default_random_engine& rand_gen )
@@ -822,8 +822,8 @@ struct dream_abc_state
     return idx;
   }
   
-  std::vector<size_t> draw_DE_pairs( const size_t& npairs,
-				     std::default_random_engine& rand_gen )
+  virtual std::vector<size_t> draw_DE_pairs( const size_t& npairs,
+					     std::default_random_engine& rand_gen )
   {
     return choose_k_indices_from_N_no_replace( get_param<int64_t>(N_chains_param), npairs*2, rand_gen );
   }
