@@ -555,8 +555,8 @@ struct matrix_props
   template <typename T>
   std::vector<std::vector< T> > get_last_n_rows( const size_t& nrows )
   {
-    size_t endrow = my_nrows;
-    size_t startrow = endrow - nrows;
+    size_t endrow = my_nrows-1;
+    size_t startrow = my_nrows - nrows;
     return read_row_range<T>( startrow, endrow );
   }
   
@@ -1148,7 +1148,6 @@ struct hdf5_collection
     std::string bufname = "__" + file_name;
 
     file.flush(H5F_SCOPE_GLOBAL);
-    usleep(100000);
     
     fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", file_name.c_str(), bufname.c_str() );
 
@@ -1276,6 +1275,8 @@ struct hdf5_collection
   //Assumes backup file exists (it was copied RAW after first generation! I.e. on creation, we copy it.)
   void backup( )
   {
+    //REV: This makes it so they match more...?
+    file.flush(H5F_SCOPE_GLOBAL);
 
     fprintf(stderr, "Calling backup\n");
     if(!backup_initialized)
