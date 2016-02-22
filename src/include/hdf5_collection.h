@@ -1232,6 +1232,14 @@ struct hdf5_collection
     if( matrices.size() != targc.matrices.size() )
       {
 	fprintf(stderr, "WHOA in backup matrices! Not same number of matrices of source file: [%s] (%ld) and target [%s] (%ld)\n", file_name.c_str(), matrices.size(), targc.file_name.c_str(), targc.matrices.size() );
+	for(size_t x=0; x<matrices.size(); ++x)
+	  {
+	    fprintf(stderr, "ORIG: [%s]\n", matrices[x].name.c_str() );
+	  }
+	for(size_t x=0; x<targc.matrices.size(); ++x)
+	  {
+	    fprintf(stderr, "TARG: [%s]\n", targc.matrices[x].name.c_str() );
+	  }
 	exit(1);
       }
     for(size_t m=0; m<matrices.size(); ++m)
