@@ -105,7 +105,7 @@ struct dream_abc_state
 			 const std::vector<std::string>& observation_varnames,
 			 const std::vector<float64_t>& observation_stats,
 			 float64_t epsil=2.0,
-			 int64_t maxgens=2e4,
+			 int64_t maxgens=1e5,
 			 int64_t numchains=100,
 			 int64_t ndelta=3,
 			 float64_t bnoise=0.05,
@@ -346,8 +346,8 @@ struct dream_abc_state
 
     choose_moving_dims_and_npairs( pairidxs, movingdims, gamma, rand_gen );
 
-    fprintf(stdout, "Pair idxs: ");
-    print1dvec_row<size_t>( pairidxs );
+    //fprintf(stdout, "Pair idxs: ");
+    //print1dvec_row<size_t>( pairidxs );
     
     std::vector<std::vector<float64_t> > mypairs = get_mypairs_vectors( pairidxs );
     
