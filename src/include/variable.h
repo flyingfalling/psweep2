@@ -14,6 +14,8 @@
 
 #include <utility_functs.h>
 
+#include <commontypes.h>
+
 #include <new> //need this for variant in construcor type things? Maybe not, was doing it for unions with non-POD
 
 #include <memfile3.h>
@@ -23,8 +25,6 @@
 
 //REV: well I fucked up. I can't use union. Need to use boost variant, or do my own thing with inhereitance and pointers.
 
-typedef double float64_t;
-typedef long int int64_t;
 
 //make this a base variable, and everything is derived from this type...?
 template <typename T>

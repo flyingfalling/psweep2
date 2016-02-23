@@ -37,8 +37,7 @@
 
 //REV: Need a way of storing not only DOUBLE matrices, but also LONG INT (and STRING? Nah...)
 
-typedef double float64_t;
-typedef long int int64_t;
+#include <commontypes.h>
 
 #define D(s) const std::string s = #s
 //#define DD(s) state.add_

@@ -21,9 +21,8 @@
 #include <string_manip.h>
 
 #include <vector_utils.h>
+#include <commontypes.h>
 
-typedef double float64_t;
-typedef long int int64_t;
 
 #define H5TRY() try{
 
