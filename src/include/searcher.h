@@ -185,8 +185,19 @@ struct searcher
 			  *fs
 			  );
       }
+
+    
     else if( searchtype.compare( "DREAM-ABCz" ) == 0 )
       {
+
+	//DREAM-ABCz expects:
+	//1) ABC TEST MIN/MAX file which has var namesand values
+	//   e.g. list of #d: name min max values.
+	//   Has headers: NAME MIN MAX
+	//2) ABC TEST OBSERV DATA FILE, which is filename of file
+	//   containing observations from data (Y vector)
+	//   Has headers: NAME
+	//  
 	std::string varname = "ABC_TEST_MIN_MAX_FILE";
 	std::string minmaxfname = params.getTvar( varname );
 
@@ -216,6 +227,29 @@ struct searcher
 	fprintf(stdout, "Getting observ data from [%s]\n", observfname.c_str() );
 	std::vector<std::string> obsv_varnames = obsvdtable.get_col( "NAME" );
 	std::vector<double> obsv_vals = data_table::to_float64( obsvdtable.get_col( "VAL" ) ); //REV: this will just be ERROR and 0 for me... heh.
+
+	//Using that, I search.
+
+	//I need a way to pass more variables further in, by passing
+	//a "named" varlist for example, which DREAM_ABC_Z struct
+	//knows how to handle natively.
+
+	//This "search" funct thing calls with no arguments
+	//(kind of a problem). However, I'd like to be able to change
+	//things like observations part way through? No...
+	//Or only copy certain aspectds like current positions to
+	//a new sweep?
+
+	//Whatever, just add everything to a "command like" processor,
+	//which then goes to a "named" varlist.
+	//The "named" varlist is not hierarchical? We want a "named"
+	//hierarchical varlist, which has variables for model, under
+	//a general one with e.g. numthreads, etc. Workers need to
+	//know # of GPU it's working on etc. Worker only reports when
+	//GPU is ready? Does psweep2 *know* about GPUs?
+	//I can query GPUs on machine and only grab those of certain
+	//type I want (?). Ideal situation is to keep most "code"
+	//loaded on GPU, and only modulate state variables...
 	
 	search_dream_abc_z( statefname,
 			    varnames,

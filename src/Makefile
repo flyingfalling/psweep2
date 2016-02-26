@@ -88,6 +88,8 @@ runtestabcz: test_dream_abc_z.exe
 testhdf5id.exe: $(UNITTESTDIR)/testhdf5id.cpp
 	h5c++ $(CFLAGS) $(UNITTESTDIR)/testhdf5id.cpp -o testhdf5id.exe
 
+test_optionparse.exe: $(UNITTESTDIR)/test_optionparse.cpp $(HEADERFILES)
+	g++ -std=c++11 $(INCLUDEFLAG) $(UNITTESTDIR)/test_optionparse.cpp -o test_optionparse.exe
 
 clean:
 	rm *.exe *.o
