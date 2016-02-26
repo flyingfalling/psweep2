@@ -260,12 +260,51 @@ struct argparser
   
 };
 
+
+//varlist to modify (options will only ever modify varlists?!?!?! Which will then be processed elsewhere, fuck that
+//noise lol...just parse the stuff directly. I.e. some guys add to varlist, some don't?), vector of strings (arglist of option)
+//Some guys for example turn on/off debug modes? I.e. set global variables (?) that propogate everywhere? They are args to certain
+//functions/structs basically...they are added if present, otherwise default...I guess.
+typedef std::function<void( varlist&, const std::vector<std::string>& )>   handlefunct;
+
 //Now user can "apply" his "known" registered functs to each parsedopt
 //Basically have him build these "known" guys to do it?
 struct optionrunner
 {
-  apply_to_arg( const std::string& argname, const std::vector< parsedoptions >& optns )
+  std::vector<handlefunct> functs;
+  
+  void register_funct( const std::string& arg, handlefunct& funct )
   {
+    
+  }
+  
+  std::vector<size_t> get_matches( const std::string& argname, std::vector< parsedoptions >& optns )
+  {
+    std::vector<size_t> locs;
+    for(size_t x=0; x<optns.size(); ++x)
+      {
+	if( optns[x].arg.compare( argname ) )
+	  {
+	    locs.push_back( x );
+	  }
+      }
+    return locs;
+  }
+
+  //REV: Automatically "do" things with args that we require, and keep them around for other things?
+  
+  
+  
+  apply_to_arg( const std::string& argname, const std::vector< parsedoptions >& optns, varlist& vl )
+  {
+    
+    //If there is more than 1 example...then bam. Exit? No, in some cases we "add" to a variable in varlist etc.
+    std::vector<size_t> locs = get_matches( argname, optns );
+    for(size_t x=0; x<locs.size(); ++x)
+      {
+	opth.apply_funct( optns );
+      }
+    
     //Match any in optns that match argname
     //For each, check if it has "right" number of args.
     //If so, apply my function to each of those?
@@ -281,7 +320,11 @@ struct optionrunner
     //We want to either ADD vars or SET vars? Gets kind of annoying?
     //What kind of things do we want to do?
     //At anyrate, this gives us "parsed options" ;)
-    //Fine, This is basically varlist haha... can figure shit out from there?
+    //Fine, This is basically varlist haha... can figure shit out from there? How do I want to use it?
+    //Well, basically I want to convert it to the global varlist so that user can access these variables/values freely.
+    //For example to use them to set valuse for individual models, or pass to sweeps.
+    //I.e. set a way to convert them. Directly convert, or process to a specific variable in a varlist, etc.
+    
     //Yappa, varlist ni siyou...
   }
 };
