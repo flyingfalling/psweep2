@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string_manip.h>
+
 //REV: header for optionhandler, a wrapper or my code written to handle
 //user-passed CMD line options, and push them appropriately into a
 //varlist etc.
@@ -129,6 +131,94 @@ struct parsedoption
   //setting config files or something...
 };
 
+std::string remove_prefix( const std::string& str, const std::string& prefix )
+{
+  if( string_prefix_match( str, prefix ) == true ) 
+    {
+      size_t last = str.find_last_of( prefix );
+      std::string noprefix = str.substring( last+1, std::string.size() );
+      return noprefix;
+    }
+  else
+    {
+      fprintf(stderr, "ERROR in remove_prefix: requested prefix to remove [%s] is not a prefix of me [%s]!!\n", prefix.c_str(), str.c_str());
+      exit(1);
+    }
+}
+
+bool string_prefix_match( const std::string& orig, const std::string& prefix )
+{
+  if( orig.compare(0, prefix.size(), prefix)==0 )
+    {
+      return true;
+    }
+  return false;
+}
+
+//Only expands internal guys by flag, i.e. doesnt make new length of arglist.
+std::vector< std::vector< std::string > > parse_internally_by_flag( const std::vector< std::vector< std::string> >& argslist, const std::string& flag )
+{
+  std::vector<std::vector<std::string> > retval(argslist.size() );
+  for(size_t y=0; y<argslist.size(); ++y)
+    {
+      arg = argslist[y];
+      std::vector<std::string> newvect;
+      
+      for(size_t s=0; s<arg.size(); ++s)
+	{
+	  std::vector<std::string> newlist = tokenize_string( arg[s], flag );
+	  //newvect.push_back( newlist );
+	  newvect.insert( newvect.end(), newlist.begin(), newlist.end() );
+	}
+
+      retval.push_back( newvect );
+    }
+  return retval;
+}
+
+
+std::vector< std::vector< std::string > > parse_by_flag( const std::vector< std::vector< std::string> >& argslist, const std::string& flag, std::vector<std::string>& extras )
+{
+
+  //REV: TODO:: REMOVE THE FLAG!!! Or -- will catch -
+  
+  //std::vector<std::string> extras;
+  std::vector< std::vector< std::string> > retval;
+
+  std::vector<std::string> tmp;
+  
+  for(size_t y=0; y<argslist.size(); ++y)
+    {
+      std::vector<std::string> args = argslist[y];
+      for(size_t x=0; x<args.size(); ++x)
+	{
+	  if( string_prefix_match( args[x], flag ) == true )
+	    {
+	      if( tmp.size() != 0 )
+		{
+		  retval.push_back( remove_prefix( tmp, flag ) );
+		  tmp.clear();
+		}
+	      tmp.push_back( args[x] );
+	    }
+	  else
+	    {
+	      if( tmp.size() == 0 ) //if still no seps, i.e. extras
+		{
+		  extras.push_back( args[x] );
+		}
+	      else
+		{
+		  tmp.push_back( args[x] );
+		}
+	    }
+	} //end for each args in this list
+      
+    } //end for all args lists...
+  return retval;
+}
+						       
+
 struct argparser
 {
   //std::vector< std::string > seps = {" ", "-", "--"}; //initially will separate and remove these...?
@@ -136,17 +226,71 @@ struct argparser
   std::string sep2="--"; //for "short" options? What about "long" options? Why would I separate by -- or -?
   std::string sep3="-";
   std::string sep4="=";
+
+  std::vector<parsedoption> parsedopts;
+  std::vector<std::string> extras;
   
-  //In other words, I assume that all guys are "known". Problem is that not all guys necessarily need to be "known" to me,
-  //some other (user) program may receive some as pass-through... (only unknown ones?)
-  //They're available to "consume" I guess? Specific ones for certain models might be set in some way so they aren't stolen by others?
+  //REV: First parse should already have already separated out all spaces...
+  //It already separated them by whitespace for me.
+  //So, now I need to parse "chunked" guys, and also parse out the vector into those that begin with - or --...etc.
+  std::vector<parsedoption> doparse( const std::vector<std::string>& args )
+  {
+    std::vector<parsedoption> retval;
+    
+    std::vector<std::vector<std::string> > args2d( 1, args );
+
+    //sep1 is already done by the argc/argv parser thing of caller?
+    std::vector< std::vector<std::string> > parsed = parse_by_flag( args2d, sep2, extras );
+    std::vector< std::vector<std::string> > parsed = parse_by_flag( parsed, sep3, extras );
+    std::vector< std::vector<std::string> > parsed = parse_internally_by_flag( parsed, sep4 );
+    for( size_t x=0; x<parsed.size(); ++x )
+      {
+	retval.push_back( parsedoption( parsed[x] ) );
+      }
+
+    return retval;
+  }
+
+  
+  
+  argparser( const std::vector<std::string>& args )
+  {
+    parsedopts = doparse( args );
+  }
+  
+};
+
+//Now user can "apply" his "known" registered functs to each parsedopt
+//Basically have him build these "known" guys to do it?
+struct optionrunner
+{
+  apply_to_arg( const std::string& argname, const std::vector< parsedoptions >& optns )
+  {
+    //Match any in optns that match argname
+    //For each, check if it has "right" number of args.
+    //If so, apply my function to each of those?
+    //Whole goal is to e.g. set certain predetermined variables etc., right? Kind of like "get" type guys. So, basically fills up a varlist? Wow...
+    //And then user parses it afterwards? If it is just filling a varlist, what the fuck do we do? For example, varlist might have multi-length
+    //vector of filenames for config filenames or some shit like that that need to be handled by the blah?
+    //Just put everything into a varlist...? And then user can access it like that?
+    //But then options will have same name as varlist name, which may not be what we want...
+    //So we can set it up to um, parse it and add all args? user will get args as he goes?
+    //Result is something? How do we do parses to doubles etc.?
+    //Like, user programs it to set some "global" variables. Ah, I like that. And how they are used is used at blah time. For example, we use it
+    //to modify a varlist if we want...
+    //We want to either ADD vars or SET vars? Gets kind of annoying?
+    //What kind of things do we want to do?
+    //At anyrate, this gives us "parsed options" ;)
+    //Fine, This is basically varlist haha... can figure shit out from there?
+    //Yappa, varlist ni siyou...
+  }
 };
 
 
 struct opthandler
 {
   std::vector<std::string> registered_opts;
-
+  
   
   
 };
