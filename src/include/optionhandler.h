@@ -294,7 +294,7 @@ struct optlist
     fprintf(stdout, "EXTRA OPTIONS LIST:\n");
     for(size_t x=0; x<extras.size(); ++x)
       {
-	fprintf(stdout, "[%s]\n");
+	fprintf(stdout, "[%s]\n", extras[x].c_str());
       }
   }
   
