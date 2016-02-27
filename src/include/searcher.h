@@ -81,6 +81,9 @@
 //Another option is to have a set "config" file for running the sweep. For example "load" etc.? I don't want to specify (on command line?)
 //The arguments each time I start a run? Or do I? I want it to be "stored". It is stored, in the file itself of course.
 
+//Make an error if user "doubly defines" things. E.g. allow him to set a "config" file for the search algorithm, or a "default", but then also add
+//cmd line arguments. Give a warning (error/exit?) if cmnd line overrides confnig file, or config overrides config,e tc.
+
 struct searcher
 {
 
