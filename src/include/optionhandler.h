@@ -198,11 +198,11 @@ std::vector< std::vector< std::string > > parse_internally_by_flag( const std::v
       for(size_t s=0; s<arg.size(); ++s)
 	{
 	  std::vector<std::string> newlist = tokenize_string( arg[s], flag );
-	  fprintf(stdout, "Successfully tokenized [%s]...to newlist of [%ld]\n", arg[s].c_str(), newlist.size());
-	  for(size_t x=0; x<newlist.size(); ++x)
+	  //fprintf(stdout, "Successfully tokenized [%s]...to newlist of [%ld]\n", arg[s].c_str(), newlist.size());
+	  /*for(size_t x=0; x<newlist.size(); ++x)
 	    {
 	      fprintf(stdout, "Tokenized: [%s]\n", newlist[x].c_str());
-	    }
+	      }*/
 	  //newvect.push_back( newlist );
 	  
 	  newvect.insert( newvect.end(), newlist.begin(), newlist.end() );
@@ -232,15 +232,15 @@ std::vector< std::vector< std::string > > parse_by_flag( const std::vector< std:
       std::vector<std::string> args = argslist[y];
       for(size_t x=0; x<args.size(); ++x)
 	{
-	  fprintf(stdout, "Checking [%s]\n", args[x].c_str() );
+	  //fprintf(stdout, "Checking [%s]\n", args[x].c_str() );
 	  //for(size_t f=0; f<flags.size(); ++f)
 	  size_t matchedprefixidx=0;
 	  if( any_string_prefix_match( args[x], flags, matchedprefixidx ) == true )
 	    {
-	      fprintf(stdout, "Matched a prefix flag! ([%s])\n", args[x].c_str());
+	      //fprintf(stdout, "Matched a prefix flag! ([%s])\n", args[x].c_str());
 	      if( tmp.size() != 0 ) //We've "found" a new one...
 		{
-		  fprintf(stdout, "Pushed back vector, i.e. new prefix flag...\n");
+		  //fprintf(stdout, "Pushed back vector, i.e. new prefix flag...\n");
 		  retval.push_back( tmp );
 		  tmp.clear();
 		}
@@ -265,7 +265,7 @@ std::vector< std::vector< std::string > > parse_by_flag( const std::vector< std:
 	  retval.push_back(tmp);
 	}
     } //end for all args lists...
-  fprintf(stdout, "Returning new matrix with [%ld] rows\n", retval.size() );
+  //fprintf(stdout, "Returning new matrix with [%ld] rows\n", retval.size() );
   return retval;
 }
 						       
@@ -280,11 +280,21 @@ struct optlist
 
   void enumerateparsed()
   {
+    fprintf(stdout, "PARSED OPTIONS LIST:\n");
     for(size_t x=0; x<parsedopts.size(); ++x)
       {
 	fprintf(stdout, "Parsed option #[%ld] of [%ld]\n", x, parsedopts.size() );
 	parsedopts[x].enumerate();
 	fprintf(stdout, "\n");
+      }
+  }
+
+  void enumerateextras()
+  {
+    fprintf(stdout, "EXTRA OPTIONS LIST:\n");
+    for(size_t x=0; x<extras.size(); ++x)
+      {
+	fprintf(stdout, "[%s]\n");
       }
   }
   
@@ -296,7 +306,12 @@ struct optlist
   //So, now I need to parse "chunked" guys, and also parse out the vector into those that begin with - or --...etc.
   std::vector<parsedoption> doparse( const std::vector<std::string>& args )
   {
-    fprintf(stdout, "Parsing options! Arglist has [%ld] elements\n", args.size());
+    fprintf(stdout, "Parsing options! Arglist has [%ld] elements:\n[ ", args.size());
+    for(size_t x=0; x<args.size(); ++x)
+      {
+	fprintf( stdout, "[%s] ", args[x].c_str() );
+      }
+    fprintf(stdout, "]\n\n");
     
     std::vector<parsedoption> retval;
     
@@ -309,16 +324,16 @@ struct optlist
 
     parsed = parse_by_flag( args2d, flags, extras );
     //parsed = parse_by_flag( parsed, sep3, extras );
-    for(size_t a=0; a<parsed.size(); ++a)
-      {
-	fprintf(stdout, "Vect sizes: [%ld]\n", parsed[a].size());
-      }
+    //for(size_t a=0; a<parsed.size(); ++a)
+    //  {
+    //fprintf(stdout, "Vect sizes: [%ld]\n", parsed[a].size());
+    //  }
     parsed = parse_internally_by_flag( parsed, sep4 );
-    for(size_t a=0; a<parsed.size(); ++a)
-      {
-	fprintf(stdout, "Vect sizes: [%ld]\n", parsed[a].size());
-      }
-    fprintf(stdout, "After parse, we have [%ld] rows in our vector list!\n", parsed.size() );
+    //for(size_t a=0; a<parsed.size(); ++a)
+    //  {
+    //	fprintf(stdout, "Vect sizes: [%ld]\n", parsed[a].size());
+    //  }
+    //fprintf(stdout, "After parse, we have [%ld] rows in our vector list!\n", parsed.size() );
     for( size_t x=0; x<parsed.size(); ++x )
       {
 	//fprintf(stdout, "Trying to pushback to parsedoption thing...\n");
@@ -346,6 +361,8 @@ struct optlist
   {
     std::vector<std::string> args = strvect_from_charptr_array( argc, argv );
     parsedopts = doparse( args );
+    enumerateparsed();
+    enumerateextras();
   }
 
   //Returns vect of vect of the args of each one?

@@ -15,7 +15,7 @@ int main( int argc, char* argv[] )
   //convert argv to correct order
   optlist myopts( argc, argv );
 
-  myopts.enumerateparsed();
+  //myopts.enumerateparsed();
   
   fprintf(stdout, "HINT: CALL WITH: -m, and/or --config, and/or -nn\n\n");
   

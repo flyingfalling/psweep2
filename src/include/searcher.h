@@ -74,6 +74,13 @@
 //Globally, I want to have some struct to call it with? Like REGISTER_FUCNT. I don't want user to have to do stuff. I.e. make a "searcher" struct,
 //much nicer. Then call run-search. OK.
 
+
+//REV: Where to set parameters?
+//We can do it "above" to handle options, but that makes it a pain. Assume all variables are already set and I just "check" for them?
+//Inside the algorithm itself?
+//Another option is to have a set "config" file for running the sweep. For example "load" etc.? I don't want to specify (on command line?)
+//The arguments each time I start a run? Or do I? I want it to be "stored". It is stored, in the file itself of course.
+
 struct searcher
 {
 
@@ -81,10 +88,10 @@ struct searcher
   fake_system fakesys;
 
   parampoint_generator pg;
-  
-  searcher()
+
+  searcher( const optlist& opts )
   {
-    //REV: nothing todo
+    //REV: Nothing to do
   }
   
   void register_funct( const std::string& name, const fake_system_funct_t& funct)
@@ -93,7 +100,7 @@ struct searcher
   }
   
   //varlist will contain required um, data files I guess?
-  void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const bool& writefiles=false )
+  void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const optlist& options, const bool& writefiles=false )
   {
     pg = parampoint_generator(scriptfname, mydir);
 
@@ -174,7 +181,8 @@ struct searcher
 	fprintf(stdout, "Getting observ data from [%s]\n", observfname.c_str() );
 	std::vector<std::string> obsv_varnames = obsvdtable.get_col( "NAME" );
 	std::vector<double> obsv_vals = data_table::to_float64( obsvdtable.get_col( "VAL" ) ); //REV: this will just be ERROR and 0 for me... heh.
-	
+
+	//Load or run? Do it here or elsewhere? Do it in ABC?
 	search_dream_abc( statefname,
 			  varnames,
 			  mins,
