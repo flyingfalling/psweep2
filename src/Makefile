@@ -91,5 +91,8 @@ testhdf5id.exe: $(UNITTESTDIR)/testhdf5id.cpp
 test_optionparse.exe: $(UNITTESTDIR)/test_optionparse.cpp $(HEADERFILES)
 	g++ -std=c++11 $(INCLUDEFLAG) $(UNITTESTDIR)/test_optionparse.cpp -o test_optionparse.exe
 
+test_optionhandler.exe: $(UNITTESTDIR)/test_optionhandler.cpp $(HEADERFILES)
+	g++ -std=c++11 $(INCLUDEFLAG) $(UNITTESTDIR)/test_optionhandler.cpp -o test_optionhandler.exe
+
 clean:
 	rm *.exe *.o

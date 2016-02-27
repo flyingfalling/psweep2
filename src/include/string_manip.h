@@ -25,15 +25,16 @@ std::string CONCATENATE_STR_ARRAY(const std::vector<std::string>& arr, const std
     }
 }
 
-std::vector<std::string> tokenize_string(const std::string& src, const std::string& delim, include_empty_repeats=false)
+std::vector<std::string> tokenize_string(const std::string& src, const std::string& delim, bool include_empty_repeats=false)
 {
   std::vector<std::string> retval;
-  char_separator<char> sep( delim );
-  tokenizer<char_separator<char>> tokens(src, sep);
+  boost::char_separator<char> sep( delim.c_str() );
+  boost::tokenizer<boost::char_separator<char>> tokens(src, sep);
   for(const auto& t : tokens)
     {
       retval.push_back( t );
     }
+  return retval;
 }
 
 
