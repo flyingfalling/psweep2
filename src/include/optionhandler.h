@@ -272,11 +272,36 @@ std::vector< std::vector< std::string > > parse_by_flag( const std::vector< std:
 
 struct optlist
 {
+
+  std::vector<parsedoption> parsedopts;
+  std::vector<std::string> extras;
+
+  
   //std::vector< std::string > seps = {" ", "-", "--"}; //initially will separate and remove these...?
   std::string sep1=" ";
   std::string sep2="--"; //for "short" options? What about "long" options? Why would I separate by -- or -?
   std::string sep3="-";
   std::string sep4="=";
+
+  parsedoption get_opt( const std::string& optname )
+  {
+    std::vector<size_t> locs = get_matches( optname, parsedopts );
+    if(locs.size() > 1 )
+      {
+	fprintf(stderr, "WARNING (will just take first): in get_opt, to get opt [%s], there is more than one instance (%ld instances) in argument list\n", optname.c_str(), locs.size() );
+      }
+    else if( locs.size() == 0 )
+      {
+	fprintf(stderr, "Requested NON-EXISTENT option [%s], exiting!\n", optname.c_str());
+	exit(1);
+      }
+    else //locs.size() == 1 
+      {
+	return parsedopts[ locs[0] ];
+      }
+    
+    
+  }
 
   void enumerateparsed()
   {
@@ -298,8 +323,7 @@ struct optlist
       }
   }
   
-  std::vector<parsedoption> parsedopts;
-  std::vector<std::string> extras;
+  
   
   //REV: First parse should already have already separated out all spaces...
   //It already separated them by whitespace for me.

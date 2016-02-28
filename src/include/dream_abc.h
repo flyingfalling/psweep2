@@ -1360,6 +1360,10 @@ struct dream_abc_state
 
   //OPTIONS
   std::string _statefilename="__ERROR_NOSTATEFILENAME";
+  std::string _varfilename="__ERROR";
+  std::string _obsfilename="__ERROR";
+  bool restart=false;
+  
   std::vector<std::string> _varnames;
   std::vector<float64_t> _mins;
   std::vector<float64_t> _maxes;
@@ -1382,6 +1386,102 @@ struct dream_abc_state
   void parseopts( const optlist& opts )
   {
     //Parse to load varnames, mins, maxes, etc.
+    auto c = opts.get_opt_args( "VARIABLES" );
+
+    if( c.size() == 0 )
+      {
+      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -VARIABLES for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(c[0].size() == 0 || c[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, -VARIABLES option had [%ld] arguments, expects only 1 (File name containing VARIABLES data)\n", c[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	    _varfilename = c[0][0];
+	  }
+	fprintf(stdout, "DREAM ABC: Using specified VARIABLES [%s] for running search\n", _varfilename.c_str() );
+      }
+    
+
+    c = opts.get_opt_args( "OBSERVATIONS" );
+    if( c.size() == 0 )
+      {
+      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -OBSERVATIONS for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(c[0].size() == 0 || c[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, -OBSERVATIONS option had [%ld] arguments, expects only 1 (File name containing OBSERVATIONS data)\n", c[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	    _obsfilename = c[0][0];
+	  }
+	fprintf(stdout, "DREAM ABC: Using specified OBSERVATIONS [%s] for running search\n", _obsfilename.c_str() );
+      }
+
+
+    c = opts.get_opt_args( "STATEFILE" );
+    if( c.size() == 0 )
+      {
+      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -STATEFILE for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(c[0].size() == 0 || c[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, -STATEFILE option had [%ld] arguments, expects only 1 (File name that will be STATEFILE)\n", c[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	    _statefilename = c[0][0];
+	  }
+	fprintf(stdout, "DREAM ABC: Using specified STATEFILE [%s] for running search. If it exists, you must specify --RESTART to restart it (you should also increase e.g. max generations). Otherwise, it will be rewritten/overwritten.\n", _statefilename.c_str() );
+      }
+
+    
+    c = opts.get_opt_args( "RESTART" );
+    if( c.size() == 0 )
+      {
+      	fprintf(stdout, "DREAM ABC: User did not specify a RESTART option. A new HDF5 COLLECTION will be created for this search at [%s], whether or not it exists!!!\n", _statefilename.c_str());
+	restart = false;
+      }
+    else
+      {
+	fprintf(stdout, "DREAM ABC: User specified **RESTART** option. The previously created HDF5 Collection [%s] will be used for this search!!!\n", _statefilename.c_str());
+	restart = true;
+      }
+
+    c = opts.get_opt_args( "MAXGENS" );
+    if( c.size() > 0 )
+      {
+	if(c[0].size() != 1)
+	  {
+	    fprintf(stderr, "DREAM ABC PARSING OPTIONS: ERROR: MAXGENS had [%ld] arguments but was expecting just 1 (number of gens)\n", c[0].size());
+	    exit(1);
+	  }
+	else
+	  {
+	    _maxgens = opts.get_opt( "MAXGENS" ).argn_as_int64( 0 );
+	    fprintf(stdout, "DREAM ABC: setting MAXGENS to [%ld], which may be greater than current (loaded) maxgens. Note, command line parameters will take precedence over CONFIG file parameters, which will take precedence over currently existing (saved) parameters in a loaded STATE file\n", _maxgens);
+	  }
+      }
+
+    //REV: Problem is, these will overwrite. Do we always need to specify the same files etc. for config? They will "overwrite" natural ones. How do
+    //I know whether to overwrite it?
+
+    //Need a nicer way than setting ghetto state variables. E.g. return a varlist of only guys to update or something.
+    
     
     
     
@@ -1392,7 +1492,10 @@ struct dream_abc_state
 
     //Give warning (BIG WARNING? Exit?) if any variables are changed
     //except for MAXGENS, during a restart
-  }
+
+    
+  } //end parseopts
+
   
   void parse_dreamabcfile( const std::string& fname )
   {
@@ -1497,6 +1600,32 @@ struct dream_abc_state
 };
 
 
+
+
+void search_dream_abc( const optlist& opts,
+		       parampoint_generator& pg,
+		       filesender& fs
+		       )
+{
+  dream_abc_state state( opts );
+  
+    
+  state.run( fs, pg );
+
+  return;
+}
+
+
+
+
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+///////////////////////////////////////////////////// OLD VERSION
+
+
+
 //REV: First implement MT-DREAM-Z
 void search_dream_abc( const std::string& statefilename,
 		       const std::vector<std::string>& varnames,
@@ -1525,27 +1654,6 @@ void search_dream_abc( const std::string& statefilename,
 }
 
 
-//REV: First implement MT-DREAM-Z
-void search_dream_abc( const optlist& opts,
-		       parampoint_generator& pg,
-		       filesender& fs
-		       )
-{
-  dream_abc_state state( opts );
-  
-  //Should I load or not?
-  /*state.new_state( statefilename,
-		   varnames,
-		   mins,
-		   maxes,
-		   observed_varnames,
-		   observed_data
-		   );*/
-  
-  state.run( fs, pg );
-
-  return;
-}
 
 
 //Methods to:

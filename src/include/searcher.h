@@ -232,7 +232,7 @@ struct searcher
       }
     else if( searchtype.compare( "DREAM-ABCz") == 0 )
       {
-	
+	search_dream_abcz( opts, pg, fs );
       }
     else
       {
@@ -253,6 +253,14 @@ struct searcher
     delete(myfs);
   }
 
+
+
+  /////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////// OLD RUN SEARCH
+  
   //varlist will contain required um, data files I guess?
   void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const bool& writefiles=false )
   {
