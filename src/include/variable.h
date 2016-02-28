@@ -18,7 +18,7 @@
 
 #include <new> //need this for variant in construcor type things? Maybe not, was doing it for unions with non-POD
 
-#include <memfile3.h>
+//#include <memfile.h>
 
 #include <memfsys.h>
 //REV: includes...

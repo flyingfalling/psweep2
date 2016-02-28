@@ -53,7 +53,8 @@
 #pragma once
 
 #include <filesender.h>
-#include <searchalgos.h>
+
+#include <optionhandler.h>
 
 #include <iterator>     // ostream_operator
 #include <boost/tokenizer.hpp>
@@ -62,18 +63,11 @@
 #include <utility_functs.h>
 #include <csvparser.h>
 
-
+#include <gridsearch.h>
 #include <dream_abc.h>
 #include <dream_abc_z.h>
-//#include <boost/cstdfloat.hpp>
-//#include <stdfloat.h>
-//#include <stdint.h>
 
-
-
-//Globally, I want to have some struct to call it with? Like REGISTER_FUCNT. I don't want user to have to do stuff. I.e. make a "searcher" struct,
-//much nicer. Then call run-search. OK.
-
+#include <commontypes.h>
 
 //REV: Where to set parameters?
 //We can do it "above" to handle options, but that makes it a pain. Assume all variables are already set and I just "check" for them?
@@ -84,6 +78,11 @@
 //Make an error if user "doubly defines" things. E.g. allow him to set a "config" file for the search algorithm, or a "default", but then also add
 //cmd line arguments. Give a warning (error/exit?) if cmnd line overrides confnig file, or config overrides config,e tc.
 
+
+//REV: This is the thing that is compiled into the library! I.e. globally accessible is this!
+//I need to add everything to CPP files so that I can separately compile them...and do it faster...
+//Let's do it now I guess? They are all including each other though, which causes some problems.
+
 struct searcher
 {
 
@@ -92,18 +91,18 @@ struct searcher
 
   parampoint_generator pg;
 
-  searcher( const optlist& opts )
+  searcher( )
   {
     //REV: Nothing to do
   }
-  
+
   void register_funct( const std::string& name, const fake_system_funct_t& funct)
   {
     fakesys.register_funct( name, funct );
   }
   
   //varlist will contain required um, data files I guess?
-  void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const optlist& options, const bool& writefiles=false )
+  void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const bool& writefiles=false )
   {
     pg = parampoint_generator(scriptfname, mydir);
 

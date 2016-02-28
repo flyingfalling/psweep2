@@ -120,6 +120,8 @@ int main(int argc, char** argv)
       searcher srch1;
       srch1.register_funct( "./userfunct", user_funct );
       bool writefiles=false;
+
+      //REV: Script fname, mydir, searchalg, paramsvl (?), and writefiles are all specified!!!!! By options!!
       srch1.run_search( searchalg, scriptfname, mydir, paramsvl, writefiles);
     }
   

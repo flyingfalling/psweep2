@@ -2,7 +2,7 @@
 #pragma once
 
 #include <filesender.h>
-#include <test_parampoint.h>
+#include <recursive_permute.h>
 
 void search_grid( const std::vector<std::string>& varnames,
 		  const std::vector<double>& mins,
