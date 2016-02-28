@@ -253,3 +253,13 @@ void print1dvec_row(const std::vector<T>& arg)
     }
   std::fprintf(stdout, "\n");
 }
+
+
+void print1d_str_vec_row(const std::vector<std::string>& arg)
+{
+  for(size_t x=0; x<arg.size(); ++x)
+    {
+      std::fprintf(stdout, "[%s] ", arg[x].c_str() );
+    }
+  std::fprintf(stdout, "\n");
+}

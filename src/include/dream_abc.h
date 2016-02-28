@@ -1357,6 +1357,88 @@ struct dream_abc_state
     init_random(seed);
   }
   
+
+  //OPTIONS
+  std::string _statefilename="__ERROR_NOSTATEFILENAME";
+  std::vector<std::string> _varnames;
+  std::vector<float64_t> _mins;
+  std::vector<float64_t> _maxes;
+  std::vector<std::string> _observation_varnames;
+  std::vector<float64_t> _observation_stats;
+
+  float64_t _epsil=2.0;
+  int64_t _maxgens=1e5;
+  int64_t _numchains=100;
+  int64_t _ndelta=3;
+  float64_t _bnoise=0.05;
+  float64_t _bstar=1e-6;
+  float64_t _rthresh=1.2;
+  int64_t _GRskip=50;
+  int64_t _nCR=3;
+  int64_t _pCRskip=10;
+  float64_t _pjump=0.05;
+  float64_t _backupskip=10;
+  
+  void parseopts( const optlist& opts )
+  {
+    //Parse to load varnames, mins, maxes, etc.
+    
+    
+    
+    //Optionally load, epsilon, maxgens, etc., etc.
+    //better to take a "CONFIGFILE" that loads those from a varlist
+    //type thing. User will rarely pass all those as option?
+    //Anyway, hdf5file holds them.
+
+    //Give warning (BIG WARNING? Exit?) if any variables are changed
+    //except for MAXGENS, during a restart
+  }
+  
+  void parse_dreamabcfile( const std::string& fname )
+  {
+    bool hascolnames = true;
+    data_table dtable( fname, hascolnames );
+
+    fprintf(stdout, "DREAMABC: PARSE ABCFILE: Trying to get VARNAMEs\n");
+    _varnames = dtable.get_col( "NAME" );
+    fprintf(stdout, "Got varnames. Getting MINS\n");
+    _mins = data_table::to_float64( dtable.get_col( "MIN" ) );
+    fprintf(stdout, "Got mins, getting MAXES\n");
+    _maxes = data_table::to_float64( dtable.get_col( "MAX" ) );
+    fprintf(stdout, "Got maxes, getting STEP\n");
+    _steps = data_table::to_float64( dtable.get_col( "STEP" ) );
+    fprintf(stdout, "Got STEP. Finished parse\n");
+    
+  }
+
+  void parse_obsdatafile( const std::string& observfname )
+  {
+    bool hascolnames = true;
+    
+    
+    fprintf(stdout, "Getting observ data from [%s]\n", observfname.c_str() );
+    data_table obsvdtable( observfname, hascolnames );
+    
+    fprintf(stdout, "DREAMABC: PARSE OBSERVERED DATA FILE: Trying to get VARNAMEs\n");
+    
+    _observation_varnames = obsvdtable.get_col( "NAME" );
+
+    fprintf(stdout, "DREAMABBC: Got observation file NAMES, now getting STATS\n");
+    observation_stats = data_table::to_float64( obsvdtable.get_col( "VAL" ) ); //REV: this will just be ERROR and 0 for me... heh.
+
+    fprintf(stdout, "DREAMABC: Got STATS, now done\n");
+    
+  }
+  
+  //CTOR
+  dream_abc_state( const optlist& opts )
+  {
+    initialize();
+
+    parseopts( opts );
+    
+    //load, etc.
+  }
   
   //CTOR
   dream_abc_state()
@@ -1436,6 +1518,29 @@ void search_dream_abc( const std::string& statefilename,
 		   observed_varnames,
 		   observed_data
 		   );
+  
+  state.run( fs, pg );
+
+  return;
+}
+
+
+//REV: First implement MT-DREAM-Z
+void search_dream_abc( const optlist& opts,
+		       parampoint_generator& pg,
+		       filesender& fs
+		       )
+{
+  dream_abc_state state( opts );
+  
+  //Should I load or not?
+  /*state.new_state( statefilename,
+		   varnames,
+		   mins,
+		   maxes,
+		   observed_varnames,
+		   observed_data
+		   );*/
   
   state.run( fs, pg );
 

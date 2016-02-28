@@ -114,31 +114,143 @@ struct searcher
     run_search( _searchtype, _scriptfname, _mydir, opts, _writefiles );
   }
 
+
+  //REV: Faster to specify some struct to handle all options, this way it can easily know how many args it wants, and what are usage things so that
+  //they can be printed...
+  
   void parseopts( const optlist& opts )
   {
     //set internal variables with parseopts
+    auto a = opts.get_opt_args( "WRITEFILES" );
+    if( a.size() == 0 )
+      {
+	fprintf(stdout, "SEARHER: Parseopts, -WRITEFILES **NOT** defined. Will *not* write files to filesystem (I.e. will use memfsys)\n");
+	_writefiles = false;
+      }
+    else
+      {
+	fprintf(stdout, "SEARHER: Parseopts, -WRITEFILES defined, *will* write files to filesystem (I.e. will not use memfsys)\n");
+	_writefiles = true;
+      }
     
+    auto b = opts.get_opt_args( "DIR" );
+    if( b.size() == 0)
+      {
+	fprintf(stderr, "ERROR SEARHER: Parseopts, did *not* specify a -DIR for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(b[0].size() == 0 || b[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR SEARCHER: Parseopts, -DIR option had [%ld] arguments, expects only 1 (name of dir)\n", b[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	    _mydir = b[0][0];
+	  }
+	fprintf(stdout, "SEARCHER: Using specified DIR [%s] as DIR for running search\n", _mydir.c_str());
+      }
+
+    auto c = opts.get_opt_args( "SEARCHTYPE" );
+    if( c.size() == 0 )
+      {
+      	fprintf(stderr, "ERROR SEARHER: Parseopts, did *not* specify a -SEARCHTYPE for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(c[0].size() == 0 || c[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR SEARCHER: Parseopts, -SEARCHTYPE option had [%ld] arguments, expects only 1 (searchtype)\n", c[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	    _searchtype = c[0][0];
+	  }
+	fprintf(stdout, "SEARCHER: Using specified SEARCHTYPE [%s] for running search\n", _searchtype.c_str() );
+      }
+
+    auto d = opts.get_opt_args( "WORKSCRIPT" );
+    if( d.size() == 0 )
+      {
+      	fprintf(stderr, "ERROR SEARHER: Parseopts, did *not* specify a -WORKSCRIPT for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(d[0].size() == 0 || d[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR SEARCHER: Parseopts, -WORKSCRIPT option had [%ld] arguments, expects only 1 (searchtype)\n", d[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	    _scriptfname = d[0][0];
+	  }
+	fprintf(stdout, "SEARCHER: Using specified WORKSCRIPT [%s] for running search\n", _scriptfname.c_str() );
+      }
+       
   }
 
-    //varlist will contain required um, data files I guess?
+  //varlist will contain required um, data files I guess?
   void run_search( const std::string& searchtype, const std::string& scriptfname,
 		   const std::string& mydir, const optlist& opts,
 		   const bool& writefiles )
   {
+    std::vector<std::string> registeredstypes = { "GRID",
+						  "DREAM-ABC",
+						  "DREAM-ABCz" };,
+      //"MT-DREAMz" };
+
+    auto locs = find_string_in_vect( searchtype, registeredstypes );
+    if(locs.size() != 1)
+      {
+	fprintf(stderr, "ERROR, requested search type [%s] is not implemented/not available. Valid types:\n", searchtype.c_str());
+	print1d_str_vect_row( registeredstypes );
+	exit(1);
+      }
     
     pg = parampoint_generator(scriptfname, mydir);
     
-    fprintf(stdout, "REV: Finished making parampoint generator, now will create FILESENDER\n");
+    fprintf(stdout, "REV: Finished making parampoint generator, now will create FILESENDER (this will cause MPI ranks to initialize!!!!)\n");
     filesender* fs = filesender::Create( fakesys, writefiles );
-
-    //REV: DO search in here!
     
+    if( searchtype.compare( "GRID" ) == 0 )
+      {
+	//pass as options...
+	search_grid( opts, pg, fs );
+	
+      }
+    else if( searchtype.compare( "DREAM-ABC") == 0 )
+      {
+	//pass as options...
+	search_dream_abc( opts, pg, fs );
+	
+      }
+    else if( searchtype.compare( "DREAM-ABCz") == 0 )
+      {
+	
+      }
+    else
+      {
+	fprintf(stderr, "ERROR: searcher, not recognized search type [%s] (Or I made a misstype in the if/else! Sorry!)\n", searchtype.c_str());
+	doexit( fs );
+	exit(1);
+      }
+    
+    doexit( fs );
+  }
+
+  void doexit( filesender& myfs )
+  {
     fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
     std::string contents="EXIT";
-    boost::mpi::broadcast(fs->world, contents, 0);
-  
-    delete(fs);
-  
+    boost::mpi::broadcast(myfs->world, contents, 0);
+    
+    delete(myfs);
   }
 
   //varlist will contain required um, data files I guess?
