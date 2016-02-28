@@ -91,6 +91,12 @@ struct searcher
 
   parampoint_generator pg;
 
+  //MY OPTIONS
+  std::string _scriptfname="__ERROR_NOSCRIPTFNAME";
+  std::string _searchtype="__ERROR_NOSEARCHTYPE";
+  std::string _mydir="__ERROR_NOMYDIR";
+  bool _writefiles=false;
+
   searcher( )
   {
     //REV: Nothing to do
@@ -100,7 +106,41 @@ struct searcher
   {
     fakesys.register_funct( name, funct );
   }
+  void run_search( const optlist& opts )
+  {
+    //parse to required guys that I want...
+    parseopts( opts ); //Could just get individual things like GETSEARCHTYPE, etc. To reduce "fake" internal members we don't need...
+    //But this way at least we are kind of "explicit" about what we consume..?
+    run_search( _searchtype, _scriptfname, _mydir, opts, _writefiles );
+  }
+
+  void parseopts( const optlist& opts )
+  {
+    //set internal variables with parseopts
+    
+  }
+
+    //varlist will contain required um, data files I guess?
+  void run_search( const std::string& searchtype, const std::string& scriptfname,
+		   const std::string& mydir, const optlist& opts,
+		   const bool& writefiles )
+  {
+    
+    pg = parampoint_generator(scriptfname, mydir);
+    
+    fprintf(stdout, "REV: Finished making parampoint generator, now will create FILESENDER\n");
+    filesender* fs = filesender::Create( fakesys, writefiles );
+
+    //REV: DO search in here!
+    
+    fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
+    std::string contents="EXIT";
+    boost::mpi::broadcast(fs->world, contents, 0);
   
+    delete(fs);
+  
+  }
+
   //varlist will contain required um, data files I guess?
   void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const bool& writefiles=false )
   {
