@@ -100,6 +100,7 @@ struct searcher
   std::string _scriptfname="__ERROR_NOSCRIPTFNAME";
   std::string _searchtype="__ERROR_NOSEARCHTYPE";
   std::string _mydir="__ERROR_NOMYDIR";
+  std::string _runtag="scratch";
   bool _writefiles=false;
 
   searcher( )
@@ -116,7 +117,7 @@ struct searcher
     //parse to required guys that I want... ONLY ROOT RANK SHOULD EXECUTE THIS, CRAP.
     preparseopts( opts );
     
-    filesender* fs = filesender::Create( fakesys, _writefiles );
+    filesender* fs = filesender::Create( _runtag , fakesys, _writefiles);
 
     opts.enumerateparsed();
     opts.enumerateextras();
@@ -148,6 +149,30 @@ struct searcher
 	//fprintf(stdout, "SEARHER: Parseopts, -WRITEFILES defined, *will* write files to filesystem (I.e. will not use memfsys)\n");
 	_writefiles = true;
       }
+
+    //set internal variables with parseopts
+    a = opts.get_opt_args( "TAG" );
+    if( a.size() == 0 )
+      {
+	//We have no tag. We use the default.
+	//fprintf(stdout, "SEARHER: Parseopts, -WRITEFILES **NOT** defined. Will *not* write files to filesystem (I.e. will use memfsys)\n");
+	//_writefiles = false;
+      }
+    else
+      {
+	if( a[0].size() > 0 )
+	  {
+	    _runtag = a[0][0];
+	  }
+	else
+	  {
+	    fprintf(stderr, "ERROR. SEARCHER in option TAG: Requires at least 1 argument (*TAG* of this run, for scratch naming purposes)\n");
+	    exit(1);
+	  }
+	//fprintf(stdout, "SEARHER: Parseopts, -WRITEFILES defined, *will* write files to filesystem (I.e. will not use memfsys)\n");
+	//_writefiles = true;
+      }
+   
     
   }
   
@@ -184,7 +209,7 @@ struct searcher
 	    _mydir = b[0][0];
 	  }
 	fprintf(stdout, "SEARCHER: Using specified DIR [%s] as DIR for running search\n", _mydir.c_str());
-      }
+	}
 
     auto c = opts.get_opt_args( "SEARCHTYPE" );
     if( c.size() == 0 )
@@ -319,7 +344,7 @@ struct searcher
 
 
     //Can a static funct take an argument...? I guess so.
-    filesender* fs = filesender::Create( fakesys, writefiles );
+    filesender* fs = filesender::Create( _runtag, fakesys, writefiles );
     //REV: Oh crap, on this side, it might need to read them in the first place...hm.
 
 

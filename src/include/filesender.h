@@ -294,7 +294,7 @@ struct filesender
 
 
   //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
-  static filesender* Create( fake_system& _fakesys, const bool& _todisk=false )
+  static filesender* Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk=false )
   {
     filesender* fs = new filesender(_fakesys, _todisk);
     
@@ -305,7 +305,7 @@ struct filesender
       }
     else
       {
-	fs->execute_slave_loop();
+	fs->execute_slave_loop( runtag );
 	
 	delete(fs);
 	//execute slave loop
@@ -911,10 +911,10 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
   
   }
 
-  void execute_slave_loop()
+  void execute_slave_loop( const std::string& runtag="scratch")
   {
     bool loopslave=true;
-    std::string LOCALDIR = "/tmp/scratch" + std::to_string( world.rank() ); //will execute in local scratch. Note, might need to check we have enough memory etc.
+    std::string LOCALDIR = "/tmp/" + runtag + "_" + std::to_string( world.rank() ); //will execute in local scratch. Note, might need to check we have enough memory etc.
 
     //MKDIR HERE?
     
