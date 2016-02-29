@@ -200,6 +200,9 @@ struct searcher
 		   const std::string& mydir, optlist& opts,
 		   const bool& writefiles )
   {
+
+    fprintf( stdout, "RUNNING SEARCH WITH: searcytype [%s], scriptfname [%s], mydir [%s]\n", searchtype.c_str(), scriptfname.c_str(), mydir.c_str() );
+    
     std::vector<std::string> registeredstypes = { "GRID",
 						  "DREAM-ABC",
 						  "DREAM-ABCz" };
@@ -264,6 +267,7 @@ struct searcher
   //varlist will contain required um, data files I guess?
   void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const bool& writefiles=false )
   {
+    
     pg = parampoint_generator(scriptfname, mydir);
 
     fprintf(stdout, "REV: Finished making parampoint generator, now will create FILESENDER\n");
