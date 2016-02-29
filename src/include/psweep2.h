@@ -17,6 +17,7 @@ class psweep2
   
   void run_search( const int& argc, char* *argv )
   {
+    //REV: Crap, all ranks are parsing the options...
     optlist opts( argc, argv );
     srch.run_search( opts );
     return;

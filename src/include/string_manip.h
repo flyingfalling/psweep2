@@ -226,7 +226,7 @@ bool same_fnames(const std::string& fname1, const std::string& fname2)
 {
   std::string s1 = canonicalize_fname( fname1 );
   std::string s2 = canonicalize_fname( fname2 );
-  if( fname1.compare( fname2 ) == 0 )
+  if( s1.compare( s2 ) == 0 )
     {
       return true;
     }
@@ -256,8 +256,10 @@ std::vector<size_t> find_matching_files(const std::string& fname, const std::vec
     {
       std::string canonical = canonicalize_fname( fnamevect[x] );
       //if( strcmp( fnamevect[x], fname ) == 0 )
+      //fprintf(stderr, "Comparing files: [%s] and [%s] for equality!\n", canonical.c_str(), fname.c_str() );
       if( same_fnames( canonical, fname ) == true )
 	{
+	  //fprintf(stderr, "FOUND IT! [%s]\n", fname.c_str());
 	  if(marked[x] == false)
 	    {
 	      foundvect.push_back( x );

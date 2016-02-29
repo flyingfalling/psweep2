@@ -905,12 +905,16 @@ struct executable_representation
     fprintf(stdout, "EXEC REPRESENT: trying to get contents from file [%s]\n", script_filename.c_str());
     std::string input = get_file_contents( script_filename  );
 
+#if DEBUG>5
     fprintf(stdout, "GOT FILE CONTENTS FROM file [%s]; [%s]\n", script_filename.c_str(), input.c_str());
+#endif
+    
     if( input.compare("") == 0 )
       {
 	fprintf(stderr, "Huh whacko error in reading of script in creating executable_representation: script is empty/script file didn't exist? [%s]\n", script_filename.c_str() );
 	exit(1);
       }
+
 
     //construct the actual PARAMPOINT (config file representation?)
     ppscript = parse_psweep_script( input );

@@ -321,6 +321,7 @@ struct optlist
       {
 	fprintf(stdout, "[%s]\n", extras[x].c_str());
       }
+    fprintf(stdout, "\n(END OF EXTRA OPTIONS)\n");
   }
   
   
@@ -330,12 +331,12 @@ struct optlist
   //So, now I need to parse "chunked" guys, and also parse out the vector into those that begin with - or --...etc.
   std::vector<parsedoption> doparse( const std::vector<std::string>& args )
   {
-    fprintf(stdout, "Parsing options! Arglist has [%ld] elements:\n[ ", args.size());
-    for(size_t x=0; x<args.size(); ++x)
-      {
-	fprintf( stdout, "[%s] ", args[x].c_str() );
-      }
-    fprintf(stdout, "]\n\n");
+    //fprintf(stdout, "Parsing options! Arglist has [%ld] elements:\n[ ", args.size());
+    //for(size_t x=0; x<args.size(); ++x)
+    //  {
+    //fprintf( stdout, "[%s] ", args[x].c_str() );
+    //  }
+    //fprintf(stdout, "]\n\n");
     
     std::vector<parsedoption> retval;
     
@@ -385,8 +386,8 @@ struct optlist
   {
     std::vector<std::string> args = strvect_from_charptr_array( argc, argv );
     parsedopts = doparse( args );
-    enumerateparsed();
-    enumerateextras();
+    //enumerateparsed();
+    //enumerateextras();
   }
 
   //Returns vect of vect of the args of each one?

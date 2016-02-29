@@ -836,7 +836,14 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	//fprintf(stdout, "MASTER: searching for local copies of fname we would expect: [%s]\n", newlocal.c_str() );
 	
 	std::vector<bool> tmpmarked( corresp_pitem.success_files.size(), false);
-	std::vector<size_t> matched = find_matching_files( newlocal, corresp_pitem.success_files, tmpmarked);
+
+	/*fprintf(stderr, "Will compare [%s] to following array:\n", newlocal.c_str());
+	for(size_t z=0; z<corresp_pitem.success_files.size(); ++z)
+	  {
+	    fprintf(stderr, "[%s]\n", corresp_pitem.success_files[z].c_str() );
+	    }*/
+	
+	std::vector<size_t> matched = find_matching_files( newlocal, corresp_pitem.success_files, tmpmarked );
 
 	//fprintf(stdout, "MASTER: Renaming received file to [%s]\n", newlocal.c_str());
 	
@@ -844,6 +851,11 @@ filesender(fake_system& _fakesys, const bool& _todisk = false)
 	if( matched.size() == 0 )
 	  {
 	    fprintf(stderr, "ERROR, in receive_files from notify of success, did not find corresponding file in original PITEM SUCCESS array (fname: [%s])\n", newlocal.c_str() );
+	    fprintf(stderr, "NOTE: corresp files:\n");
+	    for(size_t z=0; z<corresp_pitem.success_files.size(); ++z)
+	      {
+		fprintf(stderr, "[%s]\n", corresp_pitem.success_files[z].c_str() );
+	      }
 	    exit(1);
 	  }
 	else if( matched.size() > 1 )

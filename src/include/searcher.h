@@ -115,8 +115,11 @@ struct searcher
   {
     //parse to required guys that I want... ONLY ROOT RANK SHOULD EXECUTE THIS, CRAP.
     preparseopts( opts );
-
+    
     filesender* fs = filesender::Create( fakesys, _writefiles );
+
+    opts.enumerateparsed();
+    opts.enumerateextras();
     
     parseopts( opts ); //Could just get individual things like GETSEARCHTYPE, etc. To reduce "fake" internal members we don't need...
     
