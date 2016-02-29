@@ -198,8 +198,13 @@ struct searcher
   //varlist will contain required um, data files I guess?
   void run_search( const std::string& searchtype, const std::string& scriptfname,
 		   const std::string& mydir, optlist& opts,
-		   const bool& writefiles )
+		   const bool& writefiles=false )
   {
+    if(writefiles)
+      {
+	fprintf(stderr, "WOw big error writefiles is true?\n\n"); exit(1);
+      }
+    
     std::vector<std::string> registeredstypes = { "GRID",
 						  "DREAM-ABC",
 						  "DREAM-ABCz" };
@@ -209,7 +214,12 @@ struct searcher
     if(locs.size() != 1)
       {
 	fprintf(stderr, "ERROR, requested search type [%s] is not implemented/not available. Valid types:\n", searchtype.c_str());
-	print1d_str_vec_row( registeredstypes );
+	//print1d_str_vec_row( registeredstypes );
+	for(size_t x=0; x<registeredstypes.size(); ++x)
+	  {
+	    fprintf(stderr, "[%s] ", registeredstypes[x].c_str());
+	  }
+	fprintf(stderr, "\n");
 	exit(1);
       }
     
