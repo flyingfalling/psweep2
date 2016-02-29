@@ -113,15 +113,40 @@ struct searcher
   }
   void run_search( optlist& opts )
   {
-    //parse to required guys that I want...
+    //parse to required guys that I want... ONLY ROOT RANK SHOULD EXECUTE THIS, CRAP.
+    preparseopts( opts );
+
+    filesender* fs = filesender::Create( fakesys, _writefiles );
+    
     parseopts( opts ); //Could just get individual things like GETSEARCHTYPE, etc. To reduce "fake" internal members we don't need...
+    
+    //REV: Moved this up here to save user from doing it...
+        
     //But this way at least we are kind of "explicit" about what we consume..?
-    run_search( _searchtype, _scriptfname, _mydir, opts, _writefiles );
+    run_search( _searchtype, _scriptfname, _mydir, opts, *fs, _writefiles );
   }
 
 
   //REV: Faster to specify some struct to handle all options, this way it can easily know how many args it wants, and what are usage things so that
   //they can be printed...
+
+  void preparseopts( optlist& opts )
+  {
+
+    //set internal variables with parseopts
+    auto a = opts.get_opt_args( "WRITEFILES" );
+    if( a.size() == 0 )
+      {
+	//fprintf(stdout, "SEARHER: Parseopts, -WRITEFILES **NOT** defined. Will *not* write files to filesystem (I.e. will use memfsys)\n");
+	_writefiles = false;
+      }
+    else
+      {
+	//fprintf(stdout, "SEARHER: Parseopts, -WRITEFILES defined, *will* write files to filesystem (I.e. will not use memfsys)\n");
+	_writefiles = true;
+      }
+    
+  }
   
   void parseopts( optlist& opts )
   {
@@ -203,6 +228,7 @@ struct searcher
   //varlist will contain required um, data files I guess?
   void run_search( const std::string& searchtype, const std::string& scriptfname,
 		   const std::string& mydir, optlist& opts,
+		   filesender& fs,
 		   const bool& writefiles=false )
   {
 
@@ -228,33 +254,33 @@ struct searcher
     
     pg = parampoint_generator(scriptfname, mydir);
     
-    fprintf(stdout, "REV: Finished making parampoint generator, now will create FILESENDER (this will cause MPI ranks to initialize!!!!)\n");
-    filesender* fs = filesender::Create( fakesys, writefiles );
+    //fprintf(stdout, "REV: Finished making parampoint generator, now will create FILESENDER (this will cause MPI ranks to initialize!!!!)\n");
+    
     
     if( searchtype.compare( "GRID" ) == 0 )
       {
 	//pass as options...
-	search_grid( opts, pg, *fs );
+	search_grid( opts, pg, fs );
 	
       }
     else if( searchtype.compare( "DREAM-ABC") == 0 )
       {
 	//pass as options...
-	search_dream_abc( opts, pg, *fs );
+	search_dream_abc( opts, pg, fs );
 	
       }
     else if( searchtype.compare( "DREAM-ABCz") == 0 )
       {
-	search_dream_abc_z( opts, pg, *fs );
+	search_dream_abc_z( opts, pg, fs );
       }
     else
       {
 	fprintf(stderr, "ERROR: searcher, not recognized search type [%s] (Or I made a misstype in the if/else! Sorry!)\n", searchtype.c_str());
-	doexit( fs );
+	doexit( &fs );
 	exit(1);
       }
     
-    doexit( fs );
+    doexit( &fs );
   }
 
   void doexit( filesender* myfs )
