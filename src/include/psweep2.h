@@ -20,17 +20,16 @@ class psweep2
     optlist opts( argc, argv );
     srch.run_search( opts );
     return;
-    //srch = searcher( vl ); //initializes some required state using
-    //parse of options. However, note this may be bubbled further in
-    //and used by many other structs during the search, e.g. by
-    //individual search algorithms, etc.
-    //Only *they* know how to handle certain options.
+   
   }
   
-  
+  void register_funct( const std::string& name, const fake_system_funct_t& funct)
+  {
+    srch.register_funct( name, funct );
+  }
   
  private:
-
+  
   searcher srch;
   
 }; //end class psweep2

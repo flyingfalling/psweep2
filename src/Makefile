@@ -12,7 +12,8 @@ LIBS=-L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 #default: test_cmd_script_parser.exe
 #default: test_parampoint.exe
 #default: test_searchalgo.exe
-default: test_dream_abc_z.exe test_dream_abc.exe
+#default: test_dream_abc_z.exe test_dream_abc.exe
+default: test_psweep2_lib.exe
 
 HEADERFILES=$(wildcard $(INCLUDEDIR)/*)
 CPPFILES=$(wildcard $(CPPDIR)/*)
@@ -94,6 +95,11 @@ test_optionparse.exe: $(UNITTESTDIR)/test_optionparse.cpp $(HEADERFILES)
 
 test_optionhandler.exe: $(UNITTESTDIR)/test_optionhandler.cpp $(HEADERFILES)
 	g++ -std=c++11 $(INCLUDEFLAG) $(UNITTESTDIR)/test_optionhandler.cpp -o test_optionhandler.exe
+
+test_psweep2_lib.exe: $(UNITTESTDIR)/test_psweep2_lib.cpp $(HEADERFILES) $(CPPFILES)
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_psweep2_lib.exe $(UNITTESTDIR)/test_psweep2_lib.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5
+
+
 
 clean:
 	rm *.exe *.o
