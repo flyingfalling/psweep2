@@ -104,6 +104,11 @@ std::vector<size_t> multinomial_sample( const std::vector<float64_t>& p, const s
   float64_t ptot = 0.0;
   for( size_t i = 0; i < p.size()-1; ++i )
   {
+    if( std::isnan( p[i] ) || std::isinf( p[i]) )
+      {
+	fprintf(stderr, "ERROR in multinomial sample: One or more of the probabilities passed is NAN or INF\n");
+	exit(1);
+      }
     ptot = ptot + p[i];
   }
   

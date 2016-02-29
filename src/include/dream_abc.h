@@ -106,7 +106,7 @@ struct dream_abc_state
 			 const std::vector<float64_t>& observation_stats,
 			 float64_t epsil=2.0,
 			 int64_t maxgens=1e5,
-			 int64_t numchains=100,
+			 int64_t numchains=50,
 			 int64_t ndelta=3,
 			 float64_t bnoise=0.05,
 			 float64_t bstar=1e-6,
