@@ -221,7 +221,10 @@ struct dream_abc_state
 	//state.load_collection( bufname );
 	//state = hdf5_collection; //"undo" load?
 	state.clear();
-	load_state( bufname, true );
+	//REV: BETTER! Copy it to the non __ file.
+	copy_file( bufname, file );
+	
+	load_state( file, true );
       }
     else
       {

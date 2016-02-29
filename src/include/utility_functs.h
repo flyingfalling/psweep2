@@ -37,9 +37,20 @@
 #include <sys/types.h>     // fstat
 #include <ctime>
 
+void copy_file(const std::string& src, const std::string& targ)
+{
+  std::ifstream source(src, std::ios::binary);
+  std::ofstream dest(targ, std::ios::binary);
+  
+  dest << source.rdbuf();
+  
+  source.close();
+  dest.close();
 
+  return;
+}
 
-void copy_file( const std::string& src, const std::string& targ )
+void copy_fileBAD( const std::string& src, const std::string& targ )
 {
   int source = open(src.c_str(), O_RDONLY, 0);
   int dest =   open(targ.c_str(), O_WRONLY | O_CREAT /*| O_TRUNC/**/, 0644);
