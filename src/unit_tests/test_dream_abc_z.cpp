@@ -5,8 +5,6 @@
 //Then, use MPICC to compile the other stuff, and link it...?
 
 
-#include <hdf5_collection.h>
-//#include <dream_abc.h>
 #include <searcher.h>
 
 //User program...super ghetto. Just computes distance from true means...?

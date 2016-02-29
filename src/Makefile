@@ -1,10 +1,9 @@
 CC=g++
 MPICC=mpic++
 HDF5HEADERS=/usr/include/hdf5/serial
-INCLUDEFLAG=-I./ -I./include -I./include2 -I$(HDF5HEADERS)
+INCLUDEFLAG=-I./ -I./include -I$(HDF5HEADERS)
 CFLAGS=-std=c++11 -O3 -g #-Wall
 INCLUDEDIR=./include
-INCLUDE2DIR=./include2
 UNITTESTDIR=./unit_tests
 LIBS=-L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 
@@ -14,7 +13,7 @@ LIBS=-L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 #default: test_searchalgo.exe
 default: test_dream_abc_z.exe test_dream_abc.exe
 
-HEADERFILES=$(INCLUDEDIR)/$* $(INCLUDE2DIR)/$*
+HEADERFILES=$(INCLUDEDIR)/$*
 
 testvariable.exe: $(INCLUDEDIR)/variable.h $(UNITTESTDIR)/testvariable.cpp 
 	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/testvariable.cpp -o testvariable.exe
@@ -49,8 +48,8 @@ test_hdf5collection.exe: $(UNITTESTDIR)/test_hdf5collection.cpp $(HEADERFILES)
 test_memfile.exe: $(UNITTESTDIR)/test_memfile.cpp $(HEADERFILES)
 	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_memfile.cpp -o test_memfile.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
 
-test_boostio.exe: $(UNITTESTDIR)/test_memfile.cpp $(HEADERFILES)
-	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_boostio.cpp -o test_boostio.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
+#test_boostio.exe: $(UNITTESTDIR)/test_memfile.cpp $(HEADERFILES)
+#	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_boostio.cpp -o test_boostio.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
 
 test_memfile2.exe: $(UNITTESTDIR)/test_memfile2.cpp $(HEADERFILES)
 	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/test_memfile2.cpp -o test_memfile2.exe -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system
@@ -88,6 +87,11 @@ runtestabcz: test_dream_abc_z.exe
 testhdf5id.exe: $(UNITTESTDIR)/testhdf5id.cpp
 	h5c++ $(CFLAGS) $(UNITTESTDIR)/testhdf5id.cpp -o testhdf5id.exe
 
+test_optionparse.exe: $(UNITTESTDIR)/test_optionparse.cpp $(HEADERFILES)
+	g++ -std=c++11 $(INCLUDEFLAG) $(UNITTESTDIR)/test_optionparse.cpp -o test_optionparse.exe
+
+test_optionhandler.exe: $(UNITTESTDIR)/test_optionhandler.cpp $(HEADERFILES)
+	g++ -std=c++11 $(INCLUDEFLAG) $(UNITTESTDIR)/test_optionhandler.cpp -o test_optionhandler.exe
 
 clean:
 	rm *.exe *.o

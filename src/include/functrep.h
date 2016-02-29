@@ -4,6 +4,7 @@
 #pragma once
 
 #include <hierarchical_varlist.h>
+#include <commontypes.h>
 
 
 #include <psweep_cmd_script_parser.h>
