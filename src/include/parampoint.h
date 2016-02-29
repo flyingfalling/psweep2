@@ -18,19 +18,24 @@
 struct seedgen
 {
   std::seed_seq seq;
-    
+  std::default_random_engine reng; //keep my own in here to generate values to generate seeds...
+  
+  
   void seed( const long& seedval )
   {
-    seq = std::seed_seq( {seedval} );
+    //seq = std::seed_seq( {seedval} );
+    reng.seed(seedval);
   }
 
   //Hopefully it keeps state...?
   //REV: Generate random int in here from our chain and use it as seed...not very beautiful, but same as doing seeds(1)
   std::uint32_t nextseed()
   {
+    std::uniform_int_distribution<std::uint32_t> mydistr(0, 666666666);
     std::vector<std::uint32_t> seeds(1);
+    seq = std::seed_seq( { mydistr( reng ) } );
     seq.generate(seeds.begin(), seeds.end());
-
+    
     //fprintf( stdout, "GENERATED SEED: [%d]\n", seeds[0] );
 
     return seeds[0];
