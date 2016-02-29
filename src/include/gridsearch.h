@@ -16,7 +16,7 @@ struct grid_state
   std::vector<double> _steps;
   std::string _gridfile="__ERROR_NOGRIDFILE";
   
-  void search_grid( const optlist& opts,
+  void search_grid( optlist& opts,
 		    parampoint_generator& pg,
 		    filesender& fs )
   {
@@ -29,59 +29,8 @@ struct grid_state
 		 pg,
 		 fs );
   }
-  
-  void parseopts( const optlist& opts)
-  {
-    auto a = opts.get_opt_args( "GRIDFILE" );
-    if( a.size() == 0)
-      {
-	fprintf(stderr, "ERROR GRISEARCH: Parseopts, did *not* specify a -GRIDFILE for running, please specify and run again\n");
-	exit(1);
-      }
-    else
-      {
-	if(a[0].size() == 0 || a[0].size() > 1)
-	  {
-	    fprintf(stderr, "ERROR GRIDSEARCH: Parseopts, -GRIDFILE option had [%ld] arguments, expects only 1 (name of gridfile)\n", a[0].size() );
-	    exit(1);
-	  }
-	else
-	  {
-	     _gridfile = a[0][0];
-	  }
-	
-	fprintf(stdout, "GRIDSEARCH: Using specified FILE [%s] as GRIDFILE (will load varnames, min, max, step)\n", _gridfile.c_str());
-      }
 
-    //Parse a "RESTART", or "LOAD" option?
-    //Also, parse a GRIDCONFIG file or something that has params in it.
-    auto b = opts.get_opt_args( "RESTART" );
-    //How do restarts work? Do I load an old HDF5 file I guess.
-    //All things are stored in .state type files
-    if( b.size() > 0 )
-      {
-	fprintf(stdout, "GRIDSEARCH: Option RESTART is not yet supported! Coming soon...\n");
-	exit(1);
-      }
 
-    
-  }
-
-  void parse_gridfile( const std::string& gridfname )
-  {
-    bool hascolnames = true;
-    data_table dtable( gridfname, hascolnames );
-    fprintf(stdout, "GRIDSEARCH: PARSE GRIDFILE: Trying to get VARNAMEs\n");
-    _varnames = dtable.get_col( "NAME" );
-    fprintf(stdout, "Got varnames. Getting MINS\n");
-    _mins = data_table::to_float64( dtable.get_col( "MIN" ) );
-    fprintf(stdout, "Got mins, getting MAXES\n");
-    _maxes = data_table::to_float64( dtable.get_col( "MAX" ) );
-    fprintf(stdout, "Got maxes, getting STEP\n");
-    _steps = data_table::to_float64( dtable.get_col( "STEP" ) );
-    fprintf(stdout, "Got STEP. Finished parse\n");
-  }
-  
   void search_grid( const std::vector<std::string>& varnames,
 		    const std::vector<double>& mins,
 		    const std::vector<double>& maxes,
@@ -139,15 +88,68 @@ struct grid_state
   
     //Now, run on vls.
     fs.comp_pp_list(pg, vls, sg, fs.todisk); //, workingworkers);
-
+  
     fprintf(stdout, "Finished comp PP list, leaving search grid\n");
   }
 
+  void parseopts( optlist& opts)
+  {
+    auto a = opts.get_opt_args( "GRIDFILE" );
+    if( a.size() == 0)
+      {
+	fprintf(stderr, "ERROR GRISEARCH: Parseopts, did *not* specify a -GRIDFILE for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(a[0].size() == 0 || a[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR GRIDSEARCH: Parseopts, -GRIDFILE option had [%ld] arguments, expects only 1 (name of gridfile)\n", a[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	     _gridfile = a[0][0];
+	  }
+	
+	fprintf(stdout, "GRIDSEARCH: Using specified FILE [%s] as GRIDFILE (will load varnames, min, max, step)\n", _gridfile.c_str());
+      }
+
+    //Parse a "RESTART", or "LOAD" option?
+    //Also, parse a GRIDCONFIG file or something that has params in it.
+    auto b = opts.get_opt_args( "RESTART" );
+    //How do restarts work? Do I load an old HDF5 file I guess.
+    //All things are stored in .state type files
+    if( b.size() > 0 )
+      {
+	fprintf(stdout, "GRIDSEARCH: Option RESTART is not yet supported! Coming soon...\n");
+	exit(1);
+      }
+
+    
+  }
+
+  void parse_gridfile( const std::string& gridfname )
+  {
+    bool hascolnames = true;
+    data_table dtable( gridfname, hascolnames );
+    fprintf(stdout, "GRIDSEARCH: PARSE GRIDFILE: Trying to get VARNAMEs\n");
+    _varnames = dtable.get_col( "NAME" );
+    fprintf(stdout, "Got varnames. Getting MINS\n");
+    _mins = data_table::to_float64( dtable.get_col( "MIN" ) );
+    fprintf(stdout, "Got mins, getting MAXES\n");
+    _maxes = data_table::to_float64( dtable.get_col( "MAX" ) );
+    fprintf(stdout, "Got maxes, getting STEP\n");
+    _steps = data_table::to_float64( dtable.get_col( "STEP" ) );
+    fprintf(stdout, "Got STEP. Finished parse\n");
+  }
   
 };
 
 
-void search_grid( const optlist& opts,
+
+
+void search_grid( optlist& opts,
 		  parampoint_generator& pg,
 		  filesender& fs
 		  )

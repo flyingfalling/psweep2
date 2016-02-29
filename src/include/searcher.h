@@ -106,7 +106,7 @@ struct searcher
   {
     fakesys.register_funct( name, funct );
   }
-  void run_search( const optlist& opts )
+  void run_search( optlist& opts )
   {
     //parse to required guys that I want...
     parseopts( opts ); //Could just get individual things like GETSEARCHTYPE, etc. To reduce "fake" internal members we don't need...
@@ -118,7 +118,7 @@ struct searcher
   //REV: Faster to specify some struct to handle all options, this way it can easily know how many args it wants, and what are usage things so that
   //they can be printed...
   
-  void parseopts( const optlist& opts )
+  void parseopts( optlist& opts )
   {
     //set internal variables with parseopts
     auto a = opts.get_opt_args( "WRITEFILES" );
@@ -197,19 +197,19 @@ struct searcher
 
   //varlist will contain required um, data files I guess?
   void run_search( const std::string& searchtype, const std::string& scriptfname,
-		   const std::string& mydir, const optlist& opts,
+		   const std::string& mydir, optlist& opts,
 		   const bool& writefiles )
   {
     std::vector<std::string> registeredstypes = { "GRID",
 						  "DREAM-ABC",
-						  "DREAM-ABCz" };,
+						  "DREAM-ABCz" };
       //"MT-DREAMz" };
 
     auto locs = find_string_in_vect( searchtype, registeredstypes );
     if(locs.size() != 1)
       {
 	fprintf(stderr, "ERROR, requested search type [%s] is not implemented/not available. Valid types:\n", searchtype.c_str());
-	print1d_str_vect_row( registeredstypes );
+	print1d_str_vec_row( registeredstypes );
 	exit(1);
       }
     
@@ -221,18 +221,18 @@ struct searcher
     if( searchtype.compare( "GRID" ) == 0 )
       {
 	//pass as options...
-	search_grid( opts, pg, fs );
+	search_grid( opts, pg, *fs );
 	
       }
     else if( searchtype.compare( "DREAM-ABC") == 0 )
       {
 	//pass as options...
-	search_dream_abc( opts, pg, fs );
+	search_dream_abc( opts, pg, *fs );
 	
       }
     else if( searchtype.compare( "DREAM-ABCz") == 0 )
       {
-	search_dream_abcz( opts, pg, fs );
+	search_dream_abc_z( opts, pg, *fs );
       }
     else
       {
@@ -244,7 +244,7 @@ struct searcher
     doexit( fs );
   }
 
-  void doexit( filesender& myfs )
+  void doexit( filesender* myfs )
   {
     fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
     std::string contents="EXIT";
@@ -308,7 +308,8 @@ struct searcher
       
 	//Construct required stuff from PARAMS. I.e. min and max of each param? Need N varlists? Have them named? Specific name? Have array type of
 	//name PARAMS, etc.? Probably got from a file at beginning... Some special way of reading that...it should know varnames? 
-	search_grid( varnames, mins, maxes, steps, pg, *fs);
+	grid_state gs;
+	gs.search_grid( varnames, mins, maxes, steps, pg, *fs);
       }
 
 
