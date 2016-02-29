@@ -1590,7 +1590,7 @@ struct hdf5_collection
     file = H5::H5File( fname, H5F_ACC_RDWR );
     file_name = fname;
     //Read all the datasets in there. That requires me enumerating them.
-
+    
     load_params();
     
     std::vector<std::string> toload = matrix_names_from_file();
