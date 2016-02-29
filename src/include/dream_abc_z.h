@@ -362,8 +362,11 @@ struct dream_abc_z_state : public dream_abc_state
     c = opts.get_opt_args( "STATEFILE" );
     if( c.size() == 0 )
       {
-      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -STATEFILE for running, please specify and run again\n");
-	exit(1);
+	if( !conf.restart )
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -STATEFILE for running, please specify and run again\n");
+	    exit(1);
+	  }
       }
     else
       {
