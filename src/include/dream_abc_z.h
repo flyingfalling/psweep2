@@ -455,7 +455,8 @@ struct dream_abc_z_state : public dream_abc_state
     //First, check if we need to load from statefile.
     if(c.restart)
       {
-	load_state( c._statefilename ); //Don't actually need to load any state variables as everything is stored in HDF5.
+	bool isbackup=false;
+	load_state( c._statefilename, isbackup ); //Don't actually need to load any state variables as everything is stored in HDF5.
 	  
 	//State is now loaded, we can assume that no other variables
 	//will be changed except for maxgens will be set.
