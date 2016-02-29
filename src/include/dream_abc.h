@@ -1488,11 +1488,28 @@ struct dream_abc_state
     ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////
     //"REQUIRED" parameters (to load or start new)
+
+    auto c = opts.get_opt_args( "RESTART" );
+    if( c.size() == 0 )
+      {
+      	fprintf(stdout, "DREAM ABC: User did not specify a RESTART option. A new HDF5 COLLECTION will be created for this search at [%s], whether or not it exists!!!\n", conf._statefilename.c_str());
+	conf.restart = false;
+      }
+    else
+      {
+	fprintf(stdout, "DREAM ABC: User specified **RESTART** option. The previously created HDF5 Collection [%s] will be used for this search!!! (note: An additional argument can be added to this option, an integer value MAXGENS that specifies net MAXGENS)\n", conf._statefilename.c_str());
+	conf.restart = true;
+	if(c[0].size() == 1)
+	  {
+	    conf._maxgens = opts.get_opt( "RESTART" ).argn_as_int64( 0 );
+	  }
+      }
+
     
     //Parse to load varnames, mins, maxes, etc.
-    auto c = opts.get_opt_args( "VARIABLES" );
-
-    if( c.size() == 0 )
+    c = opts.get_opt_args( "VARIABLES" );
+    
+    if( !conf.restart && c.size() == 0 )
       {
       	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -VARIABLES for running, please specify and run again\n");
 	exit(1);
@@ -1513,7 +1530,7 @@ struct dream_abc_state
     
 
     c = opts.get_opt_args( "OBSERVATIONS" );
-    if( c.size() == 0 )
+    if( !conf.restart && c.size() == 0 )
       {
       	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -OBSERVATIONS for running, please specify and run again\n");
 	exit(1);
@@ -1533,7 +1550,7 @@ struct dream_abc_state
       }
 
     c = opts.get_opt_args( "EPSILONS" );
-    if( c.size() == 0 )
+    if( !conf.restart && c.size() == 0 )
       {
       	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -EPSILONS for running, please specify and run again\n");
 	exit(1);
@@ -1574,22 +1591,7 @@ struct dream_abc_state
       }
 
     
-    c = opts.get_opt_args( "RESTART" );
-    if( c.size() == 0 )
-      {
-      	fprintf(stdout, "DREAM ABC: User did not specify a RESTART option. A new HDF5 COLLECTION will be created for this search at [%s], whether or not it exists!!!\n", conf._statefilename.c_str());
-	conf.restart = false;
-      }
-    else
-      {
-	fprintf(stdout, "DREAM ABC: User specified **RESTART** option. The previously created HDF5 Collection [%s] will be used for this search!!! (note: An additional argument can be added to this option, an integer value MAXGENS that specifies net MAXGENS)\n", conf._statefilename.c_str());
-	conf.restart = true;
-	if(c[0].size() == 1)
-	  {
-	    conf._maxgens = opts.get_opt( "RESTART" ).argn_as_int64( 0 );
-	  }
-      }
-
+    
 
     ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////
