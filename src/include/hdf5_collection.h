@@ -583,7 +583,8 @@ struct matrix_props
       
     if( endrow >= dims_out[0] )
       {
-	fprintf(stderr, "SUPER ERROR, trying to read past end of matrix (requested endrow [%ld], but matrix size is [%lld])\n", endrow, dims_out[0]);
+	
+	fprintf(stderr, "SUPER ERROR (MATRIX [%s]), trying to read past end of matrix (requested endrow [%ld], but matrix size is [%lld])\n", name.c_str(), endrow, dims_out[0]);
 	exit(1);
       }
 
@@ -895,6 +896,15 @@ struct hdf5_collection
 
   bool backup_initialized=false;
   
+
+  void clear()
+  {
+    file.close();
+    file_name="";
+    matrices.clear();
+    parameters.clear();
+    backup_initialized=false;
+  }
   
   template <typename T>
   void Xset_numeric_parameter( const std::string& pname, const T& val )

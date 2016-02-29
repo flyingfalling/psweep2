@@ -203,7 +203,7 @@ struct dream_abc_state
 
   
   
-  void load_state( const std::string& file )
+  void load_state( const std::string& file, const bool& bu )
   {
     state.load_collection( file );
 
@@ -215,10 +215,13 @@ struct dream_abc_state
       {
 	return;
       }
-    else if(sane == false && file.c_str()[0] != '_' && file.c_str()[1] != '_' )
+    else if(sane == false && bu == false )
       {
 	std::string bufname = "__" + file;
-	state.load_collection( bufname );
+	//state.load_collection( bufname );
+	//state = hdf5_collection; //"undo" load?
+	state.clear();
+	load_state( bufname, true );
       }
     else
       {
@@ -232,7 +235,16 @@ struct dream_abc_state
   {
     //REV: need to check lengths of everything and all parameters to make sure they line up...pain in the ass haha.
     //Screw it for now just go.
-    return true;
+    if( get_param<int64_t>(PRE_GEN_ITER) == get_param<int64_t>(POST_GEN_ITER))
+      {
+	return true;
+      }
+    else
+      {
+	
+	fprintf(stderr, "WARNING: LOAD hdf5 collection: file that was loaded is NOT sane. Will automatically attempt to load backup...\n");
+	return false;
+      }
   }
   
   
@@ -1442,7 +1454,8 @@ struct dream_abc_state
       //First, check if we need to load from statefile.
       if(c.restart)
 	{
-	  load_state( c._statefilename ); //Don't actually need to load any state variables as everything is stored in HDF5.
+	  bool isbackup=false;
+	  load_state( c._statefilename, isbackup ); //Don't actually need to load any state variables as everything is stored in HDF5.
 	  
 	  //State is now loaded, we can assume that no other variables
 	  //will be changed except for maxgens will be set.
