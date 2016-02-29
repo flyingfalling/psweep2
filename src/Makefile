@@ -3,6 +3,7 @@ MPICC=mpic++
 HDF5HEADERS=/usr/include/hdf5/serial
 INCLUDEFLAG=-I./ -I./include -I$(HDF5HEADERS)
 CFLAGS=-std=c++11 -O3 -g #-Wall
+CPPDIR=./cpp
 INCLUDEDIR=./include
 UNITTESTDIR=./unit_tests
 LIBS=-L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
@@ -13,7 +14,8 @@ LIBS=-L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 #default: test_searchalgo.exe
 default: test_dream_abc_z.exe test_dream_abc.exe
 
-HEADERFILES=$(INCLUDEDIR)/$*
+HEADERFILES=$(wildcard $(INCLUDEDIR)/*)
+CPPFILES=$(wildcard $(CPPDIR)/*)
 
 testvariable.exe: $(INCLUDEDIR)/variable.h $(UNITTESTDIR)/testvariable.cpp 
 	$(CC) $(CFLAGS) $(INCLUDEFLAG) $(UNITTESTDIR)/testvariable.cpp -o testvariable.exe
@@ -67,15 +69,15 @@ test_fakesys.exe:  $(UNITTESTDIR)/test_fakesys.cpp $(HEADERFILES)
 #	export HDF5_CXX=$(MPICC)
 #	h5c++ -c --verbose $(CFLAGS) $(INCLUDEFLAG) $(INCLUDEDIR)/hdf5_collection.cpp
 
-test_dream_abc.exe: $(UNITTESTDIR)/test_dream_abc.cpp $(HEADERFILES)
-	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dream_abc.exe $(UNITTESTDIR)/test_dream_abc.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5 #-lhdf5_serial
+test_dream_abc.exe: $(UNITTESTDIR)/test_dream_abc.cpp $(HEADERFILES) $(CPPFILES)
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dream_abc.exe $(UNITTESTDIR)/test_dream_abc.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5
 
 
-test_dream_abc_z.exe: $(UNITTESTDIR)/test_dream_abc_z.cpp $(HEADERFILES)
-	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dream_abc_z.exe $(UNITTESTDIR)/test_dream_abc_z.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5 #-lhdf5_serial
+test_dream_abc_z.exe: $(UNITTESTDIR)/test_dream_abc_z.cpp $(HEADERFILES) $(CPPFILES)
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dream_abc_z.exe $(UNITTESTDIR)/test_dream_abc_z.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5
 
 test_dreamabc_enum.exe: $(UNITTESTDIR)/test_dreamabc_enum.cpp $(HEADERFILES)
-	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dreamabc_enum.exe $(UNITTESTDIR)/test_dreamabc_enum.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5 #-lhdf5_serial
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_dreamabc_enum.exe $(UNITTESTDIR)/test_dreamabc_enum.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5
 
 runtestabc: test_dream_abc.exe
 	mpirun -n 2 ./test_dream_abc.exe 1>stdout0 2>stderr0 &

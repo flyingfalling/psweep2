@@ -79,9 +79,9 @@ struct dream_abc_z_state : public dream_abc_state
 		   const std::vector<float64_t>& maxes,
 		   const std::vector<std::string>& observation_varnames,
 		   const std::vector<float64_t>& observation_stats,
-		   float64_t epsil=2.0, //0.05,
-		   int64_t maxgens=2e5,
-		   int64_t numchains=50,
+		   const std::vector<float64_t>& observation_epsilons,
+		   int64_t maxgens=1e5,
+		   int64_t numchains=100,
 		   int64_t ndelta=3,
 		   float64_t bnoise=0.05,
 		   float64_t bstar=1e-6,
@@ -98,7 +98,7 @@ struct dream_abc_z_state : public dream_abc_state
   {
     dream_abc_state::new_state( statefilename, varnames,
 				mins, maxes, observation_varnames,
-				observation_stats, epsil, maxgens,
+				observation_stats, observation_epsilons, maxgens,
 				numchains, ndelta, bnoise, bstar,
 				rthresh, GRskip, nCR, pCRskip, pjump,
 				backupskip );
@@ -195,9 +195,298 @@ struct dream_abc_z_state : public dream_abc_state
     END_GEN();
   } //end generate_init_pop
   
+  struct abczconfig
+  {
+    //OPTIONS
+    bool restart=false;
+    std::string _statefilename="__ERROR_NOSTATEFILENAME";
+    std::string _varfilename="__ERROR";
+    std::string _obsfilename="__ERROR";
+    std::string _epsilonsfilename="__ERROR";
+
+    std::vector<std::string> _varnames;
+    std::vector<float64_t> _mins;
+    std::vector<float64_t> _maxes;
+
+    std::vector<std::string> _observation_varnames;
+    std::vector<float64_t> _observation_stats;
+    
+    std::vector<float64_t> _observation_epsilons;
+    
+    //Optional (only loads params for sweep, i.e. doesnt load vars etc.)
+    std::string _CONFIGFILE="__OPTIONALCONFIG";
+    bool configexists=false;
+    
+    //And, finally other values/options.
+    //float64_t _epsil=2.0;
+    int64_t _maxgens=1e5;
+    int64_t _numchains=100;
+    int64_t _ndelta=3;
+    float64_t _bnoise=0.05;
+    float64_t _bstar=1e-6;
+    float64_t _rthresh=1.2;
+    int64_t _GRskip=50;
+    int64_t _nCR=3;
+    int64_t _pCRskip=10;
+    float64_t _pjump=0.05;
+    float64_t _backupskip=10;
+    int64_t _M0d_mult=100;
+    int64_t _Kthin=5;
+
+    void load_abcz_params( const std::string& fname )
+    {
+      //haha, global access to my dudes...oh well.
+      //Easier to just make them named same thing, and search for them there (i.e. in side the alredy created state?)
+      //So, instead of passing, just pass a varlist? These are default params here I guess...ugh.
+      fprintf(stdout, "REV: WARNING: LOAD_ABCZ_PARAMS from config file [%s] is not implemented yet!!!! Sorry. Ideas: best is to simply treat it as a varlist, and do matching against param string names on other (state) side. In which case NEWSTATE is not passed actual arguments at all, but a varlist, and we can parse them as float64_t or int64_t or whatever we want.\n", fname.c_str());
+      return;
+    }
+    
+    
+    
+  }; //end internal struct abcconfig
+
+
+  //OVERLOADED -- NO **MASKED*** i.e. different return type!!!
+  //REV: UGLY UGLY UGLY PARSE SHARED STUFF BEFORE, NEED TO MAKE THIS BETTER LATER!!
+  abczconfig parseopts( optlist& opts )
+  {
+    abczconfig conf;
+
+    
+    ////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////
+    //"REQUIRED" parameters (to load or start new)
+    
+    //Parse to load varnames, mins, maxes, etc.
+    auto c = opts.get_opt_args( "VARIABLES" );
+
+    if( c.size() == 0 )
+      {
+      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -VARIABLES for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(c[0].size() == 0 || c[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, -VARIABLES option had [%ld] arguments, expects only 1 (File name containing VARIABLES data)\n", c[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	    conf._varfilename = c[0][0];
+	  }
+	fprintf(stdout, "DREAM ABC: Using specified VARIABLES [%s] for running search\n", conf._varfilename.c_str() );
+      }
+    
+
+    c = opts.get_opt_args( "OBSERVATIONS" );
+    if( c.size() == 0 )
+      {
+      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -OBSERVATIONS for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(c[0].size() == 0 || c[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, -OBSERVATIONS option had [%ld] arguments, expects only 1 (File name containing OBSERVATIONS data)\n", c[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	    conf._obsfilename = c[0][0];
+	  }
+	fprintf(stdout, "DREAM ABC: Using specified OBSERVATIONS [%s] for running search\n", conf._obsfilename.c_str() );
+      }
+
+    c = opts.get_opt_args( "EPSILONS" );
+    if( c.size() == 0 )
+      {
+      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -EPSILONS for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(c[0].size() == 0 || c[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, -EPSILONS option had [%ld] arguments, expects only 1 (File name containing EPSILONS data)\n", c[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	    conf._epsilonsfilename = c[0][0];
+	  }
+	fprintf(stdout, "DREAM ABC: Using specified EPSILONS [%s] for running search\n", conf._epsilonsfilename.c_str() );
+      }
+
+
+    c = opts.get_opt_args( "STATEFILE" );
+    if( c.size() == 0 )
+      {
+      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -STATEFILE for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(c[0].size() == 0 || c[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, -STATEFILE option had [%ld] arguments, expects only 1 (File name that will be STATEFILE)\n", c[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	    conf._statefilename = c[0][0];
+	  }
+	fprintf(stdout, "DREAM ABC: Using specified STATEFILE [%s] for running search. If it exists, you must specify --RESTART to restart it (you should also increase e.g. max generations). Otherwise, it will be rewritten/overwritten.\n", conf._statefilename.c_str() );
+      }
+
+    
+    c = opts.get_opt_args( "RESTART" );
+    if( c.size() == 0 )
+      {
+      	fprintf(stdout, "DREAM ABC: User did not specify a RESTART option. A new HDF5 COLLECTION will be created for this search at [%s], whether or not it exists!!!\n", conf._statefilename.c_str());
+	conf.restart = false;
+      }
+    else
+      {
+	fprintf(stdout, "DREAM ABC: User specified **RESTART** option. The previously created HDF5 Collection [%s] will be used for this search!!! (note: An additional argument can be added to this option, an integer value MAXGENS that specifies net MAXGENS)\n", conf._statefilename.c_str());
+	conf.restart = true;
+	if(c[0].size() == 1)
+	  {
+	    conf._maxgens = opts.get_opt( "RESTART" ).argn_as_int64( 0 );
+	  }
+      }
+
+
+    ////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////
+    //"OPTIONAL" parameters (config file parameters)
+    
+    c = opts.get_opt_args( "ABCPARAMS" );
+    if( c.size() > 0 )
+      {
+	if(c[0].size() != 1)
+	  {
+	    fprintf(stderr, "DREAM ABC PARSING OPTIONS: ERROR: ABCPARAMS had [%ld] arguments but was expecting just 1 (file containing parameters for ABC)\n", c[0].size());
+	    exit(1);
+	  }
+	else
+	  {
+	    conf._CONFIGFILE=c[0][0];
+	    conf.configexists=true;
+	    fprintf(stdout, "DREAM ABC: setting ABCCONFIG file to [%s], from which I will load ABC configuration. Command line parameters will take precedence over CONFIG file parameters (which take precdence over defaults)\n", conf._CONFIGFILE.c_str());
+	  }
+      }
+    else
+      {
+	fprintf(stdout, "DREAM ABC: NOTE: User did not specify an ABCPARAMS file, so only command line parameters and defaults will be used (ignore this if you are restarting a run, in which case it is stored in the state file)\n");
+	conf.configexists=false;
+      }
+    
+    c = opts.get_opt_args( "MAXGENS" );
+    if( c.size() > 0 )
+      {
+	if(c[0].size() != 1)
+	  {
+	    fprintf(stderr, "DREAM ABC PARSING OPTIONS: ERROR: MAXGENS had [%ld] arguments but was expecting just 1 (number of gens)\n", c[0].size());
+	    exit(1);
+	  }
+	else
+	  {
+	    conf._maxgens = opts.get_opt( "MAXGENS" ).argn_as_int64( 0 );
+	    fprintf(stdout, "DREAM ABC: setting MAXGENS to [%ld], which may be greater than current (loaded) maxgens. Note, command line parameters will take precedence over CONFIG file parameters, which will take precedence over currently existing (saved) parameters in a loaded STATE file\n", conf._maxgens);
+	  }
+      }
+
+
+    c = opts.get_opt_args( "NCHAINS" );
+    if( c.size() > 0 )
+      {
+	if(c[0].size() != 1)
+	  {
+	    fprintf(stderr, "DREAM ABC PARSING OPTIONS: ERROR: NCHAINS had [%ld] arguments but was expecting just 1 (number of chains)\n", c[0].size());
+	    exit(1);
+	  }
+	else
+	  {
+	    conf._numchains = opts.get_opt( "NCHAINS" ).argn_as_int64( 0 );
+	    fprintf(stdout, "DREAM ABC: setting NCHAINS to [%ld]. Note, command line parameters will take precedence over ABCPARAMS file parameters, which take precedence over defaults\n", conf._numchains);
+	  }
+      }
+
+    return conf;
+    
+  } //end parseopts
+
+  
+  
+  //OVERLOADED? No, actually a different function...
+  void create_with_config( abczconfig& c )
+  {
+    //First, check if we need to load from statefile.
+    if(c.restart)
+      {
+	load_state( c._statefilename ); //Don't actually need to load any state variables as everything is stored in HDF5.
+	  
+	//State is now loaded, we can assume that no other variables
+	//will be changed except for maxgens will be set.
+	fprintf(stdout, "(RE)-initializing MAXGENS from original [%ld] to new [%ld]\n", get_param<int64_t>(T_max_gens_param), c._maxgens);
+	  
+	set_param<int64_t>( T_max_gens_param, c._maxgens );
+      }
+    else
+      {
+	parse_dreamabcfile( c._varfilename, c._varnames, c._mins, c._maxes );
+	parse_obsdatafile( c._obsfilename, c._observation_varnames, c._observation_stats );
+	parse_epsilondatafile( c._epsilonsfilename, c._observation_varnames, c._observation_epsilons );
+
+	if( c.configexists )
+	  {
+	    c.load_abcz_params( c._CONFIGFILE );
+	  }
+	  
+	new_state( c._statefilename,
+		   c._varnames,
+		   c._mins,
+		   c._maxes,
+		   c._observation_varnames,
+		   c._observation_stats,
+		   c._observation_epsilons,
+		   c._maxgens,
+		   c._numchains,
+		   c._ndelta,
+		   c._bnoise,
+		   c._bstar,
+		   c._rthresh,
+		   c._GRskip,
+		   c._nCR,
+		   c._pCRskip,
+		   c._pjump,
+		   c._backupskip,
+		   c._M0d_mult,
+		   c._Kthin
+		   );
+      }
+  }
+
+
   //CTOR
   //REV: **DO NOT CALL PARENT CONSTRUCTOR IT WILL BREAK THINGS B/C BASE CLASS FUNCTIONS CALLING OVERRIDDEN FUNCTIONS WILL NO LONGER CALL
   //THE OVERRIDDEN VERSION!!!! **
+  
+  dream_abc_z_state( optlist& opts )
+    {
+      initialize();
+
+      abczconfig c = parseopts( opts );
+
+      create_with_config( c );
+    }
+
   dream_abc_z_state()
     {
       initialize();
@@ -209,6 +498,25 @@ struct dream_abc_z_state : public dream_abc_state
     }
   
 };
+
+
+void search_dream_abc_z( optlist& opts,
+			 parampoint_generator& pg,
+			 filesender& fs
+			 )
+{
+  dream_abc_z_state state( opts );
+  
+  state.run( fs, pg );
+
+  return;
+}
+
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+///////////////////////////////////////////////////// OLD VERSION
 
 
 //REV: First implement MT-DREAM-Z
@@ -224,13 +532,17 @@ void search_dream_abc_z( const std::string& statefilename,
 {
   dream_abc_z_state state;
 
+  const float64_t epsil=0.05;
+  std::vector<float64_t> epsils( observed_data.size(), epsil );
+  
   //Should I load or not?
   state.new_state( statefilename,
 		   varnames,
 		   mins,
 		   maxes,
 		   observed_varnames,
-		   observed_data
+		   observed_data,
+		   epsils
 		   );
   
   state.run( fs, pg );

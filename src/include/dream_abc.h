@@ -1,3 +1,18 @@
+
+//REV: Is epsilon value only single value for all observed parameters?
+//Observed parameters may be on totally different scales, which causes
+//a problem. We would like to define some kind of "percent" parameter, so
+//that we can appropriately scale them all to same level?
+
+//For example, one is measure mV, another is measuring pA, another is
+//measuring avg spike rate. Note, in all cases, it represents the
+//*divergence* from the target. Is 50 mV from 15 mV worse/better than
+// 100 pA from 80 pA? 35 vs 20 error...
+//If we specify a normalization method it is better?
+//I.e. all model values are normalized...
+
+
+
 //REV: Need to make it so that I can read from "NAMESPACE" varlist in addition to the hierarchical one...
 //Need to make way to search "list" of hierarchical varlist.
 
@@ -66,7 +81,7 @@ struct dream_abc_state
 
   D( pdelta_param );
   
-  D( epsilon_param );
+  D( epsilon_param ); //REV: Changed. Epsilon is now 1xM vector.
   D( Y_param );
   D( model_observ_diverg_hist ); //History of individual errors per data point... Could run N trials each...but meh. Note this is subtracted from epsilon already
   D( observation_dims_param );
@@ -103,7 +118,7 @@ struct dream_abc_state
 			 const std::vector<float64_t>& maxes,
 			 const std::vector<std::string>& observation_varnames,
 			 const std::vector<float64_t>& observation_stats,
-			 float64_t epsil=2.0,
+			 const std::vector<float64_t>& observation_epsilons,
 			 int64_t maxgens=1e5,
 			 int64_t numchains=50,
 			 int64_t ndelta=3,
@@ -124,7 +139,8 @@ struct dream_abc_state
     
     state.add_float64_matrix( model_observ_diverg_hist, observation_varnames );
 
-    state.add_float64_parameter( epsilon_param, epsil );
+    //state.add_float64_parameter( epsilon_param, epsil );
+    state.add_float64_vector( epsilon_param, observation_varnames, observation_epsilons );
     state.add_int64_parameter( observation_dims_param, observation_varnames.size() );
     
     //Names should be stored in EACH matrix (wow!)
@@ -1170,9 +1186,10 @@ struct dream_abc_state
 
   std::vector<float64_t> compute_epsilon_divergence( const std::vector<float64_t>& abs_divergence )
   {
-    std::vector<float64_t> ret( abs_divergence );
-    vector_subtract_from_constant<float64_t>( get_param<float64_t>( epsilon_param ), ret );
-    return ret;
+    //std::vector<float64_t> ret( abs_divergence );
+    //vector_subtract_from_constant<float64_t>( get_param<float64_t>( epsilon_param ), ret );
+    return
+      ( vector_subtract<float64_t>( get_vector_param<float64_t>( epsilon_param ), abs_divergence ) );
   }
 
   float64_t compute_rho( const std::vector<float64_t>& epsilon_divergence )
@@ -1356,35 +1373,122 @@ struct dream_abc_state
   {
     init_random(seed);
   }
+
+  //Are these "loaded" at load time? NO!!! They aren't. We don't want these dirty state variables around...
+  //Well, statefilename might be fine, as varfilename, etc.
+  
   
 
-  //OPTIONS
-  std::string _statefilename="__ERROR_NOSTATEFILENAME";
-  std::string _varfilename="__ERROR";
-  std::string _obsfilename="__ERROR";
-  bool restart=false;
-  
-  std::vector<std::string> _varnames;
-  std::vector<float64_t> _mins;
-  std::vector<float64_t> _maxes;
-  std::vector<std::string> _observation_varnames;
-  std::vector<float64_t> _observation_stats;
-
-  float64_t _epsil=2.0;
-  int64_t _maxgens=1e5;
-  int64_t _numchains=100;
-  int64_t _ndelta=3;
-  float64_t _bnoise=0.05;
-  float64_t _bstar=1e-6;
-  float64_t _rthresh=1.2;
-  int64_t _GRskip=50;
-  int64_t _nCR=3;
-  int64_t _pCRskip=10;
-  float64_t _pjump=0.05;
-  float64_t _backupskip=10;
-  
-  void parseopts( const optlist& opts )
+  struct abcconfig
   {
+    //OPTIONS
+    bool restart=false;
+    std::string _statefilename="__ERROR_NOSTATEFILENAME";
+    std::string _varfilename="__ERROR";
+    std::string _obsfilename="__ERROR";
+    std::string _epsilonsfilename="__ERROR";
+
+    std::vector<std::string> _varnames;
+    std::vector<float64_t> _mins;
+    std::vector<float64_t> _maxes;
+
+    std::vector<std::string> _observation_varnames;
+    std::vector<float64_t> _observation_stats;
+    
+    std::vector<float64_t> _observation_epsilons;
+    
+    //Optional (only loads params for sweep, i.e. doesnt load vars etc.)
+    std::string _CONFIGFILE="__OPTIONALCONFIG";
+    bool configexists=false;
+    
+    //And, finally other values/options.
+    //float64_t _epsil=2.0;
+    int64_t _maxgens=1e5;
+    int64_t _numchains=100;
+    int64_t _ndelta=3;
+    float64_t _bnoise=0.05;
+    float64_t _bstar=1e-6;
+    float64_t _rthresh=1.2;
+    int64_t _GRskip=50;
+    int64_t _nCR=3;
+    int64_t _pCRskip=10;
+    float64_t _pjump=0.05;
+    float64_t _backupskip=10;
+
+    void load_abc_params( const std::string& fname )
+    {
+      //haha, global access to my dudes...oh well.
+      //Easier to just make them named same thing, and search for them there (i.e. in side the alredy created state?)
+      //So, instead of passing, just pass a varlist? These are default params here I guess...ugh.
+      fprintf(stdout, "REV: WARNING: LOAD_ABC_PARAMS from config file [%s] is not implemented yet!!!! Sorry. Ideas: best is to simply treat it as a varlist, and do matching against param string names on other (state) side. In which case NEWSTATE is not passed actual arguments at all, but a varlist, and we can parse them as float64_t or int64_t or whatever we want.\n", fname.c_str());
+      return;
+    }
+    
+    
+    
+  }; //end internal struct abcconfig
+
+  //REV: UGLY UGLY UGLY WIll be MASKED By derived..(for now)
+  void create_with_config( abcconfig& c )
+    {
+      //First, check if we need to load from statefile.
+      if(c.restart)
+	{
+	  load_state( c._statefilename ); //Don't actually need to load any state variables as everything is stored in HDF5.
+	  
+	  //State is now loaded, we can assume that no other variables
+	  //will be changed except for maxgens will be set.
+	  fprintf(stdout, "(RE)-initializing MAXGENS from original [%ld] to new [%ld]\n", get_param<int64_t>(T_max_gens_param), c._maxgens);
+	  
+	  set_param<int64_t>( T_max_gens_param, c._maxgens );
+	}
+      else
+	{
+	  parse_dreamabcfile( c._varfilename, c._varnames, c._mins, c._maxes );
+	  parse_obsdatafile( c._obsfilename, c._observation_varnames, c._observation_stats );
+	  parse_epsilondatafile( c._epsilonsfilename, c._observation_varnames, c._observation_epsilons );
+
+	  if( c.configexists )
+	    {
+	      c.load_abc_params( c._CONFIGFILE );
+	    }
+	  
+	  new_state( c._statefilename,
+		     c._varnames,
+		     c._mins,
+		     c._maxes,
+		     c._observation_varnames,
+		     c._observation_stats,
+		     c._observation_epsilons,
+		     c._maxgens,
+		     c._numchains,
+		     c._ndelta,
+		     c._bnoise,
+		     c._bstar,
+		     c._rthresh,
+		     c._GRskip,
+		     c._nCR,
+		     c._pCRskip,
+		     c._pjump,
+		     c._backupskip
+		     );
+	}
+    }
+
+  //REV: UGLY UGLY will be MASKED by derived!!! (for now)
+  //If we actually modify things "in-line" that might be better.
+  //But user creation function might have a different view of things.
+  //But, other than this, everything is default I assume?
+  abcconfig parseopts( optlist& opts )
+  {
+    abcconfig conf;
+
+    
+    ////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////
+    //"REQUIRED" parameters (to load or start new)
+    
     //Parse to load varnames, mins, maxes, etc.
     auto c = opts.get_opt_args( "VARIABLES" );
 
@@ -1402,9 +1506,9 @@ struct dream_abc_state
 	  }
 	else
 	  {
-	    _varfilename = c[0][0];
+	    conf._varfilename = c[0][0];
 	  }
-	fprintf(stdout, "DREAM ABC: Using specified VARIABLES [%s] for running search\n", _varfilename.c_str() );
+	fprintf(stdout, "DREAM ABC: Using specified VARIABLES [%s] for running search\n", conf._varfilename.c_str() );
       }
     
 
@@ -1423,9 +1527,29 @@ struct dream_abc_state
 	  }
 	else
 	  {
-	    _obsfilename = c[0][0];
+	    conf._obsfilename = c[0][0];
 	  }
-	fprintf(stdout, "DREAM ABC: Using specified OBSERVATIONS [%s] for running search\n", _obsfilename.c_str() );
+	fprintf(stdout, "DREAM ABC: Using specified OBSERVATIONS [%s] for running search\n", conf._obsfilename.c_str() );
+      }
+
+    c = opts.get_opt_args( "EPSILONS" );
+    if( c.size() == 0 )
+      {
+      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -EPSILONS for running, please specify and run again\n");
+	exit(1);
+      }
+    else
+      {
+	if(c[0].size() == 0 || c[0].size() > 1)
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, -EPSILONS option had [%ld] arguments, expects only 1 (File name containing EPSILONS data)\n", c[0].size() );
+	    exit(1);
+	  }
+	else
+	  {
+	    conf._epsilonsfilename = c[0][0];
+	  }
+	fprintf(stdout, "DREAM ABC: Using specified EPSILONS [%s] for running search\n", conf._epsilonsfilename.c_str() );
       }
 
 
@@ -1444,24 +1568,55 @@ struct dream_abc_state
 	  }
 	else
 	  {
-	    _statefilename = c[0][0];
+	    conf._statefilename = c[0][0];
 	  }
-	fprintf(stdout, "DREAM ABC: Using specified STATEFILE [%s] for running search. If it exists, you must specify --RESTART to restart it (you should also increase e.g. max generations). Otherwise, it will be rewritten/overwritten.\n", _statefilename.c_str() );
+	fprintf(stdout, "DREAM ABC: Using specified STATEFILE [%s] for running search. If it exists, you must specify --RESTART to restart it (you should also increase e.g. max generations). Otherwise, it will be rewritten/overwritten.\n", conf._statefilename.c_str() );
       }
 
     
     c = opts.get_opt_args( "RESTART" );
     if( c.size() == 0 )
       {
-      	fprintf(stdout, "DREAM ABC: User did not specify a RESTART option. A new HDF5 COLLECTION will be created for this search at [%s], whether or not it exists!!!\n", _statefilename.c_str());
-	restart = false;
+      	fprintf(stdout, "DREAM ABC: User did not specify a RESTART option. A new HDF5 COLLECTION will be created for this search at [%s], whether or not it exists!!!\n", conf._statefilename.c_str());
+	conf.restart = false;
       }
     else
       {
-	fprintf(stdout, "DREAM ABC: User specified **RESTART** option. The previously created HDF5 Collection [%s] will be used for this search!!!\n", _statefilename.c_str());
-	restart = true;
+	fprintf(stdout, "DREAM ABC: User specified **RESTART** option. The previously created HDF5 Collection [%s] will be used for this search!!! (note: An additional argument can be added to this option, an integer value MAXGENS that specifies net MAXGENS)\n", conf._statefilename.c_str());
+	conf.restart = true;
+	if(c[0].size() == 1)
+	  {
+	    conf._maxgens = opts.get_opt( "RESTART" ).argn_as_int64( 0 );
+	  }
       }
 
+
+    ////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////
+    //"OPTIONAL" parameters (config file parameters)
+    
+    c = opts.get_opt_args( "ABCPARAMS" );
+    if( c.size() > 0 )
+      {
+	if(c[0].size() != 1)
+	  {
+	    fprintf(stderr, "DREAM ABC PARSING OPTIONS: ERROR: ABCPARAMS had [%ld] arguments but was expecting just 1 (file containing parameters for ABC)\n", c[0].size());
+	    exit(1);
+	  }
+	else
+	  {
+	    conf._CONFIGFILE=c[0][0];
+	    conf.configexists=true;
+	    fprintf(stdout, "DREAM ABC: setting ABCCONFIG file to [%s], from which I will load ABC configuration. Command line parameters will take precedence over CONFIG file parameters (which take precdence over defaults)\n", conf._CONFIGFILE.c_str());
+	  }
+      }
+    else
+      {
+	fprintf(stdout, "DREAM ABC: NOTE: User did not specify an ABCPARAMS file, so only command line parameters and defaults will be used (ignore this if you are restarting a run, in which case it is stored in the state file)\n");
+	conf.configexists=false;
+      }
+    
     c = opts.get_opt_args( "MAXGENS" );
     if( c.size() > 0 )
       {
@@ -1472,32 +1627,33 @@ struct dream_abc_state
 	  }
 	else
 	  {
-	    _maxgens = opts.get_opt( "MAXGENS" ).argn_as_int64( 0 );
-	    fprintf(stdout, "DREAM ABC: setting MAXGENS to [%ld], which may be greater than current (loaded) maxgens. Note, command line parameters will take precedence over CONFIG file parameters, which will take precedence over currently existing (saved) parameters in a loaded STATE file\n", _maxgens);
+	    conf._maxgens = opts.get_opt( "MAXGENS" ).argn_as_int64( 0 );
+	    fprintf(stdout, "DREAM ABC: setting MAXGENS to [%ld], which may be greater than current (loaded) maxgens. Note, command line parameters will take precedence over CONFIG file parameters, which will take precedence over currently existing (saved) parameters in a loaded STATE file\n", conf._maxgens);
 	  }
       }
 
-    //REV: Problem is, these will overwrite. Do we always need to specify the same files etc. for config? They will "overwrite" natural ones. How do
-    //I know whether to overwrite it?
 
-    //Need a nicer way than setting ghetto state variables. E.g. return a varlist of only guys to update or something.
-    
-    
-    
-    
-    //Optionally load, epsilon, maxgens, etc., etc.
-    //better to take a "CONFIGFILE" that loads those from a varlist
-    //type thing. User will rarely pass all those as option?
-    //Anyway, hdf5file holds them.
+    c = opts.get_opt_args( "NCHAINS" );
+    if( c.size() > 0 )
+      {
+	if(c[0].size() != 1)
+	  {
+	    fprintf(stderr, "DREAM ABC PARSING OPTIONS: ERROR: NCHAINS had [%ld] arguments but was expecting just 1 (number of chains)\n", c[0].size());
+	    exit(1);
+	  }
+	else
+	  {
+	    conf._numchains = opts.get_opt( "NCHAINS" ).argn_as_int64( 0 );
+	    fprintf(stdout, "DREAM ABC: setting NCHAINS to [%ld]. Note, command line parameters will take precedence over ABCPARAMS file parameters, which take precedence over defaults\n", conf._numchains);
+	  }
+      }
 
-    //Give warning (BIG WARNING? Exit?) if any variables are changed
-    //except for MAXGENS, during a restart
-
+    return conf;
     
   } //end parseopts
 
   
-  void parse_dreamabcfile( const std::string& fname )
+  void parse_dreamabcfile( const std::string& fname, std::vector<std::string>& _varnames, std::vector<float64_t>& _mins, std::vector<float64_t>& _maxes )
   {
     bool hascolnames = true;
     data_table dtable( fname, hascolnames );
@@ -1508,13 +1664,12 @@ struct dream_abc_state
     _mins = data_table::to_float64( dtable.get_col( "MIN" ) );
     fprintf(stdout, "Got mins, getting MAXES\n");
     _maxes = data_table::to_float64( dtable.get_col( "MAX" ) );
-    fprintf(stdout, "Got maxes, getting STEP\n");
-    _steps = data_table::to_float64( dtable.get_col( "STEP" ) );
-    fprintf(stdout, "Got STEP. Finished parse\n");
-    
+    fprintf(stdout, "Got MAX. Finished parse of dreamabcfile\n");
+
+    return;
   }
 
-  void parse_obsdatafile( const std::string& observfname )
+  void parse_obsdatafile( const std::string& observfname, std::vector<std::string>& _observation_varnames, std::vector<float64_t>& _observation_stats )
   {
     bool hascolnames = true;
     
@@ -1527,18 +1682,55 @@ struct dream_abc_state
     _observation_varnames = obsvdtable.get_col( "NAME" );
 
     fprintf(stdout, "DREAMABBC: Got observation file NAMES, now getting STATS\n");
-    observation_stats = data_table::to_float64( obsvdtable.get_col( "VAL" ) ); //REV: this will just be ERROR and 0 for me... heh.
+    _observation_stats = data_table::to_float64( obsvdtable.get_col( "VAL" ) ); //REV: this will just be ERROR and 0 for me... heh.
 
-    fprintf(stdout, "DREAMABC: Got STATS, now done\n");
+    fprintf(stdout, "DREAMABC: Got OBSERVATION STATS, now done with parse obsdatafile\n");
     
+    return;
+  }
+
+  void parse_epsilondatafile( const std::string& epsilfname, const std::vector<std::string>& _varnames, std::vector<float64_t>& _epsilons )
+  {
+    bool hascolnames = true;
+    
+    
+    fprintf(stdout, "Getting EPSILONS data from [%s]\n", epsilfname.c_str() );
+    data_table epsiltable( epsilfname, hascolnames );
+    
+    fprintf(stdout, "DREAMABC: PARSE EPSILONS DATA FILE: Trying to get VARNAMEs\n");
+
+    
+    auto myvarnames = epsiltable.get_col( "NAME" );
+    if(myvarnames.size() != _varnames.size() )
+      {
+	fprintf(stderr, "PARSE EPSILON DATA FILE: varname of observations and received myvarnames not same size [%ld] in epsilons vs [%ld] in obs\n", myvarnames.size(), _varnames.size() );
+	exit(1);
+      }
+    for(size_t x=0; x<myvarnames.size(); ++x)
+      {
+	if( myvarnames[x].compare( _varnames[x] ) != 0 )
+	  {
+	    fprintf(stderr, "ERROR (?): myvarnames vs observation varnames in epsilon parse: order is not same or something is messed up!?! Varname idx [%ld] is different (epsilon [%s] vs obs [%s]). Will make this more robust later, for now, line them up!\n", x, myvarnames[x].c_str(), _varnames[x].c_str() );
+	    exit(1);
+	  }
+      }
+
+    fprintf(stdout, "DREAMABBC: Got epsilons file NAMES, now getting EPSILONS\n");
+    _epsilons = data_table::to_float64( epsiltable.get_col( "EPSILON" ) ); //REV: this will just be ERROR and 0 for me... heh.
+
+    fprintf(stdout, "DREAMABC: Got EPSILON, now done with parse epsilon datafile\n");
+    
+    return;
   }
   
   //CTOR
-  dream_abc_state( const optlist& opts )
+  dream_abc_state( optlist& opts )
   {
     initialize();
 
-    parseopts( opts );
+    abcconfig c = parseopts( opts );
+    
+    create_with_config(c);
     
     //load, etc.
   }
@@ -1602,7 +1794,7 @@ struct dream_abc_state
 
 
 
-void search_dream_abc( const optlist& opts,
+void search_dream_abc( optlist& opts,
 		       parampoint_generator& pg,
 		       filesender& fs
 		       )
@@ -1639,13 +1831,16 @@ void search_dream_abc( const std::string& statefilename,
 {
   dream_abc_state state;
 
+  float64_t oldepsil=0.05;
+  std::vector<float64_t> epsils( observed_data.size(), oldepsil );
   //Should I load or not?
   state.new_state( statefilename,
 		   varnames,
 		   mins,
 		   maxes,
 		   observed_varnames,
-		   observed_data
+		   observed_data,
+		   epsils
 		   );
   
   state.run( fs, pg );
