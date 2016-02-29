@@ -315,14 +315,27 @@ struct dream_abc_state
     
         
     END_GEN();
+
+    backup();
   }
 
+  virtual void backup()
+  {
+    int64_t tgen = get_param<int64_t>(t_gen);
+    int64_t backupskip = get_param<int64_t>(backup_regularity_param);
+    if( (tgen+1) % backupskip == 0 )
+      {
+	state.backup();
+      }
+    
+  }
+  
   virtual void cleanup_gen()
   {
     int64_t tgen = get_param<int64_t>(t_gen);
     int64_t crskip = get_param<int64_t>(pCR_skip_param );
     int64_t grskip = get_param<int64_t>(GR_skip_param );
-    int64_t backupskip = get_param<int64_t>(backup_regularity_param);
+    
     
     if( (tgen+1) % crskip == 0 )
       {
@@ -332,11 +345,6 @@ struct dream_abc_state
     if( (tgen+1) % grskip == 0)
       {
 	bool wouldconverge = compute_GR();
-      }
-
-    if( (tgen+1) % backupskip == 0 )
-      {
-	state.backup();
       }
     
   }
