@@ -24,6 +24,8 @@
 
 #include <sys/stat.h>
 
+#include <vector>
+
 
 //check file existence?
 #include <fcntl.h> //for the open stuff. Another option is to use stat

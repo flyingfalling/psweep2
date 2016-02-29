@@ -99,6 +99,9 @@ test_optionhandler.exe: $(UNITTESTDIR)/test_optionhandler.cpp $(HEADERFILES)
 test_psweep2_lib.exe: $(UNITTESTDIR)/test_psweep2_lib.cpp $(HEADERFILES) $(CPPFILES)
 	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o test_psweep2_lib.exe $(UNITTESTDIR)/test_psweep2_lib.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5
 
+copyfiletest.exe: $(UNITTESTDIR)/copyfiletest.cpp $(HEADERFILES) $(CPPFILES)
+	$(MPICC) $(CFLAGS) $(INCLUDEFLAG) $(LIBS) -o copyfiletest.exe $(UNITTESTDIR)/copyfiletest.cpp -lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5
+
 
 
 clean:
