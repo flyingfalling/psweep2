@@ -1489,7 +1489,7 @@ struct dream_abc_state
     ////////////////////////////////////////////////////////
     //"REQUIRED" parameters (to load or start new)
 
-    auto c = opts.get_opt_args( "RESTART" );
+   auto c = opts.get_opt_args( "RESTART" );
     if( c.size() == 0 )
       {
       	fprintf(stdout, "DREAM ABC: User did not specify a RESTART option. A new HDF5 COLLECTION will be created for this search at [%s], whether or not it exists!!!\n", conf._statefilename.c_str());
@@ -1497,22 +1497,35 @@ struct dream_abc_state
       }
     else
       {
+	if(c[0].size() > 0 )
+	  {
+	    conf._statefilename = opts.get_opt( "RESTART" ).get_arg( 0 ); 
+	  }
+	else
+	  {
+	    fprintf(stderr, "ERROR in RESTART: expects at least one argument: Name of state file to restart from...\n");
+	    exit(1);
+	  }
 	fprintf(stdout, "DREAM ABC: User specified **RESTART** option. The previously created HDF5 Collection [%s] will be used for this search!!! (note: An additional argument can be added to this option, an integer value MAXGENS that specifies net MAXGENS)\n", conf._statefilename.c_str());
 	conf.restart = true;
-	if(c[0].size() == 1)
+	
+	if(c[0].size() > 1)
 	  {
 	    conf._maxgens = opts.get_opt( "RESTART" ).argn_as_int64( 0 );
 	  }
       }
-
+    
     
     //Parse to load varnames, mins, maxes, etc.
     c = opts.get_opt_args( "VARIABLES" );
-    
-    if( !conf.restart && c.size() == 0 )
+
+    if( c.size() == 0 )
       {
-      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -VARIABLES for running, please specify and run again\n");
-	exit(1);
+	if( !conf.restart )
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -VARIABLES for running, please specify and run again\n");
+	    exit(1);
+	  }
       }
     else
       {
@@ -1530,10 +1543,13 @@ struct dream_abc_state
     
 
     c = opts.get_opt_args( "OBSERVATIONS" );
-    if( !conf.restart && c.size() == 0 )
+    if( c.size() == 0 )
       {
-      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -OBSERVATIONS for running, please specify and run again\n");
-	exit(1);
+	if( !conf.restart )
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -OBSERVATIONS for running, please specify and run again\n");
+	    exit(1);
+	  }
       }
     else
       {
@@ -1550,10 +1566,13 @@ struct dream_abc_state
       }
 
     c = opts.get_opt_args( "EPSILONS" );
-    if( !conf.restart && c.size() == 0 )
+    if(  c.size() == 0 )
       {
-      	fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -EPSILONS for running, please specify and run again\n");
-	exit(1);
+	if(!conf.restart )
+	  {
+	    fprintf(stderr, "ERROR DREAM ABC: Parseopts, did *not* specify a -EPSILONS for running, please specify and run again\n");
+	    exit(1);
+	  }
       }
     else
       {
@@ -1569,6 +1588,7 @@ struct dream_abc_state
 	fprintf(stdout, "DREAM ABC: Using specified EPSILONS [%s] for running search\n", conf._epsilonsfilename.c_str() );
       }
 
+    
 
     c = opts.get_opt_args( "STATEFILE" );
     if( c.size() == 0 )

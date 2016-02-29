@@ -1,12 +1,12 @@
-//REV: NEED TO MAKE IT SO THAT NON-ROOT RANKS DON'T DO ANYTHING!!!!!!!
-//EVEN BEFORE INITIALIZING THEM...Crap.
-//User's code will be called on all ranks, which could cause massive problems.
-//Especially if it tries to access disk etc (e.g. files not on NFS)
+
 
 //REV: header file for searcher, which provides various search functions
 //User will call one of these, passing the appropriate inputs,
 //and it will automatically construct everything and run the sweep I guess....
 
+
+//REV: TOdo, need to make it so that RESTART will automatically find/choose correct algo. In other words, dont need to tell it type for it to load...
+//So, we need to store the algo in the state file (duh..).
 
 
 
