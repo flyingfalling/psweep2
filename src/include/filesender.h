@@ -70,7 +70,7 @@ struct filesender
 
   boost::mpi::communicator world;
 
-  std::vector<size_t> local_worker_idx; //this is created and is same size as workers, but contains local index.
+  //std::vector<size_t> local_worker_idx; //this is created and is same size as workers, but contains local index.
 
   
   struct pitem_rep

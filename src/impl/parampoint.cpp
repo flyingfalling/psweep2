@@ -62,6 +62,7 @@ pset_functional_representation::pset_functional_representation( client::PSET& p 
     ar & output_files;
     ar & input_file;
     ar & mydir;
+    ar & setlocalidx;
   }
   
   //In new version, this may call from memory to speed things up.
@@ -365,6 +366,7 @@ void pitem::set_local_worker_idx_flag()
       {
 	if( mycmd[x].compare( __WORKER_IDX_FLAG ) == 0 )
 	  {
+	    //fprintf(stdout, "Found a worker idx flag to replace!\n");
 	    setlocalidx.push_back( x );
 	  }
       }

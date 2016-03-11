@@ -33,6 +33,9 @@ libpsweep2.so: $(objs)
 test: unit_tests/test_psweep2_lib.cpp libpsweep2.so
 	$(MPICC) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) unit_tests/test_psweep2_lib.cpp -o test_psweep2_lib.exe -lpsweep2 $(LIBS)
 
+gputest: unit_tests/gputest.cpp libpsweep2.so
+	$(MPICC) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) unit_tests/gputest.cpp -o gputest.exe -lpsweep2 $(LIBS)
+
 %.o: %.cpp
 	$(MPICC) $(SHAREDLIBFLAG) -MMD -MP -c $(CPPFLAG) $(INCLFLAG) $< -o $@
 
