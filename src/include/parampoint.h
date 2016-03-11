@@ -83,6 +83,9 @@ struct pitem
   
   size_t my_hierarchical_idx; //index in my parampoint hierarchical varlist array of my leaf node.
 
+  std::vector<size_t> setlocalidx;
+  const std::string __WORKER_IDX_FLAG="__LOCALIDX";
+  
   //REV: REQUIRED for boost serialization (to send over MPI)
   friend class boost::serialization::access;
   template<class Archive>
@@ -152,6 +155,8 @@ struct pitem
   inline void re_base_directory( const std::string& olddir, const std::string& newdir, const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames );
  
   inline pitem( );
+
+  inline void set_local_worker_idx_flag();
   
   inline pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv, memfsys& myfsys, const std::uint32_t& myseed, const bool& usedisk=false );
  

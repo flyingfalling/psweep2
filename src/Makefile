@@ -16,7 +16,8 @@ srcs = $(wildcard $(CPPDIR)/*.cpp)
 objs = $(srcs:.cpp=.o)
 deps = $(srcs:.cpp=.d)
 
-default: install test
+
+default: libpsweep2.so
 
 install: libpsweep2.so
 	mkdir -p $(INSTALL_PATH)/lib
