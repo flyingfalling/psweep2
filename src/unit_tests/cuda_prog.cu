@@ -2,6 +2,11 @@
 #include <unit_tests/cuda_prog.h>
 
 #include <cuda.h>
+#include <cstdlib>
+#include <vector>
+#include <string>
+#include <cstdio>
+
 
 std::vector<size_t> find_legaldevs()
 {
@@ -17,15 +22,16 @@ std::vector<size_t> find_legaldevs()
       exit(EXIT_FAILURE);
     }
   
-  int driverVersion = 0;
-  int runtimeVersion = 0;
+  //  int driverVersion = 0;
+  //  int runtimeVersion = 0;
 
   for (int dev = 0; dev < deviceCount; ++dev)
     {
       cudaSetDevice(dev);
       cudaDeviceProp deviceProp;
       cudaGetDeviceProperties(&deviceProp, dev);
-      /*printf("\nDevice %d: \"%s\"\n", dev, deviceProp.name);
+      printf("\nDevice %d: \"%s\"\n", dev, deviceProp.name);
+      /*
 	char msg[256];
         SPRINTF(msg, "  Total amount of global memory:                 %.0f MBytes (%llu bytes)\n",
 	(float)deviceProp.totalGlobalMem/1048576.0f, (unsigned long long) deviceProp.totalGlobalMem);

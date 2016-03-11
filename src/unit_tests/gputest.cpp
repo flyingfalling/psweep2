@@ -56,6 +56,8 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
       devnum=argv[6];
       fprintf( stdout, "User program dev number is [%s]\n", devnum.c_str() );
     }
+
+  std::vector<size_t> devs = find_legaldevs();
   
 
   double peak1=  5.0;
