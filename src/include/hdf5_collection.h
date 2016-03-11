@@ -64,9 +64,9 @@
 /*   return res; */
 /* } */
 
-H5::DataSpace getSpace( H5::DataSet& ds );
+inline H5::DataSpace getSpace( H5::DataSet& ds );
 
-std::vector<std::string> dummy_colnames( const size_t& size );
+inline std::vector<std::string> dummy_colnames( const size_t& size );
 
 typedef struct hdf5_dirnames_t
 {
@@ -75,14 +75,14 @@ typedef struct hdf5_dirnames_t
   std::vector<bool> isdir;
 } hdf5_dirnames;
 
-herr_t file_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata);
+inline herr_t file_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata);
 
-std::string build_hdf5_path(std::vector< std::string >& path, std::string basepath="", bool isdir=false);
+inline std::string build_hdf5_path(std::vector< std::string >& path, std::string basepath="", bool isdir=false);
 
-std::vector<std::string> enumerate_hdf5_dir(H5::H5File& file2, std::string targdir);
+inline std::vector<std::string> enumerate_hdf5_dir(H5::H5File& file2, std::string targdir);
 
 
-std::string build_hdf5_path(std::vector< std::string >& path, std::string basepath, bool isdir);
+inline std::string build_hdf5_path(std::vector< std::string >& path, std::string basepath, bool isdir);
 
 //I create one of these, and user needs to tell which "variables" he
 //wants, like H, Z, Z_new, P, X, etc.. He also tells the "dimensions", all
@@ -112,9 +112,9 @@ struct matrix_props
   const std::string __MATRIX_DATATYPE_NAME = "__MY_DATATYPE";
   
   
-  std::string get_string_parameter( const std::string& pname );
+  inline std::string get_string_parameter( const std::string& pname );
   
-  void add_string_parameter( const std::string& pname, const std::string& val );
+  inline void add_string_parameter( const std::string& pname, const std::string& val );
   
   //Loads datatype from file.
   /*void load_datatype()
@@ -124,58 +124,58 @@ struct matrix_props
     set_datatype( tmpdatatype );
     }*/
   
-  void set_datatype( const std::string& dtype );
+  inline void set_datatype( const std::string& dtype );
 
-  void write_varnames( const std::string& dsetname, const std::vector<std::string>& strings, H5::H5File& f);
+  inline void write_varnames( const std::string& dsetname, const std::vector<std::string>& strings, H5::H5File& f);
 
-  void new_matrix( const std::string& dsetname, const std::vector<std::string>& _colnames, H5::H5File& f, const std::string& datatype );
+  inline void new_matrix( const std::string& dsetname, const std::vector<std::string>& _colnames, H5::H5File& f, const std::string& datatype );
   
   
-  void get_dset_size( size_t& _nrows, size_t& _ncols );
+  inline void get_dset_size( size_t& _nrows, size_t& _ncols );
   
-  size_t get_ncols();
+  inline size_t get_ncols();
 
-  size_t get_nrows();
-
-  template <typename T>
-  void add_data(  const std::vector<std::vector<T>>& toadd );
-  
-  template <typename T>
-  void add_data( const std::vector<std::string>& colnames, const std::vector<std::vector<T>>& toadd );
-  
+  inline size_t get_nrows();
 
   template <typename T>
-  std::vector< std::vector<T> > read_whole_dataset();
+  inline void add_data(  const std::vector<std::vector<T>>& toadd );
   
   template <typename T>
-  std::vector<std::vector< T> > get_last_n_rows( const size_t& nrows );
+  inline void add_data( const std::vector<std::string>& colnames, const std::vector<std::vector<T>>& toadd );
+  
+
+  template <typename T>
+  inline std::vector< std::vector<T> > read_whole_dataset();
+  
+  template <typename T>
+  inline std::vector<std::vector< T> > get_last_n_rows( const size_t& nrows );
 
   
   //REV: This is ****INCLUSIVE***** of end row!!!!!
   template <typename T>
-  std::vector< std::vector<T> > read_row_range( const size_t& startrow, const size_t& endrow);
+  inline std::vector< std::vector<T> > read_row_range( const size_t& startrow, const size_t& endrow);
 
   template <typename T>
-  void write_row_range( const size_t& startrow, const size_t& endrow, const std::vector< std::vector<T>>& vals );
+  inline void write_row_range( const size_t& startrow, const size_t& endrow, const std::vector< std::vector<T>>& vals );
   
   //REV: Could manually do this with  datattype...ugh.
   template <typename T>
-  void enumerate();
+  inline void enumerate();
   
   template <typename T>
-  void enumerate_to_file( const std::string& fname,  const size_t& thinrate=1, const size_t& startpoint=0 );
+  inline void enumerate_to_file( const std::string& fname,  const size_t& thinrate=1, const size_t& startpoint=0 );
   
   
   //Need to do this incrementally incase there is a problem
-  void enumerate_to_file( FILE* f, const size_t& skip=1, const size_t& startpoint=0 );
+  inline void enumerate_to_file( FILE* f, const size_t& skip=1, const size_t& startpoint=0 );
   
-  std::vector<std::string> read_string_dset( const std::string& dsname, H5::H5File& f );
+  inline  std::vector<std::string> read_string_dset( const std::string& dsname, H5::H5File& f );
 
-  std::vector<std::string> get_varnames() const;
+  inline std::vector<std::string> get_varnames() const;
   
   
   //REV: I could make it easier and automatically set datatype but whatever.
-  void load_matrix( const std::string& matname, H5::H5File& f );
+  inline void load_matrix( const std::string& matname, H5::H5File& f );
 
   //REV: Every **function** will have a type, not the class itself...
 };
@@ -197,159 +197,159 @@ struct hdf5_collection
   bool backup_initialized=false;
   
 
-  void clear();
+  inline void clear();
   
   template <typename T>
-  void Xset_numeric_parameter( const std::string& pname, const T& val );
+  inline void Xset_numeric_parameter( const std::string& pname, const T& val );
   
   template <typename T>
-  void set_numeric_parameter( const std::string& pname, const T& val );
+  inline void set_numeric_parameter( const std::string& pname, const T& val );
 
   template <typename T>
-  std::vector<T> get_vector_slice( const std::string& pname, const std::vector<size_t>& slices );
+  inline std::vector<T> get_vector_slice( const std::string& pname, const std::vector<size_t>& slices );
 
   template <typename T>
-  std::vector< std::vector<T> > get_matrix_row_slice( const std::string& pname, const std::vector<size_t>& slices );
+  inline std::vector< std::vector<T> > get_matrix_row_slice( const std::string& pname, const std::vector<size_t>& slices );
   
-  void Xadd_int64_parameter( const std::string& pname, const int64_t& val );
+  inline void Xadd_int64_parameter( const std::string& pname, const int64_t& val );
   
 
-  void add_int64_parameter( const std::string& pname, const int64_t& val );
+  inline void add_int64_parameter( const std::string& pname, const int64_t& val );
 
-  void add_float64_parameter( const std::string& pname, const float64_t& val );
+  inline void add_float64_parameter( const std::string& pname, const float64_t& val );
   
-  void Xadd_float64_parameter( const std::string& pname, const float64_t& val );
+  inline void Xadd_float64_parameter( const std::string& pname, const float64_t& val );
   
-  void Xadd_string_parameter( const std::string& pname, const std::string& val );
+  inline void Xadd_string_parameter( const std::string& pname, const std::string& val );
 
   template <typename T>
-  T get_numeric_parameter( const std::string& pname );
+  inline T get_numeric_parameter( const std::string& pname );
   
   template <typename T>
-  T Xget_numeric_parameter( const std::string& pname );
+  inline T Xget_numeric_parameter( const std::string& pname );
   
-  std::string Xget_string_parameter( const std::string& pname );
+  inline std::string Xget_string_parameter( const std::string& pname );
 
   
-  void make_parameters_dataspace();
+  inline void make_parameters_dataspace();
 
-  void make_parameters_grp();
+  inline void make_parameters_grp();
   
     // either load from memory, or create a new one.
-  hdf5_collection(); // const std::string& fname )
+  inline hdf5_collection(); // const std::string& fname )
  
-  void initialize_backup();
+  inline void initialize_backup();
   
-  void backupCOPY( );
+  inline void backupCOPY( );
   
-  void update_parameter( const std::string& newparam, hdf5_collection& newcol );
+  inline void update_parameter( const std::string& newparam, hdf5_collection& newcol );
   
   
   //Will update targ.
   //Could check other things, but won't for now ;)
   //REV: Can do everything internally?
-  void update_matrix( matrix_props& newmat, hdf5_collection& col );
+  inline void update_matrix( matrix_props& newmat, hdf5_collection& col );
   
   //REV: Could be more intelligent and match them, i.e. take difference...
   //whatever for now.
-  void backup_matrices(hdf5_collection& targc);
+  inline void backup_matrices(hdf5_collection& targc);
 
-  void backup_parameters( hdf5_collection& targc );
+  inline void backup_parameters( hdf5_collection& targc );
   
   //Assumes backup file exists (it was copied RAW after first generation! I.e. on creation, we copy it.)
-  void backup( );
+  inline void backup( );
   
   //Makes a new one as user specifies. Makes empty, creates file etc.
-  void new_collection( const std::string& fname );
+  inline void new_collection( const std::string& fname );
   
-  void add_float64_matrix(const std::string& matname, const std::vector<std::string>& varnames );
+  inline void add_float64_matrix(const std::string& matname, const std::vector<std::string>& varnames );
 
-  void add_float64_matrix(const std::string& matname, const size_t& ncols );
+  inline void add_float64_matrix(const std::string& matname, const size_t& ncols );
 
-  void add_int64_matrix(const std::string& matname, const std::vector<std::string>& varnames );
+  inline void add_int64_matrix(const std::string& matname, const std::vector<std::string>& varnames );
 
-  void add_int64_matrix(const std::string& matname, const size_t& ncols );
+  inline void add_int64_matrix(const std::string& matname, const size_t& ncols );
 
   //A 1d vector doesn't have row names?
-  void add_float64_vector(const std::string& matname, const std::vector<float64_t>& vals );
+  inline void add_float64_vector(const std::string& matname, const std::vector<float64_t>& vals );
   
   //A 1d vector where we might care about the rownames haha.
-  void add_float64_vector(const std::string& matname, const std::vector<std::string>& vnames, const std::vector<float64_t>& vals );
+  inline void add_float64_vector(const std::string& matname, const std::vector<std::string>& vnames, const std::vector<float64_t>& vals );
 
   //A 1d vector doesn't have row names?
-  void add_int64_vector(const std::string& matname, const std::vector<int64_t>& vals );
+  inline void add_int64_vector(const std::string& matname, const std::vector<int64_t>& vals );
   
   template <typename T>
-  std::vector<T> get_vector(const std::string& matname );
+  inline std::vector<T> get_vector(const std::string& matname );
 
   
   template <typename T>
-  void set_vector(const std::string& matname, const std::vector<T>& vals );
+  inline void set_vector(const std::string& matname, const std::vector<T>& vals );
   
   template <typename T>
-  void set_vector_element(const std::string& matname, const size_t& targ, const T& val );
+  inline void set_vector_element(const std::string& matname, const size_t& targ, const T& val );
 
   template <typename T>
-  T get_vector_element(const std::string& matname, const size_t& targ);
+  inline T get_vector_element(const std::string& matname, const size_t& targ);
   
-  void add_new_matrix( const std::string& matname, const std::vector<std::string>& varnames, const std::string& datatype );
+  inline void add_new_matrix( const std::string& matname, const std::vector<std::string>& varnames, const std::string& datatype );
 
-  std::vector<size_t> find_matrix( const std::string& matname );
+  inline std::vector<size_t> find_matrix( const std::string& matname );
 
   
   
   //void load_matrix( const std::string& matname, const std::vector<std::string>& varnames )
-  void load_matrix( const std::string& matname );
+  inline void load_matrix( const std::string& matname );
   
 
-  std::vector<std::string> get_varnames( const std::string& matname );
+  inline std::vector<std::string> get_varnames( const std::string& matname );
 
   
-  size_t get_num_rows( const std::string& matname );
+  inline size_t get_num_rows( const std::string& matname );
 
-  size_t get_num_cols( const std::string& matname );
+  inline size_t get_num_cols( const std::string& matname );
 
   template <typename T>
-  void add_row_to_matrix( const std::string& matname, const std::vector< T >& vals );
+  inline void add_row_to_matrix( const std::string& matname, const std::vector< T >& vals );
 
   template<typename T>
-  std::vector<std::vector<T> > get_last_n_rows( const std::string& matname, const size_t& nr );
+  inline std::vector<std::vector<T> > get_last_n_rows( const std::string& matname, const size_t& nr );
 
   template<typename T>
-  std::vector<T> get_last_row( const std::string& matname );
+  inline std::vector<T> get_last_row( const std::string& matname );
 
   
   template <typename T>
-  void add_to_matrix( const std::string& matname, const std::vector<std::string>& colnames, const std::vector< std::vector< T > >& vals );
+  inline void add_to_matrix( const std::string& matname, const std::vector<std::string>& colnames, const std::vector< std::vector< T > >& vals );
 
   template <typename T>
-  void add_to_matrix( const std::string& matname, const std::vector< std::vector< T > >& vals );
+ inline  void add_to_matrix( const std::string& matname, const std::vector< std::vector< T > >& vals );
  
 
   
   template <typename T>
-  void write_row_range( const std::string& matname, const size_t& startrow, const size_t& endrow, const std::vector< std::vector< T > >& vals );
+  inline void write_row_range( const std::string& matname, const size_t& startrow, const size_t& endrow, const std::vector< std::vector< T > >& vals );
 
   template <typename T>
-  void write_row( const std::string& matname, const size_t& startrow, const  std::vector< T > & vals );
+  inline void write_row( const std::string& matname, const size_t& startrow, const  std::vector< T > & vals );
   
   template <typename T>
-  std::vector<std::vector<T>> read_row_range( const std::string& matname, const size_t& startrow, const size_t& endrow );
+  inline std::vector<std::vector<T>> read_row_range( const std::string& matname, const size_t& startrow, const size_t& endrow );
 
   template <typename T>
-  std::vector<T> read_row( const std::string& matname, const size_t& row );
+  inline std::vector<T> read_row( const std::string& matname, const size_t& row );
 
-  void load_params();
+  inline void load_params();
   
   //Opens existing as user specifies. Loads all the matrix_props etc. as user expects.
-  void load_collection( const std::string& fname );
+  inline void load_collection( const std::string& fname );
   
-  std::vector<std::string> matrix_names_from_file();
+  inline std::vector<std::string> matrix_names_from_file();
 
   template <typename T>
-  void enumerate_matrix( const std::string& matname );
+  inline void enumerate_matrix( const std::string& matname );
 
-  void enumerate_matrix_to_file( const std::string& matname, const std::string& fname,  const size_t& thinrate=1, const size_t& startpoint=0 );
+  inline void enumerate_matrix_to_file( const std::string& matname, const std::string& fname,  const size_t& thinrate=1, const size_t& startpoint=0 );
  
 
   

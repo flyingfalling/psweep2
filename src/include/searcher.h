@@ -120,13 +120,13 @@ struct searcher
   void parseopts( optlist& opts );
 
   //varlist will contain required um, data files I guess?
-  void run_search( const std::string& searchtype, const std::string& scriptfname,
+   void run_search( const std::string& searchtype, const std::string& scriptfname,
 		   const std::string& mydir, optlist& opts,
 		   filesender& fs,
 		   const bool& writefiles=false );
   
 
-  void doexit( filesender* myfs );
+   void doexit( filesender* myfs );
  
 
 
@@ -138,7 +138,7 @@ struct searcher
   ///////////////////////////////////////////////////////////// OLD RUN SEARCH
   
   //varlist will contain required um, data files I guess?
-  void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const bool& writefiles=false );
+   void run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const bool& writefiles=false );
   
 
 }; //end struct searcher

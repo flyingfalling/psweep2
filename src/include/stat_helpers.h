@@ -8,7 +8,7 @@
 //#include "stat_helpers2.h"
 
 template <typename T>
-std::vector< T > indices_to_vector_slices(const std::vector< T >& source, const std::vector<size_t>& indices);
+inline std::vector< T > indices_to_vector_slices(const std::vector< T >& source, const std::vector<size_t>& indices);
 
 
 //This is same as indices_to_vector_slices...
@@ -32,17 +32,18 @@ std::vector<T> reorganize_by_index_array( std::vector<T>& targ, const std::vecto
 
 //actually return the (k) values
 template <typename T>
-std::vector<T> choose_k_values_from_N_no_replace(std::vector<T>& input, size_t _k, std::default_random_engine& rand_gen);
+inline std::vector<T> choose_k_values_from_N_no_replace(std::vector<T>& input, size_t _k, std::default_random_engine& rand_gen);
 
 
 //actually return the (N) values in random order
 template <typename T>
-std::vector<T> shuffle_values(std::vector<T>& input, std::default_random_engine& rand_gen);
+inline std::vector<T> shuffle_values(std::vector<T>& input, std::default_random_engine& rand_gen);
 
 
+inline std::vector<size_t> shuffle_indices(size_t _N, std::default_random_engine& rand_gen);
 
 //REV: TODO some static sanity checks for these functions (and to check randomness?) (check sweep_mpi.h with DEBUG > 10 for test of the N choose k)
-
+inline std::vector<size_t> choose_k_indices_from_N_no_replace(size_t _N, size_t _k, std::default_random_engine& rand_gen);
 
 
 #include <stat_helpers.cpp>

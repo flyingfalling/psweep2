@@ -1,6 +1,6 @@
 //REV: 15 dec 2015, adding parsing of literals...
 
-#pragma once
+//#pragma once
 
 #include <psweep_cmd_script_parser.h>
 

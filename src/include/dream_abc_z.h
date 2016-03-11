@@ -35,7 +35,7 @@ struct dream_abc_z_state : public dream_abc_state
 
 
   //@OVERLOAD
-  void new_state ( const std::string& statefilename,
+  inline void new_state ( const std::string& statefilename,
 		   const std::vector<std::string>& varnames,
 		   const std::vector<float64_t>& mins,
 		   const std::vector<float64_t>& maxes,
@@ -58,23 +58,23 @@ struct dream_abc_z_state : public dream_abc_state
 		   );
 		  
   
-  void add_current_gen_to_Z();
+  inline void add_current_gen_to_Z();
   
   
   //@OVERLOAD
-  void cleanup_gen();
+  inline void cleanup_gen();
 
   
   //@OVERLOAD
-  std::vector<std::vector<float64_t> > get_mypairs_vectors( const std::vector<size_t>& pairidxs );
+  inline std::vector<std::vector<float64_t> > get_mypairs_vectors( const std::vector<size_t>& pairidxs );
   
   //@OVERLOAD
-  std::vector<size_t> draw_DE_pairs( const size_t& npairs,
+  inline std::vector<size_t> draw_DE_pairs( const size_t& npairs,
 				     std::default_random_engine& rand_gen );
 
   //@OVERLOAD
   //Now draw and add to Z, draw M0 from the hypercube?  BUt init pop is same.
-  void generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg );
+  inline void generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg );
   
   struct abczconfig
   {
@@ -114,7 +114,7 @@ struct dream_abc_z_state : public dream_abc_state
     int64_t _M0d_mult=100;
     int64_t _Kthin=5;
 
-    void load_abcz_params( const std::string& fname )
+    inline void load_abcz_params( const std::string& fname )
     {
       //haha, global access to my dudes...oh well.
       //Easier to just make them named same thing, and search for them there (i.e. in side the alredy created state?)
@@ -130,7 +130,7 @@ struct dream_abc_z_state : public dream_abc_state
 
   //OVERLOADED -- NO **MASKED*** i.e. different return type!!!
   //REV: UGLY UGLY UGLY PARSE SHARED STUFF BEFORE, NEED TO MAKE THIS BETTER LATER!!
-  abczconfig parseopts( optlist& opts );
+  inline abczconfig parseopts( optlist& opts );
   
     
     
@@ -139,22 +139,22 @@ struct dream_abc_z_state : public dream_abc_state
   
   
   //OVERLOADED? No, actually a different function...
-  void create_with_config( abczconfig& c );
+  inline void create_with_config( abczconfig& c );
 
   //CTOR
   //REV: **DO NOT CALL PARENT CONSTRUCTOR IT WILL BREAK THINGS B/C BASE CLASS FUNCTIONS CALLING OVERRIDDEN FUNCTIONS WILL NO LONGER CALL
   //THE OVERRIDDEN VERSION!!!! **
   
-  dream_abc_z_state( optlist& opts );
+  inline dream_abc_z_state( optlist& opts );
 
-  dream_abc_z_state();
+  inline dream_abc_z_state();
   
-  dream_abc_z_state( const long& seed);
+  inline dream_abc_z_state( const long& seed);
   
 };
 
 
-void search_dream_abc_z( optlist& opts,
+inline void search_dream_abc_z( optlist& opts,
 			 parampoint_generator& pg,
 			 filesender& fs
 			 );
@@ -167,7 +167,7 @@ void search_dream_abc_z( optlist& opts,
 
 
 //REV: First implement MT-DREAM-Z
-void search_dream_abc_z( const std::string& statefilename,
+inline void search_dream_abc_z( const std::string& statefilename,
 			 const std::vector<std::string>& varnames,
 			 const std::vector<float64_t>& mins,
 			 const std::vector<float64_t>& maxes,

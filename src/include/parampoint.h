@@ -21,12 +21,12 @@ struct seedgen
   std::default_random_engine reng; //keep my own in here to generate values to generate seeds...
   
   
-  void seed( const long& seedval );
+  inline void seed( const long& seedval );
   
 
   //Hopefully it keeps state...?
   //REV: Generate random int in here from our chain and use it as seed...not very beautiful, but same as doing seeds(1)
-  std::uint32_t nextseed();
+  inline std::uint32_t nextseed();
 
 };
 
@@ -38,9 +38,9 @@ struct parampoint_coord
   size_t pitemn;
 
 
-  parampoint_coord();
+  inline parampoint_coord();
   
-  parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi );
+  inline parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi );
 };
   
 
@@ -55,7 +55,7 @@ struct pset_functional_representation
   
   //Takes some registered functions struct (list?), and the (unrolled) stmnts thing.
   //    std::vector< client::STMNT >& stmnts ) //so, we take the STMNT list of this pset, and make what we need.
-  pset_functional_representation( client::PSET& p );
+  inline pset_functional_representation( client::PSET& p );
   
 
 
@@ -86,11 +86,11 @@ struct pitem
   //REV: REQUIRED for boost serialization (to send over MPI)
   friend class boost::serialization::access;
   template<class Archive>
-  void serialize(Archive & ar, const unsigned int version);
+  inline void serialize(Archive & ar, const unsigned int version);
   
   
   //In new version, this may call from memory to speed things up.
-  bool execute_cmd( fake_system& fakesys, memfsys& myfsys );
+  inline bool execute_cmd( fake_system& fakesys, memfsys& myfsys );
   
   
 
@@ -134,36 +134,36 @@ struct pitem
   //SLAVE sends # FILES (and correspondences?), then sends one file at a time.
   //SLAVE is DONE.
 
-  void rename_to_targ( std::vector<std::string>& targvect, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir,
+  inline void rename_to_targ( std::vector<std::string>& targvect, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir,
 		       const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames );
  
 
-  void rename_str_to_targ( std::string& targstr, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir,
+  inline void rename_str_to_targ( std::string& targstr, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir,
 			   const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames );
   
 
-  void rename_str_to_targ_dir( std::string& targ, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir );
+  inline void rename_str_to_targ_dir( std::string& targ, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir );
   
   
-  void rename_to_targ_dir( std::vector<std::string>& targvect, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir );
+  inline void rename_to_targ_dir( std::vector<std::string>& targvect, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir );
  
   
   //REV: For success etc. check existence AND THAT IT IS A FILE!!!! I.e. we don't do DIRS (for now)
-  void re_base_directory( const std::string& olddir, const std::string& newdir, const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames );
+  inline void re_base_directory( const std::string& olddir, const std::string& newdir, const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames );
  
-    pitem( );
+  inline pitem( );
   
-  pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv, memfsys& myfsys, const std::uint32_t& myseed, const bool& usedisk=false );
+  inline pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv, memfsys& myfsys, const std::uint32_t& myseed, const bool& usedisk=false );
  
-  std::vector<std::string> check_ready( memfsys& myfsys );
+  inline std::vector<std::string> check_ready( memfsys& myfsys );
   
-  std::vector<std::string> checkdone( memfsys& myfsys );
+  inline std::vector<std::string> checkdone( memfsys& myfsys );
   
   
-  varlist<std::string> get_output( memfsys& myfsys, const bool& usedisk=false );
+  inline varlist<std::string> get_output( memfsys& myfsys, const bool& usedisk=false );
   
 
-  std::vector<std::string> get_cmd();
+  inline std::vector<std::string> get_cmd();
  
   
   
@@ -175,10 +175,10 @@ struct functional_representation
   std::vector< pset_functional_representation > pset_list;
   
   //Constructs the list of each parampoint. Great.
-  functional_representation( client::PARAMPOINT& pp );
+  inline functional_representation( client::PARAMPOINT& pp );
   
 
-  functional_representation();
+  inline functional_representation();
   
   
 };
@@ -220,11 +220,11 @@ struct pset
   }
   */
 
-  pset(hierarchical_varlist<std::string>& hv);
+ inline  pset(hierarchical_varlist<std::string>& hv);
   
   
   
-  void add_pitem( const pitem& p );
+  inline void add_pitem( const pitem& p );
  
   
   
@@ -249,7 +249,7 @@ struct parampoint
   static const size_t my_hierarchical_idx = 0;
 
 
-  void add_pset( const pset& myps);
+  inline void add_pset( const pset& myps);
   
   //bool done=false;
 
@@ -322,7 +322,7 @@ struct parampoint
 
 
   //Makes the dir at the location "inside", but success and required files are still treated as if they are purely global names.
-  parampoint( hierarchical_varlist<std::string>& hv, std::string dirname );
+  inline parampoint( hierarchical_varlist<std::string>& hv, std::string dirname );
   
 
 
@@ -370,12 +370,12 @@ struct executable_representation
   //This is the functional representation of the script, specifically a list of the things to do.
   functional_representation fscript;
   
-  executable_representation();
+  inline executable_representation();
   
   
   //build the exec rep using config file(s) passed by user.
   //For now, force it to be a single file...
-  executable_representation( const std::string& script_filename );
+  inline executable_representation( const std::string& script_filename );
  
   //FSCRIPT now contains the list (vector!) of pset functional representations, at construction.
   //Constructing a parampoint involves actually executing and generating the workers based on the passed param vals passed.
@@ -391,7 +391,7 @@ struct executable_representation
   //etc.
 
   //Builds and returns a parampoint. Which can then be executed in its own way.
-  parampoint build_parampoint( hierarchical_varlist<std::string>& hv, const std::string& dir, memfsys& myfsys, seedgen& sg, const bool& usedisk=false );
+  inline parampoint build_parampoint( hierarchical_varlist<std::string>& hv, const std::string& dir, memfsys& myfsys, seedgen& sg, const bool& usedisk=false );
   
 };
 
@@ -425,7 +425,7 @@ struct executable_representation
 struct pset_result
 {
   std::vector< varlist<std::string> > pitem_results;
-  pset_result( const size_t& nitems );
+  inline pset_result( const size_t& nitems );
  
 };
 
@@ -433,7 +433,7 @@ struct parampoint_result
 {
   std::vector< pset_result > pset_results;
 
-  parampoint_result( const parampoint& myp  );
+  inline parampoint_result( const parampoint& myp  );
   
 };
 
@@ -459,16 +459,16 @@ struct parampoint_generator
   executable_representation exec_rep; //representation of the "script" to run to generate psets (param point) etc.
 
     
-  void set_result( const parampoint_coord& pc, const varlist<std::string>& result );
+  inline void set_result( const parampoint_coord& pc, const varlist<std::string>& result );
  
 
-  varlist<std::string> get_result( const parampoint_coord& pc );
+  inline varlist<std::string> get_result( const parampoint_coord& pc );
  
 
-  std::vector<varlist<std::string>> get_last_N_results( const size_t& N );
+  inline std::vector<varlist<std::string>> get_last_N_results( const size_t& N );
  
 
-  varlist<std::string> get_result( const size_t& ppnum, const size_t& psetnum, const size_t& pitemn );
+  inline varlist<std::string> get_result( const size_t& ppnum, const size_t& psetnum, const size_t& pitemn );
   
 
 
@@ -480,21 +480,21 @@ struct parampoint_generator
   //REV: Might want to also clean up (write to HDF5 log) the stuff
   //from file system if it is saved there? Otherwise it will grow.
   //In other words, memfsystem? I.e. iteratively do parampoint.
-  void cleanup_parampoints_upto( const size_t& ppidx );
+  inline void cleanup_parampoints_upto( const size_t& ppidx );
   
   
-  void log_parampoints_upto( const size_t& ppidx);
+  inline void log_parampoints_upto( const size_t& ppidx);
  
   
   
   
   //Construct it by specifying global vars or something?
 
-  parampoint_generator();
+ inline  parampoint_generator();
  
-  parampoint_generator( const std::string& scriptfname, const std::string& bdir );
+  inline parampoint_generator( const std::string& scriptfname, const std::string& bdir );
   
-  size_t generate( const varlist<std::string>& vl, seedgen& sg, const bool& usedisk=false );
+  inline size_t generate( const varlist<std::string>& vl, seedgen& sg, const bool& usedisk=false );
  
   
 }; //end struct parampoint_gen

@@ -1,6 +1,6 @@
 //REV: some utility functs (wrappers) to deal with some common problems especially with lustre etc.
 
-#pragma once
+//#pragma once
 
 #include <utility_functs.h>
 

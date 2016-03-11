@@ -193,9 +193,9 @@ BOOST_FUSION_ADAPT_STRUCT(
 )
 
 
-void enum_pset( const client::PSET& p );
-void enum_stmnt( const client::STMNT& s );
-void enum_leaf_stmnt( const client::LEAF_STMNT& s, const size_t& depth );
+inline void enum_pset( const client::PSET& p );
+inline void enum_stmnt( const client::STMNT& s );
+inline void enum_leaf_stmnt( const client::LEAF_STMNT& s, const size_t& depth );
 
 
 
@@ -207,7 +207,7 @@ namespace client
   struct parser : qi::grammar<It, PARAMPOINT(), Skipper>
   {
     //parser() : parser::base_type(pset)
-    parser();
+    inline parser();
    
     qi::rule< It, client::PARAMPOINT(), qi::space_type > parampoint;
     qi::rule< It, client::PSET(), qi::space_type > pset;
@@ -230,7 +230,7 @@ namespace client
 }
 
 
-client::PARAMPOINT parse_psweep_script( std::string input );
+inline client::PARAMPOINT parse_psweep_script( std::string input );
 
 
 #include <psweep_cmd_script_parser.cpp>

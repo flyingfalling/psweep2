@@ -20,8 +20,8 @@ class sortthing
   T* dat;
  
  public:
-  bool operator()  (int i, int j); 
-  sortthing(T* da);
+  inline bool operator()  (int i, int j); 
+  inline sortthing(T* da);
 };
 
 
@@ -29,20 +29,20 @@ class sortthing
 template <typename T>
 struct sorter
 {
-  sorter(T* targarray, int size, std::vector<int*> iargs, std::vector<int*> largs, std::vector<float*> fargs, std::vector<double*> dargs);
-  sorter(T* targarray, int size); 
+  inline sorter(T* targarray, int size, std::vector<int*> iargs, std::vector<int*> largs, std::vector<float*> fargs, std::vector<double*> dargs);
+  inline sorter(T* targarray, int size); 
   
-  void runsort();
+ inline  void runsort();
 
-  void add_l(long int* a);
+ inline  void add_l(long int* a);
   
-  void add_i(int* a);
+ inline  void add_i(int* a);
  
   
-  void add_f(float* a);
+ inline  void add_f(float* a);
  
 
-  void add_d(double* a);
+ inline  void add_d(double* a);
   
   
   

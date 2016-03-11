@@ -44,35 +44,35 @@ struct variable
   friend class boost::serialization::access;
 
   template<class Archive>
-  void serialize(Archive & ar, const unsigned int version);
+  inline void serialize(Archive & ar, const unsigned int version);
   
   
-  std::vector< T >
+  inline std::vector< T >
   get_v( );
   
-  T
+  inline T
   get_s( );
   
 
-  variable<T>( const std::string _name, const T& _val);
+  inline variable<T>( const std::string _name, const T& _val);
   
 
-  variable<T>();
+  inline variable<T>();
   
   
-  variable<T>( const std::string _name, const std::vector<T>& _val);
+  inline variable<T>( const std::string _name, const std::vector<T>& _val);
  
 
-  variable<T>( const std::string& n, const variable<T>& _v);
+  inline variable<T>( const std::string& n, const variable<T>& _v);
  
 
   
   //REV: this won't work unless T is string haha...
   //REV: THIS WILL BREAK UNLESS TYPE IS STD::STRING!!!!
   //Note if you try to compile and get an error here!
-  std::string asstring();
+  inline std::string asstring();
  
-  std::string gettype_asstr();
+  inline std::string gettype_asstr();
  
     
 };
@@ -88,80 +88,80 @@ struct varlist
   //REV: REQUIRED for boost serialization (to send over MPI)
   friend class boost::serialization::access;
   template<class Archive>
-  void serialize(Archive & ar, const unsigned int version);
+  inline void serialize(Archive & ar, const unsigned int version);
  
   
   
   //append? or overwrite? Default is APPEND to end.
-  void tofile( const std::string& fname, memfsys& mf, const bool& usefile=false );
+  inline void tofile( const std::string& fname, memfsys& mf, const bool& usefile=false );
  
   
   //append? or overwrite? Default is APPEND to end.
-  void tofile( const std::string& fname );
+  inline void tofile( const std::string& fname );
   
 
 
-  void inputfromfile( const std::string& fname, memfsys& mf, const bool& readthrough=false );
+  inline void inputfromfile( const std::string& fname, memfsys& mf, const bool& readthrough=false );
   
   
-  void inputfromfile( const std::string& fname );
-  
-
-  void mergevarlist( const varlist& v );
+  inline void inputfromfile( const std::string& fname );
   
 
-  void enumerate(size_t depth=0);
+  inline void mergevarlist( const varlist& v );
+  
+
+  inline void enumerate(size_t depth=0);
   
   
   
-  varlist();
+  inline varlist();
   
   
 
-  varlist( const std::string& _tag );
+  inline varlist( const std::string& _tag );
   
   template <typename TT>
-  void add_to_varlist( const std::vector<std::string>& varnames, const std::vector<TT>& varvals );
+  inline void add_to_varlist( const std::vector<std::string>& varnames, const std::vector<TT>& varvals );
   
 
   //modifies it if it exists, otherwise adds it.
-  void setvar( const std::string& _varname, const variable<T>& _v );
+  inline void setvar( const std::string& _varname, const variable<T>& _v );
   
 
-  void addvar( const variable<T>& _v );
+ inline  void addvar( const variable<T>& _v );
  
   
-  void addvar( const std::string& _varname, const variable<T>& _v );
+  inline void addvar( const std::string& _varname, const variable<T>& _v );
   
-  void addTvar( const std::string& _varname, const T& _v);
+  inline void addTvar( const std::string& _varname, const T& _v);
   
-  void addArrayvar( const std::string& _varname, const std::vector<T>& _v);
+  inline void addArrayvar( const std::string& _varname, const std::vector<T>& _v);
   
 
-  variable<T> getvar( const std::string& _varname );
+  inline variable<T> getvar( const std::string& _varname );
  
 
-  T getTvar( const std::string& _varname );
+ inline  T getTvar( const std::string& _varname );
   
 
-  std::vector<T> getArrayvar( const std::string& _varname );
+ inline  std::vector<T> getArrayvar( const std::string& _varname );
   
-  std::vector<size_t> getname(const std::string& name);
+  inline std::vector<size_t> getname(const std::string& name);
  
 
   template <typename TT>
-  void make_varlist( const std::vector<std::string>& vnames, const std::vector<TT>& vvals );
+ inline  void make_varlist( const std::vector<std::string>& vnames, const std::vector<TT>& vvals );
  
-  void add_float64( const std::string& v, const float64_t& val );
+ inline  void add_float64( const std::string& v, const float64_t& val );
  
 
-  void add_int64( const std::string& v, const int64_t& val );
+  inline void add_int64( const std::string& v, const int64_t& val );
   
   
-  float64_t get_float64( const std::string& v );
+ inline  float64_t get_float64( const std::string& v );
   
 
-  int64_t get_int64(const std::string& v);
+ inline  int64_t get_int64(const std::string& v);
   
   
 };

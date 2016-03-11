@@ -38,6 +38,8 @@
 #include <rand_utils.h>
 #include <stat_helpers.h>
 #include <idxsort.h>
+#include <optionhandler.h>
+#include <csvparser.h>
 //REV: start with a flat prior I guess...
 
 //REV: pass other specific variables, like numgens etc.
@@ -112,7 +114,7 @@ struct dream_abc_state
   D( PRE_GEN_ITER );
   D( POST_GEN_ITER );
   
-  virtual void new_state(const std::string& statefilename,
+  inline virtual void new_state(const std::string& statefilename,
 			 const std::vector<std::string>& varnames,
 			 const std::vector<float64_t>& mins,
 			 const std::vector<float64_t>& maxes,
@@ -134,131 +136,131 @@ struct dream_abc_state
 
   
   
-  void load_state( const std::string& file, const bool& bu );
+  inline void load_state( const std::string& file, const bool& bu );
   
-  bool issane( );
+  inline bool issane( );
   
   
   //REV: These convenience functions might be better coded in the collection struct. Can be used for multiple things.
   template <typename T>
-  T get_param( const std::string& s);
+  inline T get_param( const std::string& s);
 
   template <typename T>
-  void set_param( const std::string& s, const T& val);
+  inline void set_param( const std::string& s, const T& val);
   
   template <typename T>
-  std::vector<T> get_vector_param( const std::string& s );
+  inline std::vector<T> get_vector_param( const std::string& s );
 
   //Just use raw add to matrix...do everything first raw, then wrap it?
 
-  void START_GEN();
+  inline void START_GEN();
 
-  void END_GEN();
+  inline void END_GEN();
   
-  void run( filesender& fs, parampoint_generator& pg );
+  inline void run( filesender& fs, parampoint_generator& pg );
 
-  void run_generation(filesender& fs, parampoint_generator& pg);
+  inline void run_generation(filesender& fs, parampoint_generator& pg);
 
-  virtual void backup();
+  inline virtual void backup();
     
-  virtual void cleanup_gen();
+  inline virtual void cleanup_gen();
   //REV: Better to make a "pure virtual" and not derive from dream_abc...but some shared one?
-  virtual std::vector<std::vector<float64_t> > get_mypairs_vectors( const std::vector<size_t>& pairidxs );
+  inline virtual std::vector<std::vector<float64_t> > get_mypairs_vectors( const std::vector<size_t>& pairidxs );
   
-  std::vector<float64_t> make_single_proposal( const size_t& mychainidx,
+  inline std::vector<float64_t> make_single_proposal( const size_t& mychainidx,
 					       const std::vector<std::vector<float64_t>>& Xcurr,
 					       std::default_random_engine& rand_gen );
 
-  std::vector<float64_t> edge_handling( const std::vector<float64_t>& proposal,
+  inline std::vector<float64_t> edge_handling( const std::vector<float64_t>& proposal,
 					const std::string& boundstype,
 					std::default_random_engine& rand_gen );
 
   
-  std::vector<std::vector<float64_t> > get_current_gen();
+  inline std::vector<std::vector<float64_t> > get_current_gen();
   
-  std::vector<std::vector< float64_t> > make_proposals(std::default_random_engine& rand_gen);
+  inline std::vector<std::vector< float64_t> > make_proposals(std::default_random_engine& rand_gen);
 
-  void update_CRcnts();
+  inline void update_CRcnts();
   
-  float64_t incrementally_compute_mean( const float64_t& prevmean, const float64_t& newsample, const int64_t& newn );
+  inline float64_t incrementally_compute_mean( const float64_t& prevmean, const float64_t& newsample, const int64_t& newn );
 
   //https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
-  float64_t incrementally_compute_var( const float64_t& prevmean,
+  inline float64_t incrementally_compute_var( const float64_t& prevmean,
 				       const float64_t& prevvar,
 				       const float64_t& newmean,
 				       const float64_t& newsample,
 				       const int64_t& newn,
 				       float64_t& prevM2n );
   
-  std::vector<float64_t> compute_variance_for_all_dims_all_history();
+  inline std::vector<float64_t> compute_variance_for_all_dims_all_history();
 
   //REV: Whoops, I need to update DeltaCR for the USED INDICES!!!!
-  void update_DeltaCR();
+  inline void update_DeltaCR();
   
   
   //REV: Huh, there's probably a more intelligent way to do this than manually check each one?
-  std::vector<size_t> choose_moving_dims( const size_t& Didx,
+  inline std::vector<size_t> choose_moving_dims( const size_t& Didx,
 					  std::default_random_engine& rand_gen ) ;
   
-  void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs,
+  inline void choose_moving_dims_and_npairs( std::vector<size_t>& mypairs,
 				      std::vector<size_t>& moving_dims,
 				      float64_t& gamma,
 				      std::default_random_engine& rand_gen );
 
-  size_t choose_CR_index( std::default_random_engine& rand_gen );
+  inline size_t choose_CR_index( std::default_random_engine& rand_gen );
   
   //REV: dprime/D is the number of moving dimensions, tau is the number of pairs being used...
-  float64_t compute_gamma_nonsnooker(const size_t& tau,
+  inline float64_t compute_gamma_nonsnooker(const size_t& tau,
 				     const size_t& D,
 				     std::default_random_engine& rand_gen );
 
   //REV: Do everything. Draw num DE pairs, also
   //Note returns delta INDEX (delta pairs is INDEX+1)
-  size_t draw_num_DE_pairs( std::default_random_engine& rand_gen );
+  inline size_t draw_num_DE_pairs( std::default_random_engine& rand_gen );
   
-  virtual std::vector<size_t> draw_DE_pairs( const size_t& npairs,
+  inline virtual std::vector<size_t> draw_DE_pairs( const size_t& npairs,
 					     std::default_random_engine& rand_gen );
 
   
-  bool compute_GR();
+  inline bool compute_GR();
   
-  void update_pCR();
+  inline void update_pCR();
 
   
   
   
-  virtual void generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg );
+  inline virtual void generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg );
 
 
   //We don't compute DeltaCR etc., but we need to populate the history of the state variables for incremental computation
   //of DeltaCR
-  void init_population_mean_var();
+  inline void init_population_mean_var();
 
-  std::vector<float64_t> compute_stat_divergence( varlist<std::string>& results, std::vector<float64_t>& resultvals );
+  inline std::vector<float64_t> compute_stat_divergence( varlist<std::string>& results, std::vector<float64_t>& resultvals );
 
   //Just takes absolute value of them ahaha. Sqr and then Sqrt. Waste.
   //Absolute value of distance...
-  std::vector<float64_t> compute_stat_abs( const std::vector<float64_t>& divergence );
+  inline std::vector<float64_t> compute_stat_abs( const std::vector<float64_t>& divergence );
 
-  std::vector<float64_t> compute_epsilon_divergence( const std::vector<float64_t>& abs_divergence );
+  inline std::vector<float64_t> compute_epsilon_divergence( const std::vector<float64_t>& abs_divergence );
 
-  float64_t compute_rho( const std::vector<float64_t>& epsilon_divergence );
+  inline float64_t compute_rho( const std::vector<float64_t>& epsilon_divergence );
   
-  void compute_acceptance();
+  inline void compute_acceptance();
 
-  void move_chains();
+  inline void move_chains();
   
 
-  void compute_generation_fitnesses( const std::vector<std::vector<float64_t>>& vals, filesender& fs, parampoint_generator& pg  );
+  inline void compute_generation_fitnesses( const std::vector<std::vector<float64_t>>& vals, filesender& fs, parampoint_generator& pg  );
 
 
-  void init_random();
+  inline void init_random();
 
-  void init_random(const long& seed);
+  inline void init_random(const long& seed);
 
-  void initialize( );
+  inline void initialize( );
 
-  void initialize(const long& seed );
+  inline void initialize(const long& seed );
 
   //Are these "loaded" at load time? NO!!! They aren't. We don't want these dirty state variables around...
   //Well, statefilename might be fine, as varfilename, etc.
@@ -315,44 +317,44 @@ struct dream_abc_state
   }; //end internal struct abcconfig
 
   //REV: UGLY UGLY UGLY WIll be MASKED By derived..(for now)
-  void create_with_config( abcconfig& c );
+  inline void create_with_config( abcconfig& c );
 
   //REV: UGLY UGLY will be MASKED by derived!!! (for now)
   //If we actually modify things "in-line" that might be better.
   //But user creation function might have a different view of things.
   //But, other than this, everything is default I assume?
-  abcconfig parseopts( optlist& opts );
+  inline abcconfig parseopts( optlist& opts );
 
   
-  void parse_dreamabcfile( const std::string& fname, std::vector<std::string>& _varnames, std::vector<float64_t>& _mins, std::vector<float64_t>& _maxes );
+  inline void parse_dreamabcfile( const std::string& fname, std::vector<std::string>& _varnames, std::vector<float64_t>& _mins, std::vector<float64_t>& _maxes );
 
 
-  void parse_obsdatafile( const std::string& observfname, std::vector<std::string>& _observation_varnames, std::vector<float64_t>& _observation_stats );
+  inline void parse_obsdatafile( const std::string& observfname, std::vector<std::string>& _observation_varnames, std::vector<float64_t>& _observation_stats );
 
-  void parse_epsilondatafile( const std::string& epsilfname, const std::vector<std::string>& _varnames, std::vector<float64_t>& _epsilons );
-  
-  //CTOR
-  dream_abc_state( optlist& opts );
+  inline void parse_epsilondatafile( const std::string& epsilfname, const std::vector<std::string>& _varnames, std::vector<float64_t>& _epsilons );
   
   //CTOR
-  dream_abc_state();
+  inline dream_abc_state( optlist& opts );
+  
+  //CTOR
+  inline dream_abc_state();
 
-  dream_abc_state( const long& seed);
+  inline dream_abc_state( const long& seed);
 
 
   //Sample from X_hist etc.
 
-  void enumerate_to_file( const std::string& matname, const std::string& fname, const size_t& thinrate, const size_t& startpoint );
+  inline void enumerate_to_file( const std::string& matname, const std::string& fname, const size_t& thinrate, const size_t& startpoint );
   
   //Note, do we only want to do it after convergence?
-  void enumerate_X_GR_fitness( const std::string& dir, const size_t& genskiprate=10, const size_t& startgen=0 );
+  inline void enumerate_X_GR_fitness( const std::string& dir, const size_t& genskiprate=10, const size_t& startgen=0 );
       
 };
 
 
 
 
-void search_dream_abc( optlist& opts,
+inline void search_dream_abc( optlist& opts,
 		       parampoint_generator& pg,
 		       filesender& fs
 		       );
@@ -368,7 +370,7 @@ void search_dream_abc( optlist& opts,
 
 
 //REV: First implement MT-DREAM-Z
-void search_dream_abc( const std::string& statefilename,
+inline void search_dream_abc( const std::string& statefilename,
 		       const std::vector<std::string>& varnames,
 		       const std::vector<float64_t>& mins,
 		       const std::vector<float64_t>& maxes,

@@ -40,36 +40,36 @@ struct memfile
   size_t waccesses=0;
   //REV: Keep track if I'm being accessed? Make sure not more than one at a time for writing?
 
-  void waccess();
+  inline void waccess();
  
 
-  void wclosed();
+  inline void wclosed();
  
 
-  void raccess();
+  inline void raccess();
 
-  void rclosed();
+  inline void rclosed();
  
 
-  ~memfile();
+  inline ~memfile();
  
-  void tofile( const std::string& fname );
+  inline void tofile( const std::string& fname );
    
 
-  memfile();
+  inline memfile();
 
 
 
   //REV: This can't be right...? I want this on the PTR side I assume? Oh well.
   //If I'm writing out, I can specify to overwrite or not?
-  memfile( const std::string& fname, const bool& fromfile=false );
+  inline memfile( const std::string& fname, const bool& fromfile=false );
   
   
   //For serialization, required to send across boost.
   friend class boost::serialization::access;
   
   template<class Archive>
-  void serialize(Archive & ar, const unsigned int version);
+  inline void serialize(Archive & ar, const unsigned int version);
   
 };
 
@@ -96,61 +96,61 @@ struct memfile_ptr
 
   bool fromfile=false; //was it originally read from a file (locally?). We might want to write it back to close it...?
 
-  memfile get_memfile() const;
+  inline memfile get_memfile() const;
  
   
-  void clear();
+  inline void clear();
  
 
-  void reset();
+  inline void reset();
   
   
-  memfile_ptr();
+  inline memfile_ptr();
   
 
-  memfile_ptr( memfile& mf );
+  inline memfile_ptr( memfile& mf );
 
 
-  void open( memfile& mf );
+  inline void open( memfile& mf );
  
 
-  ~memfile_ptr();
+  inline ~memfile_ptr();
  
   
-  void close();
+  inline void close();
  
   
-  bool fail();
+  inline bool fail();
   
-  bool bad();
+  inline bool bad();
  
-  bool eof();
+ inline  bool eof();
   
 
 
-  bool good();
+ inline  bool good();
   
 
   
-  void tofile( const std::string& fname );
+  inline void tofile( const std::string& fname );
   
   //REV: This returns everything. I want to get "from now" type thing?
   //REV: This returns "from readpos"
-  std::string getdata();
+  inline std::string getdata();
   
-  std::string getnextdata();
+ inline  std::string getnextdata();
  
   template<typename T>
-  memfile_ptr& operator<<(const T& t);
+ inline  memfile_ptr& operator<<(const T& t);
   
   
-  memfile_ptr& operator<<(std::ostream& (*t)(std::ostream&));
+ inline  memfile_ptr& operator<<(std::ostream& (*t)(std::ostream&));
  
 
-  memfile_ptr& operator<<(std::ios& (*t)(std::ios&));
+ inline  memfile_ptr& operator<<(std::ios& (*t)(std::ios&));
   
 
-  memfile_ptr& operator<<(std::ios_base& (*t)(std::ios_base&));
+ inline  memfile_ptr& operator<<(std::ios_base& (*t)(std::ios_base&));
  
 
 
@@ -159,7 +159,7 @@ struct memfile_ptr
  
   
   template<typename T>
-  memfile_ptr& operator>>(T& t);
+ inline  memfile_ptr& operator>>(T& t);
     
   //REV: I want to also be able to use FPRINTF, etc. with it. To do this, derive the string, and then reset it. It is copies, so very slow heh.
   //Also, open in binary mode will make it totally different. In binary mode, I will only use my personal write/read stuff.
@@ -170,17 +170,17 @@ struct memfile_ptr
   //WRITE/READ/GOOD/GET/TELL/etc....man that is nasty. User might want to freely use seek type commands on the file, in which case...?
   //I should just use a local buffer? Overload streambuf? Nah just do it my way, easiest haha.
 
-  size_t compute_new_size( const size_t& writesize );
+ inline  size_t compute_new_size( const size_t& writesize );
   
-  std::vector<char> read( const size_t& numbytes );
+ inline  std::vector<char> read( const size_t& numbytes );
  
   
-  void write( const std::vector<char>& towrite );
+ inline  void write( const std::vector<char>& towrite );
   
   
   //Where is the "readpos" and "writepos"
   template<typename... Args>
-  void printf(const char* fmt, Args... args );
+ inline  void printf(const char* fmt, Args... args );
   
 
   //REV: Do readline functs etc.?
@@ -195,14 +195,14 @@ struct memfile_ptr
   //REV: Better way??
   
   template <typename...Ts>
-  int scanf( const char* fmt, Ts&&...ts );
+  inline int scanf( const char* fmt, Ts&&...ts );
  
   
 
   //REV: What should happen if it fails to fill one of the guys, e.g. it tries to get a DOUBLE from a STR or something?
   //REV: Scan from start, if it tries to go past, it returns number anyway?
   template<typename... Args>
-  int scanf2_REV(const char* fmt, Args... args );
+ inline  int scanf2_REV(const char* fmt, Args... args );
   
   
 };

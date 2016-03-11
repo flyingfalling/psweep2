@@ -14,7 +14,7 @@ objs = $(srcs:.cpp=.o)
 deps = $(srcs:.cpp=.d)
 
 test: $(objs)
-	$(MPICC) $(CPPFLAG) $(INCLFLAG) unit_tests/test_psweep2_lib.cpp $(LIBFLAG) -o $(objs) $(LIBS)
+	$(MPICC) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) unit_tests/test_psweep2_lib.cpp  $(objs) -o test_psweep2_lib.exe $(LIBS)
 
 %.o: %.cpp
 	$(MPICC) -MMD -MP -c $(CPPFLAG) $(INCLFLAG) $< -o $@

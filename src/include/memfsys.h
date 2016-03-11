@@ -11,26 +11,26 @@ struct memfsys
   //REV: REQUIRED for boost serialization (to send over MPI)
   friend class boost::serialization::access;
   template<class Archive>
-  void serialize(Archive & ar, const unsigned int version);
+  inline void serialize(Archive & ar, const unsigned int version);
   
 
 
-  void enumerate();
+  inline void enumerate();
  
-  bool check_existence( const std::string& fname, const bool& checkdisk=false );
+  inline bool check_existence( const std::string& fname, const bool& checkdisk=false );
  
-  std::vector<size_t> find_string_in_memfile_vect( const std::string& targ );
+  inline std::vector<size_t> find_string_in_memfile_vect( const std::string& targ );
  
-  void add_file( const memfile& m );
- 
-  
-  memfile_ptr open( const std::string& fname, const bool& readthrough=false );
+  inline void add_file( const memfile& m );
  
   
-  memfile_ptr open_from_disk( const std::string& fname );
+  inline memfile_ptr open( const std::string& fname, const bool& readthrough=false );
  
   
-  memfile get_memfile( const std::string& fname );
+  inline memfile_ptr open_from_disk( const std::string& fname );
+ 
+  
+  inline memfile get_memfile( const std::string& fname );
   
 
   

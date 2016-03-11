@@ -1,4 +1,4 @@
-#pragma once
+//#pragma once
 #include <recursive_permute.h>
 
 template <typename T>
