@@ -104,7 +104,8 @@ struct searcher
   bool _writefiles=false;
 
   searcher( );
-  
+
+  //int get_local_rank(); //filesender*
 
   void register_funct( const std::string& name, const fake_system_funct_t& funct);
   

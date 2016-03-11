@@ -62,6 +62,7 @@ pset_functional_representation::pset_functional_representation( client::PSET& p 
     ar & output_files;
     ar & input_file;
     ar & mydir;
+    ar & setlocalidx;
   }
   
   //In new version, this may call from memory to speed things up.
@@ -358,7 +359,20 @@ void pitem::re_base_directory( const std::string& olddir, const std::string& new
 pitem::pitem( )
   {
   }
-  
+
+void pitem::set_local_worker_idx_flag()
+  {
+    for(size_t x=0; x<mycmd.size(); ++x)
+      {
+	if( mycmd[x].compare( __WORKER_IDX_FLAG ) == 0 )
+	  {
+	    //fprintf(stdout, "Found a worker idx flag to replace!\n");
+	    setlocalidx.push_back( x );
+	  }
+      }
+    return;
+  }
+
 pitem::pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv, memfsys& myfsys, const std::uint32_t& myseed, const bool& usedisk )
   {
     //Need to add to the most recent pset a child...
@@ -442,6 +456,8 @@ pitem::pitem( pset_functional_representation& pfr, const size_t idx,  hierarchic
     
     //std::vector<std::string> cmdarray = hv.get_array_var( "__MY_CMD", my_hierarchical_idx );
     mycmd = hv.get_array_var( "__MY_CMD", my_hierarchical_idx );
+
+    set_local_worker_idx_flag();
     
     //Add output to correct file.
     

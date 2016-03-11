@@ -8,7 +8,10 @@ CPPFLAG=-std=c++11 -O3 #-g -Wall
 INCLFLAG=-I. -I$(INCLDIR) -I$(IMPLDIR) -I$(H5INCL)
 LIBFLAG=-L. -L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 LIBS=-lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5
+CUDALIBS=-lcuda -lcudart
 SHAREDLIBFLAG=-fPIC
+NVCC=/usr/local/cuda/bin/nvcc
+NVCCFLAGS=-arch=sm_52
 
 INSTALL_PATH=/usr/local
 
@@ -31,6 +34,10 @@ libpsweep2.so: $(objs)
 
 test: unit_tests/test_psweep2_lib.cpp libpsweep2.so
 	$(MPICC) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) unit_tests/test_psweep2_lib.cpp -o test_psweep2_lib.exe -lpsweep2 $(LIBS)
+
+gputest: libpsweep2.so unit_tests/cuda_prog.cpp unit_tests/cuda_prog.h
+	$(NVCC) $(NVCCFLAGS) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) -c unit_tests/cuda_prog.cpp -lcuda -lcudart
+	$(MPICC) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) unit_tests/gputest.cpp cuda_prog.o -o gputest.exe -lpsweep2 $(LIBS) $(CUDALIBS)
 
 %.o: %.cpp
 	$(MPICC) $(SHAREDLIBFLAG) -MMD -MP -c $(CPPFLAG) $(INCLFLAG) $< -o $@

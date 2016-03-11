@@ -27,14 +27,11 @@ psweep_cmd( const int srcr, const std::string& cm )
     MPI_Init(0, NULL);
     
     //Assume that world/env are automatically constructed?
+    //local_worker_idx.resize( world.size(), 0 );
     _workingworkers.resize( world.size(), true );
     //Wait, does this contain the info about everything e.g. -n 4??? Like ARGC and ARGV...?
-    
-    
 
-    //REV: need to start true, since they're all "kind of" working (waiting for READY)
-    
-    
+    //world.rank()OMPI_COMM_WORLD_LOCAL_RANK
   }
 
 filesender::filesender(fake_system& _fakesys, const bool& _todisk)
@@ -403,6 +400,7 @@ filesender::filesender(fake_system& _fakesys, const bool& _todisk)
       }
   }
 
+
   //REV: This is only for WORKERS
   pitem filesender::handle_cmd( const psweep_cmd& pcmd )
   {
@@ -588,9 +586,40 @@ filesender::filesender(fake_system& _fakesys, const bool& _todisk)
     return outputvlist;
   }
 
+std::string filesender::get_local_rank( )
+{
+  std::string retval=std::getenv( "OMPI_COMM_WORLD_LOCAL_RANK" );
+  //fprintf(stdout, "Got local rank. It's [%s]\n", retval.c_str());
+  //char retval = secure_getenv("OMPI_COMM_WORLD_LOCAL_RANK");
+  return (retval);
+}
+
+void filesender::mangle_with_local_worker_idx( pitem& mypitem )
+{
+  //fprintf(stdout, "**WILL TRY TO MANGLE [%ld]\n", mypitem.setlocalidx.size());
+  if( mypitem.setlocalidx.size() > 0 )
+    {
+      //fprintf(stdout, "NOW MANGLING! Mangling [%ld]\n", mypitem.setlocalidx.size());
+      for(size_t x=0; x<mypitem.setlocalidx.size(); ++x)
+	{
+	  if(mypitem.setlocalidx[x] >= mypitem.mycmd.size())
+	    {
+	      fprintf(stderr, "REV: ERROR: in mangle_with_local_worker_idx: requested index of arg in mycmd [%ld] is larger than size of array [%ld]\n", mypitem.setlocalidx[x], mypitem.mycmd.size() );
+	      exit(1);
+	    }
+	  mypitem.mycmd[ mypitem.setlocalidx[x] ] = get_local_rank(); //std::to_string( get_local_rank() ); //std::to_string( local_worker_idx[world.rank()] );
+	}
+    }
+  return;
+}
+
+//REV: Updated 11 Mar 2016 to do a "hard" search to overwrite at RECEIVE time my specific local worker number
   bool filesender::execute_work( pitem& mypitem, memfsys& myfsys )
   {
     //This should do all checks (locally?) and check satisfactory output too.
+    //REV* Note MYCMD is still a vector  thing. Check whether a "stillproc" byte is >=0. If so, we replace that value with string of host rank idx.
+    mangle_with_local_worker_idx( mypitem );
+    
     
     //fprintf(stdout, "WORKER [%d] : Attempting to execute work...\n", world.rank());
     bool success = mypitem.execute_cmd( fakesys, myfsys );
@@ -610,6 +639,7 @@ filesender::filesender(fake_system& _fakesys, const bool& _todisk)
   
   }
 
+//REV: 11 Mar 2016: MODIFIED TO GET MY OWN RANK IN HERE ;)
 void filesender::execute_slave_loop( const std::string& runtag)
   {
     bool loopslave=true;
@@ -708,8 +738,9 @@ void filesender::execute_slave_loop( const std::string& runtag)
   
 
 
+
   //REV: Always read from files here...assume there will be none shared.
-  void filesender::master_to_slave( const pitem& mypitem, const size_t& workeridx, memfsys& myfsys )
+void filesender::master_to_slave( const pitem& mypitem, const size_t& workeridx, memfsys& myfsys )
   {
     send_cmd( "PITEM", workeridx );
 

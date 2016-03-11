@@ -70,6 +70,8 @@ struct filesender
 
   boost::mpi::communicator world;
 
+  //std::vector<size_t> local_worker_idx; //this is created and is same size as workers, but contains local index.
+
   
   struct pitem_rep
   {  
@@ -254,8 +256,8 @@ struct filesender
 
   void send_varlist(  const int& targrank, const varlist<std::string>& v ); //, boost::mpi::communicator& world )
   
-
-
+  
+  
   void send_cmd( const std::string& cmd, const int& targrank ); //, boost::mpi::communicator& world )
   
 
@@ -318,7 +320,9 @@ struct filesender
   //REV: this needs to "find" which PITEM was allocated to that worker/ thread.
   //REV: Note we could use todisk, but easier to do it as todisk?
   varlist<std::string> handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem, memfsys& myfsys, const bool& usedisk=false );
-
+  std::string get_local_rank( );
+  void mangle_with_local_worker_idx( pitem& mypitem );
+  
   bool execute_work( pitem& mypitem, memfsys& myfsys );
  
 
