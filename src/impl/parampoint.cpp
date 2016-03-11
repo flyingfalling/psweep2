@@ -30,7 +30,7 @@ parampoint_coord::parampoint_coord()
   {
   }
   
-parampoint__coord::parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi )
+parampoint_coord::parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi )
 : parampointn(pp), psetn(ps), pitemn(pi)
   {
     //REV: nothing to do.
@@ -359,7 +359,7 @@ pitem::pitem( )
   {
   }
   
-pitem::pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv, memfsys& myfsys, const std::uint32_t& myseed, const bool& usedisk=false )
+pitem::pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv, memfsys& myfsys, const std::uint32_t& myseed, const bool& usedisk )
   {
     //Need to add to the most recent pset a child...
     std::vector<size_t> rootchildren = hv.get_children( 0 );
@@ -521,7 +521,7 @@ pitem::pitem( pset_functional_representation& pfr, const size_t idx,  hierarchic
   }
   
   //REV: HERE, need to make them appropriately check!
-  std::vector<std::string> check_ready( memfsys& myfsys )
+std::vector<std::string> pitem::check_ready( memfsys& myfsys )
   {
     std::vector<std::string> notreadylist;
     //bool ready=true;
@@ -573,7 +573,7 @@ std::vector<std::string> pitem::checkdone( memfsys& myfsys )
   }
 
   
-varlist<std::string> pitem::get_output( memfsys& myfsys, const bool& usedisk=false )
+varlist<std::string> pitem::get_output( memfsys& myfsys, const bool& usedisk )
   {
     varlist<std::string> retvarlist;
     
@@ -819,7 +819,7 @@ executable_representation::executable_representation( const std::string& script_
   //etc.
 
   //Builds and returns a parampoint. Which can then be executed in its own way.
-parampoint executable_representation::build_parampoint( hierarchical_varlist<std::string>& hv, const std::string& dir, memfsys& myfsys, seedgen& sg, const bool& usedisk=false )
+parampoint executable_representation::build_parampoint( hierarchical_varlist<std::string>& hv, const std::string& dir, memfsys& myfsys, seedgen& sg, const bool& usedisk )
   {
     //REV: this will not work lol, I need one of my own?!??!!
     parampoint mypp( hv, dir );
@@ -892,7 +892,6 @@ parampoint executable_representation::build_parampoint( hierarchical_varlist<std
     //will come from/what those files will be named. Like "add results file". etc. They will always be in format of variables? And be read in that way?
     //name the files and read them in accordingly. Meh.
   }
-};
 
 
 
@@ -1036,7 +1035,7 @@ void parampoint_generator::set_result( const parampoint_coord& pc, const varlist
   //I.e. control passes to that to farm out that "set" of paramthings at a time? May be a generation, may not be?
   //We pass a set of varlists to execute, and it does everything for me.
   
-  size_t parampoint_generator::generate( const varlist<std::string>& vl, seedgen& sg, const bool& usedisk=false )
+  size_t parampoint_generator::generate( const varlist<std::string>& vl, seedgen& sg, const bool& usedisk )
   {
     //Takes the varlist...
     hierarchical_varlist<std::string> hv( vl );

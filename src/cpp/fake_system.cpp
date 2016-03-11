@@ -1,18 +1,12 @@
 #include <fake_system.h>
 
 
-struct fake_sys_rep
-{
-  std::string name;
-  fake_system_funct_t funct;
 
-  fake_sys_rep( const std::string& s, const   fake_system_funct_t f )
+fake_sys_rep::fake_sys_rep( const std::string& s, const   fake_system_funct_t f )
   {
     name = s;
     funct = f;
   }
-
-};
 
 fake_system::fake_system( )
   {

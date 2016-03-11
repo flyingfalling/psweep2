@@ -43,7 +43,7 @@ void memfile::waccess()
     --raccesses;
   }
 
-  ~memfile::memfile()
+  memfile::~memfile()
   {
 
     return;
@@ -89,7 +89,7 @@ memfile::memfile()
 
   //REV: This can't be right...? I want this on the PTR side I assume? Oh well.
   //If I'm writing out, I can specify to overwrite or not?
-  memfile::memfile( const std::string& fname, const bool& fromfile=false )
+  memfile::memfile( const std::string& fname, const bool& fromfile )
   {
     filename = fname;
     
@@ -165,7 +165,7 @@ memfile memfile_ptr::get_memfile() const
     //Sets all flags
   }
 
-  ~memfile_ptr::memfile_ptr()
+  memfile_ptr::~memfile_ptr()
   {
     if( mfile != NULL )
       {

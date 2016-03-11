@@ -56,3 +56,6 @@ struct hierarchical_varlist
   //Search for a target variable in a hierarchy (given a source "leaf" or any pointer inside here? Making it way too complex?)
   
 }; //end hierarchical varlist
+
+
+#include <hierarchical_varlist.cpp>

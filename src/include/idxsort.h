@@ -20,8 +20,8 @@ class sortthing
   T* dat;
  
  public:
-  bool operator()  (int i, int j) { return (dat[i] < dat[j]); }
-  sortthing(T* da) : dat(da) {}
+  bool operator()  (int i, int j); 
+  sortthing(T* da);
 };
 
 
@@ -57,3 +57,5 @@ struct sorter
   
 };
 
+
+#include <idxsort.cpp>

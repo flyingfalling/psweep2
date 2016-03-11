@@ -82,3 +82,6 @@ void print1dvec_row(const std::vector<T>& arg);
 
 
 void print1d_str_vec_row(const std::vector<std::string>& arg);
+
+
+#include <vector_utils.cpp>

@@ -3,6 +3,8 @@
 
 #include <filesender.h>
 #include <recursive_permute.h>
+#include <optionhandler.h>
+#include <csvparser.h>
 
 //REV: Need a way to "load" a search? use HDF etc. there?
 //First, enum all perumutations, then step through them one by one as a "generation".

@@ -7,8 +7,6 @@
 //Also gives options to manipulate results of search (e.g. subsample
 //history of HDF5 file, etc.)
 
-#pragma once
-
 #include <psweep2.h>
 
 void psweep2::run_search( const int& argc, char* *argv )

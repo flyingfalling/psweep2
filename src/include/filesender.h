@@ -214,8 +214,35 @@ struct filesender
 
 
   //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
-  static filesender* Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk=false );
+  //static filesender* Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk=false );
 
+    //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
+  static filesender* /*filesender::*/Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk )
+  {
+    filesender* fs = new filesender(_fakesys, _todisk);
+    
+    if( fs->world.rank() == 0 )
+      {
+	return(fs);
+	//return
+      }
+    else
+      {
+	fs->execute_slave_loop( runtag );
+	
+	delete(fs);
+	//execute slave loop
+	
+	exit(0);
+      }
+    // delete(fs);
+    
+
+    fprintf(stderr, "REV: MASSIVE ERROR in filesender CREATOR: I reached end of function, which NEVER SHOULD HAPPEN\n");
+    //REV: the other one should naturally delete it here.
+  }
+
+  
   //REV; TODO: at some point, build the fake MEM_FILESYSTEM, and furthermore, populate the FAKE_SYSTEM_CALLS if we want to...
   //Note when we construct and send PITEM, then we are writing to target, but we don't want to actually write out to local one unless we are executing
   //the stuff. In other words. only do it right before execute? Only if execute returns false? Execute takes the stuff. Hmm, we will be writing large numbers

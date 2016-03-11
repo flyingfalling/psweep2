@@ -9,9 +9,10 @@
 
 namespace client
 {
-  
+   template <typename It, typename Skipper>
     //parser() : parser::base_type(pset)
-  parser::parser() : parser::base_type(parampoint)
+   parser<It,Skipper>::parser()
+     : parser::base_type(parampoint)
     {
       using qi::lit;
       using qi::lexeme;
@@ -284,26 +285,9 @@ namespace client
 	 << std::endl
         );
       BOOST_SPIRIT_DEBUG_NODES((pset)(literal)(stmnt)(startpset)(fname)(arglist)(endpset)(leafstmnt))
-    }
+	}
   
-    qi::rule< It, PARAMPOINT(), qi::space_type > parampoint;
-    qi::rule< It, PSET(), qi::space_type > pset;
-    //qi::rule< It, std::vector<std::string>(), qi::space_type> stmnt;
-    qi::rule< It, STMNT(), qi::space_type> stmnt;
-    qi::rule< It, LEAF_STMNT(), qi::space_type> leafstmnt;
-    qi::rule< It, std::vector<std::string>(), qi::space_type> startpset; //REV: this needs to be a tuple of strings or something? Waht...?
-    qi::rule< It, std::string(), qi::space_type> fname; //REV: this needs to be a tuple of strings or something? Waht...?
-    qi::rule< It, std::string(), qi::space_type> literal; //REV: this needs to be a tuple of strings or something? Waht...?
-    qi::rule< It, std::string(), qi::space_type> sstring; //REV: this needs to be a tuple of strings or something? Waht...?
-    qi::rule< It, std::string(), qi::space_type> scstring; //REV: this needs to be a tuple of strings or something? Waht...?
-    //qi::rule< It, std::string(), qi::space_type> farg; //REV: this needs to be a tuple of strings or something? Waht...?
-    //qi::rule< It, STMNT(), qi::space_type> farg; //REV: this needs to be a tuple of strings or something? Waht...?
-    //qi::rule< It, std::vector<std::string>, qi::space_type> arglist; //REV: this needs to be a tuple of strings or something? Waht...?
-    //qi::rule< It, std::vector<std::string>(), qi::space_type> arglist; //REV: this needs to be a tuple of strings or something? Waht...?
-    qi::rule< It, std::vector<LEAF_STMNT>(), qi::space_type> arglist; //REV: this needs to be a tuple of strings or something? Waht...?
-    qi::rule< It, void(std::string), qi::space_type> endpset;
-  
-  };
+    
 }
 
 

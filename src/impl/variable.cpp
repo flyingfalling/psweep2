@@ -2,7 +2,8 @@
 
 #include <variable.h>
 
-template <typename T, class Archive>
+template <typename T>
+template <class Archive>
   void variable<T>::serialize(Archive & ar, const unsigned int version)
   {
     ar & mytype;
@@ -19,13 +20,13 @@ variable<T>::get_v( )
 
   template <typename T>
   T
-  variable<T>get_s( )
+  variable<T>::get_s( )
   {
     return boost::get<T>( val );
   }
 
 template <typename T>
-variable<T>::variable<T>( const std::string _name, const T& _val)
+variable<T>::variable( const std::string _name, const T& _val)
   {
     //it's a variable...
     val = _val;
@@ -34,13 +35,13 @@ variable<T>::variable<T>( const std::string _name, const T& _val)
   }
 
   template <typename T>
-  variable<T>::variable<T>()
+  variable<T>::variable()
   {
     name="ERRORNOVARNAME";
   }
 
 template <typename T>
-variable<T>::variable<T>( const std::string _name, const std::vector<T>& _val)
+variable<T>::variable( const std::string _name, const std::vector<T>& _val)
   {
     //it's a variable...
     val = _val;
@@ -49,7 +50,7 @@ variable<T>::variable<T>( const std::string _name, const std::vector<T>& _val)
   }
 
 template <typename T>
-variable<T>::variable<T>( const std::string& n, const variable<T>& _v)
+variable<T>::variable( const std::string& n, const variable<T>& _v)
   {
     val = _v.val;
     name = n;
@@ -94,10 +95,10 @@ std::string variable<T>::gettype_asstr()
      return "ERROR";
   }
     
-};
 
 
-template <class T, Archive>
+template <class T>
+template <class Archive>
 void varlist<T>::serialize(Archive & ar, const unsigned int version)
   {
     ar & mytag;
@@ -106,7 +107,7 @@ void varlist<T>::serialize(Archive & ar, const unsigned int version)
   
 template <typename T>
   //append? or overwrite? Default is APPEND to end.
-void varlist<T>::tofile( const std::string& fname, memfsys& mf, const bool& usefile=false )
+void varlist<T>::tofile( const std::string& fname, memfsys& mf, const bool& usefile )
   {
     //std::ofstream f;
     //open_ofstream( fname, f );
@@ -150,7 +151,8 @@ void varlist<T>::tofile( const std::string& fname, memfsys& mf, const bool& usef
 
     return;
   }
-  template <typename T>
+
+template <typename T>
   //append? or overwrite? Default is APPEND to end.
 void varlist<T>::tofile( const std::string& fname )
   {
@@ -176,7 +178,7 @@ void varlist<T>::tofile( const std::string& fname )
   }
 
 template <typename T>
-void varlist<T>::inputfromfile( const std::string& fname, memfsys& mf, const bool& readthrough=false )
+void varlist<T>::inputfromfile( const std::string& fname, memfsys& mf, const bool& readthrough )
   {
     //No read through...to actual FS. I.e. everything done through memory.
     //This is really a problem, I need to organize this better. I.e.
@@ -214,7 +216,8 @@ void varlist<T>::inputfromfile( const std::string& fname, memfsys& mf, const boo
     
     return;
   }
-  template <typename T>
+
+template <typename T>
 void varlist<T>::inputfromfile( const std::string& fname )
   {
     //CAN I READ IN AND THEN PARSE?
@@ -292,6 +295,7 @@ void varlist<T>::inputfromfile( const std::string& fname )
 
     return;
   }
+
 template <typename T>
 void varlist<T>::mergevarlist( const varlist& v )
   {
@@ -303,7 +307,7 @@ void varlist<T>::mergevarlist( const varlist& v )
     return;
   }
 template <typename T>
-void varlist<T>::enumerate(size_t depth=0)
+void varlist<T>::enumerate(size_t depth)
   {
     std::string prefix = "";
     for(size_t d=0; d<depth; ++d)
@@ -334,7 +338,8 @@ varlist<T>::varlist( const std::string& _tag )
     //nothing
   }
 
-template <typename T, typename TT>
+template <typename T>
+template <typename TT>
   void varlist<T>::add_to_varlist( const std::vector<std::string>& varnames, const std::vector<TT>& varvals )
   {
     if(varnames.size() != varvals.size())
@@ -349,6 +354,7 @@ template <typename T, typename TT>
 	vars.push_back(v);
       }
   }
+
 template <typename T>
   //modifies it if it exists, otherwise adds it.
 void varlist<T>::setvar( const std::string& _varname, const variable<T>& _v )
@@ -474,7 +480,8 @@ std::vector<size_t> varlist<T>::getname(const std::string& name)
     return rlocs;
   }
 
-template <typename T, typename TT>
+template <typename T>
+template <typename TT>
   void varlist<T>::make_varlist( const std::vector<std::string>& vnames, const std::vector<TT>& vvals )
   {
     if(vnames.size() != vvals.size() )

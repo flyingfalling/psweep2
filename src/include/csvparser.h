@@ -58,7 +58,47 @@ struct data_table
   void enumerate();
 
   data_table( const std::string& fname, const bool& hascolnames );
-  
+  static std::vector<float64_t> /*data_table::*/to_float64( const std::vector<std::string>& vect )
+  {
+    std::vector<float64_t> ret( vect.size() );
+    for(size_t x=0; x<vect.size(); ++x)
+      {
+	//fprintf(stdout, "Double-izing [%s]\n", vect[x].c_str());
+	ret[x] = std::stod(vect[x]);
+      }
+    return ret;
+  }
+
+  static std::vector<float32_t> /*data_table::*/to_float32( const std::vector<std::string>& vect )
+  {
+    std::vector<float32_t> ret( vect.size() );
+    for(size_t x=0; x<vect.size(); ++x)
+      {
+	ret[x] = std::stof(vect[x]);
+      }
+    return ret;
+  }
+
+  static std::vector<int32_t> /*data_table::*/to_int32( const std::vector<std::string>& vect )
+  {
+    std::vector<int32_t> ret( vect.size() );
+    for(size_t x=0; x<vect.size(); ++x)
+      {
+	ret[x] = std::stoi(vect[x]);
+      }
+    return ret;
+  }
+
+  static std::vector<int64_t> /*data_table::*/to_int64( const std::vector<std::string>& vect )
+  {
+    std::vector<int64_t> ret( vect.size() );
+    for(size_t x=0; x<vect.size(); ++x)
+      {
+	ret[x] = std::stol(vect[x]);
+      }
+    return ret;
+  }
+  /*
   static std::vector<float64_t> to_float64( const std::vector<std::string>& vect );
   
   static std::vector<float32_t> to_float32( const std::vector<std::string>& vect );
@@ -66,7 +106,7 @@ struct data_table
   static std::vector<int32_t> to_int32( const std::vector<std::string>& vect );
 
   static std::vector<int64_t> to_int64( const std::vector<std::string>& vect );
-  
+  */
   //REV: Need unique key column? If not, make one?
   void construct( const std::vector< std::vector< std::string> >& tbl, const bool& first_col_head );
  
@@ -77,7 +117,7 @@ struct data_table
 
   std::vector< std::string > get_row_by_name( const std::string& rowname );
 
-  std::vector< std::string> get_col( const size_t& colnum ).
+  std::vector< std::string> get_col( const size_t& colnum );
 
   std::string get_val( const size_t& colnum, const size_t& rownum );
 

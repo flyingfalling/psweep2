@@ -12,3 +12,5 @@ void recursive_permute_params(const std::vector< std::vector<T> >& list_to_permu
 			      );
 
 
+
+#include <recursive_permute.cpp>

@@ -16,6 +16,17 @@ typedef std::function< myvar_t( std::vector< myvar_t >&, std::vector< hierarchic
 
 
 
+struct functsig
+{
+  std::string mytag;
+  size_t nargs;
+  functtype funct;
+
+  functsig();
+  
+  functsig( const std::string& _tag, const size_t& argsize, const functtype& f );
+};
+
 #define ADDFUNCT(numarg, fname)						\
   {									\
     functtype fa = fname;						\
@@ -59,7 +70,6 @@ typedef std::function< myvar_t( std::vector< myvar_t >&, std::vector< hierarchic
 //Crap, LEAF_STMNT can have zero arguments. In which case, it's either a variable read (function), OR it's a literal. We could differentiate based
 //on a starter special character (e.g. $).
 
-struct functsig;
 
 
 //OK this might include its directory. Yea, we need to add DIR as specific var ;)

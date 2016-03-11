@@ -77,69 +77,6 @@ typedef struct hdf5_dirnames_t
 
 herr_t file_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata);
 
-herr_t file_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
-{
-  //REV: use opdata to communicate "current" working dir as /-separated fname.
-  
-  //std::vector<std::string> * grpnames = (std::vector<std::string >*)(opdata);
-  hdf5_dirnames * grpnames = (hdf5_dirnames*)(opdata);
-  
-  
-
-  //Lol, apparently depricated but there's no obvious way to switch stuff over to get types/names...ugh.
-  //H5Gget_objinfo(loc_id, name, false, &statbuf);
-  
-  H5O_info_t info;
-  herr_t ret = H5Oget_info_by_name(loc_id, name, &info, H5P_DEFAULT);
-  
-  //REV: why the hell does get_info think everything is a group, but info_by_name works?
-  //herr_t ret = H5Oget_info(loc_id, &info);
-  hid_t grpid=loc_id;
-  //fprintf(stdout, "(grpID=%d)!  ", grpid);
-  //OK, so loc_id is what? A kind of label?
-  std::vector<std::string> mypath;
-  switch (info.type) 
-    {
-    case H5O_TYPE_GROUP: 
-      //fprintf(stdout, " Object with name [%s] is a group (GOING IN!) \n", name);
-      grpnames->currpath.push_back( std::string(name) );
-      mypath= grpnames->currpath;
-      grpnames->names.push_back(mypath); //need a way to mark if it's a dir or not?
-      grpnames->isdir.push_back(true); //need a way to mark if it's a dir or not?
-      H5Literate_by_name( grpid, name, H5_INDEX_NAME, H5_ITER_INC, NULL, file_info, opdata, H5P_DEFAULT);
-      grpnames->currpath.pop_back();
-      break;
-    case H5O_TYPE_DATASET: 
-      //fprintf(stdout, " Object with name [%s] is a dataset \n", name);
-      mypath= grpnames->currpath;
-      mypath.push_back( std::string(name) );
-      grpnames->names.push_back(mypath);
-      grpnames->isdir.push_back(false); //need a way to mark if it's a dir or not?
-      break;
-    case H5O_TYPE_NAMED_DATATYPE: 
-      fprintf(stdout, " (WARNING) Object with name [%s] is a named datatype \n", name); //REV: this is just a single basic (atmoic?) type?
-      break;
-    default:
-      fprintf(stdout, " (WARNING) Unable to identify object type (might be H5O_TYPE_NTYPES or H5O_TYPE_UNKNOWN)\n");
-      break;
-    }
-  
-  
-  return 0;
-  
-  //hid_t group = H5Gopen2(loc_id, name, H5P_DEFAULT);
-  
-  //GroupNames.push_back(name);
-  //grpnames->push_back( std::string(name) );
-  
-  //std::cout << "Name : " << name << std::endl;
-  
-  //H5Gclose(group);
-  
-  //return 0;
-}
-
-
 std::string build_hdf5_path(std::vector< std::string >& path, std::string basepath="", bool isdir=false);
 
 std::vector<std::string> enumerate_hdf5_dir(H5::H5File& file2, std::string targdir);
@@ -343,7 +280,7 @@ struct hdf5_collection
   void add_int64_vector(const std::string& matname, const std::vector<int64_t>& vals );
   
   template <typename T>
-  std::vector<T> get_vector(const std::string& matname )
+  std::vector<T> get_vector(const std::string& matname );
 
   
   template <typename T>
@@ -419,3 +356,7 @@ struct hdf5_collection
   
     
 };
+
+
+
+#include <hdf5_collection.cpp>

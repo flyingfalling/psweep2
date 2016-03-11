@@ -76,46 +76,7 @@ std::vector<std::vector<std::string>> parse_CSV_file( const std::string& fname, 
     enumerate();
   }
   
-  static std::vector<float64_t> data_table::to_float64( const std::vector<std::string>& vect )
-  {
-    std::vector<float64_t> ret( vect.size() );
-    for(size_t x=0; x<vect.size(); ++x)
-      {
-	//fprintf(stdout, "Double-izing [%s]\n", vect[x].c_str());
-	ret[x] = std::stod(vect[x]);
-      }
-    return ret;
-  }
-
-  static std::vector<float32_t> data_table::to_float32( const std::vector<std::string>& vect )
-  {
-    std::vector<float32_t> ret( vect.size() );
-    for(size_t x=0; x<vect.size(); ++x)
-      {
-	ret[x] = std::stof(vect[x]);
-      }
-    return ret;
-  }
-
-  static std::vector<int32_t> data_table::to_int32( const std::vector<std::string>& vect )
-  {
-    std::vector<int32_t> ret( vect.size() );
-    for(size_t x=0; x<vect.size(); ++x)
-      {
-	ret[x] = std::stoi(vect[x]);
-      }
-    return ret;
-  }
-
-  static std::vector<int64_t> data_table::to_int64( const std::vector<std::string>& vect )
-  {
-    std::vector<int64_t> ret( vect.size() );
-    for(size_t x=0; x<vect.size(); ++x)
-      {
-	ret[x] = std::stol(vect[x]);
-      }
-    return ret;
-  }
+  
   
   //REV: Need unique key column? If not, make one?
   void data_table::construct( const std::vector< std::vector< std::string> >& tbl, const bool& first_col_head )

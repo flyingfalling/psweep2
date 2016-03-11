@@ -324,7 +324,7 @@ size_t matrix_props::get_ncols()
     return my_ncols;
   }
 
-size_t get_nrows()
+size_t matrix_props::get_nrows()
   {
     return my_nrows;
   }
@@ -626,7 +626,7 @@ template <typename T>
 
 
 template <typename T>
-  void matrix_props::enumerate_to_file( const std::string& fname,  const size_t& thinrate=1, const size_t& startpoint=0 )
+  void matrix_props::enumerate_to_file( const std::string& fname,  const size_t& thinrate, const size_t& startpoint )
   {
     fprintf(stdout, "Will enum data set from matrix [%s]:\n\n", name.c_str());
 
@@ -656,7 +656,7 @@ template <typename T>
   }
 
 //Need to do this incrementally incase there is a problem
-  void matrix_props::enumerate_to_file( FILE* f, const size_t& skip=1, const size_t& startpoint=0 )
+  void matrix_props::enumerate_to_file( FILE* f, const size_t& skip, const size_t& startpoint )
   {
     for(size_t x=0; x<my_colnames.size(); ++x)
       {
@@ -1333,7 +1333,7 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
     matrices.push_back(mp1);
   }
 
-  std::vector<std::string> get_varnames( const std::string& matname )
+  std::vector<std::string> hdf5_collection::get_varnames( const std::string& matname )
   {
     std::vector< size_t > locs = find_matrix( matname );
     if(locs.size() != 1)
@@ -1569,7 +1569,7 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
     matrices[ locs[0] ].enumerate<T>();
   }
 
-void hdf5_collection::enumerate_matrix_to_file( const std::string& matname, const std::string& fname,  const size_t& thinrate=1, const size_t& startpoint=0 )
+void hdf5_collection::enumerate_matrix_to_file( const std::string& matname, const std::string& fname,  const size_t& thinrate, const size_t& startpoint )
   {
     std::vector< size_t > locs = find_matrix( matname );
     if(locs.size() != 1)

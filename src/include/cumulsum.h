@@ -43,4 +43,4 @@ std::vector<size_t> choose_k_multinomial_no_replace_wrand(std::vector<T>& array,
 
 
 
-//#include <cumulsum.cpp>
+#include <cumulsum.cpp>

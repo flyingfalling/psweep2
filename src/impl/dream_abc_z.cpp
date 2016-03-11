@@ -8,19 +8,19 @@
 		   const std::vector<std::string>& observation_varnames,
 		   const std::vector<float64_t>& observation_stats,
 		   const std::vector<float64_t>& observation_epsilons,
-		   int64_t maxgens=1e5,
-		   int64_t numchains=100,
-		   int64_t ndelta=3,
-		   float64_t bnoise=0.05,
-		   float64_t bstar=1e-6,
-		   float64_t rthresh=1.2,
-		   int64_t GRskip=50,
-		   int64_t nCR=3,
-		   int64_t pCRskip=10,
-		   float64_t pjump=0.05,
-		   int64_t backupskip=10,
-		   int64_t M0d_mult=100,
-		   int64_t Kthin=5
+				      int64_t maxgens,
+				      int64_t numchains,
+				      int64_t ndelta,
+				      float64_t bnoise,
+				      float64_t bstar,
+				      float64_t rthresh,
+				      int64_t GRskip,
+				      int64_t nCR,
+				      int64_t pCRskip,
+				      float64_t pjump,
+				      int64_t backupskip,
+				      int64_t M0d_mult,
+				      int64_t Kthin
 		   )
 		   
   {

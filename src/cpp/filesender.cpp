@@ -17,31 +17,6 @@ psweep_cmd( const int srcr, const std::string& cm )
 
 
 
-  //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
-static filesender* filesender::Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk=false )
-  {
-    filesender* fs = new filesender(_fakesys, _todisk);
-    
-    if( fs->world.rank() == 0 )
-      {
-	return(fs);
-	//return
-      }
-    else
-      {
-	fs->execute_slave_loop( runtag );
-	
-	delete(fs);
-	//execute slave loop
-	
-	exit(0);
-      }
-    // delete(fs);
-    
-
-    fprintf(stderr, "REV: MASSIVE ERROR in filesender CREATOR: I reached end of function, which NEVER SHOULD HAPPEN\n");
-    //REV: the other one should naturally delete it here.
-  }
 
   //REV; TODO: at some point, build the fake MEM_FILESYSTEM, and furthermore, populate the FAKE_SYSTEM_CALLS if we want to...
   //Note when we construct and send PITEM, then we are writing to target, but we don't want to actually write out to local one unless we are executing
@@ -62,7 +37,7 @@ static filesender* filesender::Create( const std::string& runtag, fake_system& _
     
   }
 
-filesender::filesender(fake_system& _fakesys, const bool& _todisk = false)
+filesender::filesender(fake_system& _fakesys, const bool& _todisk)
 : fakesys( _fakesys ), todisk(_todisk)
   {
     MPI_Init(0, NULL);
@@ -79,7 +54,7 @@ filesender::filesender(fake_system& _fakesys, const bool& _todisk = false)
     
   }
 
-  ~filesender::filesender()
+  filesender::~filesender()
   {
     MPI_Finalize();
     //~world;
@@ -512,7 +487,7 @@ filesender::filesender(fake_system& _fakesys, const bool& _todisk = false)
 
   //REV: this needs to "find" which PITEM was allocated to that worker/ thread.
   //REV: Note we could use todisk, but easier to do it as todisk?
-  varlist<std::string> filesender::handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem, memfsys& myfsys, const bool& usedisk=false )
+  varlist<std::string> filesender::handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem, memfsys& myfsys, const bool& usedisk )
   {
     int targrank = pc.SRC;
     std::string cmd = pc.CMD;
@@ -635,7 +610,7 @@ filesender::filesender(fake_system& _fakesys, const bool& _todisk = false)
   
   }
 
-  void filesender::execute_slave_loop( const std::string& runtag="scratch")
+void filesender::execute_slave_loop( const std::string& runtag)
   {
     bool loopslave=true;
     std::string LOCALDIR = "/tmp/" + runtag + "_" + std::to_string( world.rank() ); //will execute in local scratch. Note, might need to check we have enough memory etc.
@@ -786,7 +761,7 @@ filesender::filesender(fake_system& _fakesys, const bool& _todisk = false)
   //have access to that from PITEM. I.e. I need to know my PSET and PPOINT.
   //At any rate, at PITEM creation time (construction), I would like a
   //pointer to it...
-void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, seedgen& sg, const bool& usedisk=false )
+void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, seedgen& sg, const bool& usedisk )
   {
     
     work_progress wprog( pg, newlist, _workingworkers.size(), sg, usedisk );

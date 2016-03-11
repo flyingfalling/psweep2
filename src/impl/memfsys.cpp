@@ -21,7 +21,7 @@ void memfsys::enumerate()
     return;
   }
   
-  bool memfsys::check_existence( const std::string& fname, const bool& checkdisk=false )
+  bool memfsys::check_existence( const std::string& fname, const bool& checkdisk )
   {
     //fprintf(stdout, "Checking in memfile vect for [%s]\n", fname.c_str() );
     std::vector<size_t> locs = find_string_in_memfile_vect( fname );
@@ -59,7 +59,7 @@ void memfsys::enumerate()
     filelist.push_back( m );
   }
   
-  memfile_ptr memfsys::open( const std::string& fname, const bool& readthrough=false )
+  memfile_ptr memfsys::open( const std::string& fname, const bool& readthrough )
   {
     std::vector<size_t> locs = find_string_in_memfile_vect( fname );
     if( locs.size() == 0 )

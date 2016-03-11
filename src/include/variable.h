@@ -39,9 +39,10 @@ struct variable
 
   //REV: OK MAIN PROBLEM IS THAT I CANNOT SERIALIZE VARIANTS CONTAINING ARBITRARY DATA TYPES?!
   boost::variant< T, std::vector<T> > val;
-
+  
   //REV: REQUIRED for boost serialization (to send over MPI)
   friend class boost::serialization::access;
+
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version);
   
@@ -165,3 +166,4 @@ struct varlist
   
 };
   
+#include <variable.cpp>

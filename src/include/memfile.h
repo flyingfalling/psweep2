@@ -206,3 +206,6 @@ struct memfile_ptr
   
   
 };
+
+
+#include <memfile.cpp>

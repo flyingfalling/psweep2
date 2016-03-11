@@ -55,8 +55,6 @@
 //Hm, this is kind of nasty...because when I "extracted" each column, I would need to appropriately have the return function return
 //the kind, or cast it manually each time -_-
 
-#pragma once
-
 #include <searcher.h>
 
 //REV: Where to set parameters?
@@ -227,7 +225,7 @@ void searcher::parseopts( optlist& opts )
 void searcher::run_search( const std::string& searchtype, const std::string& scriptfname,
 		   const std::string& mydir, optlist& opts,
 		   filesender& fs,
-		   const bool& writefiles=false )
+			   const bool& writefiles )
   {
 
     fprintf( stdout, "RUNNING SEARCH WITH: searcytype [%s], scriptfname [%s], mydir [%s]\n", searchtype.c_str(), scriptfname.c_str(), mydir.c_str() );
@@ -299,7 +297,7 @@ void searcher::doexit( filesender* myfs )
   ///////////////////////////////////////////////////////////// OLD RUN SEARCH
   
   //varlist will contain required um, data files I guess?
-void searcher::run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const bool& writefiles=false )
+void searcher::run_search( const std::string& searchtype, const std::string& scriptfname, const std::string& mydir, /*const*/ varlist<std::string>& params, const bool& writefiles )
   {
     
     pg = parampoint_generator(scriptfname, mydir);

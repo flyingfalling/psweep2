@@ -133,8 +133,15 @@
 typedef std::vector<std::string>                    arg_list;
 typedef std::function< void( const std::vector<std::string>&, memfsys& ) > fake_system_funct_t;
 
+struct fake_sys_rep
+{
+  std::string name;
+  fake_system_funct_t funct;
 
-struct fake_sys_rep;
+  fake_sys_rep( const std::string& s, const   fake_system_funct_t f );
+  
+
+};
 
 struct fake_system
 {

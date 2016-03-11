@@ -18,3 +18,5 @@ std::vector<std::vector<T> > N_uniform(std::vector<T> mins, std::vector<T> maxes
 
 //REV: This adds a "1" to each category as it is sampled hahahaha. So if I only choose 1...
 std::vector<size_t> multinomial_sample( const std::vector<float64_t>& p, const size_t& nsamples, std::default_random_engine& rand_gen );
+
+#include <rand_utils.cpp>

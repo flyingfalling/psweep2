@@ -37,7 +37,7 @@
 #include <vector_utils.h>
 #include <rand_utils.h>
 #include <stat_helpers.h>
-#include <idxsortIMPL.h>
+#include <idxsort.h>
 //REV: start with a flat prior I guess...
 
 //REV: pass other specific variables, like numgens etc.
@@ -252,7 +252,7 @@ struct dream_abc_state
   void compute_generation_fitnesses( const std::vector<std::vector<float64_t>>& vals, filesender& fs, parampoint_generator& pg  );
 
 
-  void init_random()
+  void init_random();
 
   void init_random(const long& seed);
 
@@ -430,3 +430,4 @@ void search_dream_abc( const std::string& statefilename,
 
 
 
+#include <dream_abc.cpp>

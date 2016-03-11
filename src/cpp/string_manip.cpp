@@ -20,7 +20,7 @@ std::string CONCATENATE_STR_ARRAY(const std::vector<std::string>& arr, const std
     }
 }
 
-std::vector<std::string> tokenize_string(const std::string& src, const std::string& delim, bool include_empty_repeats=false)
+std::vector<std::string> tokenize_string(const std::string& src, const std::string& delim, bool include_empty_repeats)
 {
   std::vector<std::string> retval;
   boost::char_separator<char> sep( delim.c_str() );
@@ -34,7 +34,7 @@ std::vector<std::string> tokenize_string(const std::string& src, const std::stri
 
 
 /* keep empty, i.e. do I want to know when it is e.g. :: or //? */
-std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats=false)
+std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats)
 {
   std::vector<std::string> res;
   

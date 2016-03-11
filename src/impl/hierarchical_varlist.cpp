@@ -23,7 +23,7 @@ const size_t hierarchical_varlist<T>::get_parent( const size_t& v )
   }
 
 template <typename T>
-void hierarchical_varlist<T>::tofile( const std::string& fname, const size_t& starti, memfsys& myfsys, const bool& usedisk=false)
+void hierarchical_varlist<T>::tofile( const std::string& fname, const size_t& starti, memfsys& myfsys, const bool& usedisk)
   {
     if(starti==0)
       {
@@ -81,7 +81,7 @@ template <typename T>
   }
 
 template <typename T>
-  void hierarchical_varlist::add_root( const varlist<T>& v )
+void hierarchical_varlist<T>::add_root( const varlist<T>& v )
   {
     vl.push_back( v );
     children.push_back( std::vector<size_t>(0) );

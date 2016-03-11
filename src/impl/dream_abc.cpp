@@ -3,24 +3,24 @@
 
 
 
-virtual void dream_abc_state::new_state(const std::string& statefilename,
+ void dream_abc_state::new_state(const std::string& statefilename,
 			 const std::vector<std::string>& varnames,
 			 const std::vector<float64_t>& mins,
 			 const std::vector<float64_t>& maxes,
 			 const std::vector<std::string>& observation_varnames,
 			 const std::vector<float64_t>& observation_stats,
 			 const std::vector<float64_t>& observation_epsilons,
-			 int64_t maxgens=1e5,
-			 int64_t numchains=50,
-			 int64_t ndelta=3,
-			 float64_t bnoise=0.05,
-			 float64_t bstar=1e-6,
-			 float64_t rthresh=1.2,
-			 int64_t GRskip=50,
-			 int64_t nCR=3,
-			 int64_t pCRskip=10,
-			 float64_t pjump=0.05,
-			 float64_t backupskip=10
+					int64_t maxgens,
+					int64_t numchains,
+					int64_t ndelta,
+					float64_t bnoise,
+					float64_t bstar,
+					float64_t rthresh,
+					int64_t GRskip,
+					int64_t nCR,
+					int64_t pCRskip,
+					float64_t pjump,
+			 float64_t backupskip
 			 )
   {
     state.new_collection( statefilename );
@@ -225,7 +225,7 @@ virtual void dream_abc_state::new_state(const std::string& statefilename,
     backup();
   }
 
-  virtual void dream_abc_state::backup()
+  void dream_abc_state::backup()
   {
     int64_t tgen = get_param<int64_t>(t_gen);
     int64_t backupskip = get_param<int64_t>(backup_regularity_param);
@@ -236,7 +236,7 @@ virtual void dream_abc_state::new_state(const std::string& statefilename,
     
   }
   
-  virtual void dream_abc_state::cleanup_gen()
+   void dream_abc_state::cleanup_gen()
   {
     int64_t tgen = get_param<int64_t>(t_gen);
     int64_t crskip = get_param<int64_t>(pCR_skip_param );
@@ -256,7 +256,7 @@ virtual void dream_abc_state::new_state(const std::string& statefilename,
   }
 
   //REV: Better to make a "pure virtual" and not derive from dream_abc...but some shared one?
-  virtual std::vector<std::vector<float64_t> > dream_abc_state::get_mypairs_vectors( const std::vector<size_t>& pairidxs )
+  std::vector<std::vector<float64_t> > dream_abc_state::get_mypairs_vectors( const std::vector<size_t>& pairidxs )
   {
     //For normal dream ABC, get current gen
     std::vector<std::vector<float64_t>> Xcurr = get_current_gen();
@@ -758,7 +758,7 @@ virtual void dream_abc_state::new_state(const std::string& statefilename,
     return idx;
   }
   
-  virtual std::vector<size_t> draw_DE_pairs( const size_t& npairs,
+  std::vector<size_t>  dream_abc_state::draw_DE_pairs( const size_t& npairs,
 					     std::default_random_engine& rand_gen )
   {
     return choose_k_indices_from_N_no_replace( get_param<int64_t>(N_chains_param), npairs*2, rand_gen );
@@ -1023,7 +1023,7 @@ virtual void dream_abc_state::new_state(const std::string& statefilename,
   
   
   
-  virtual void dream_abc_state::generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg )
+  void dream_abc_state::generate_init_pop( std::default_random_engine& rand_gen, filesender& fs, parampoint_generator& pg )
   {
 
     START_GEN();
@@ -1652,7 +1652,7 @@ virtual void dream_abc_state::new_state(const std::string& statefilename,
   }
   
   //Note, do we only want to do it after convergence?
-  void dream_abc_state::enumerate_X_GR_fitness( const std::string& dir, const size_t& genskiprate=10, const size_t& startgen=0 )
+  void dream_abc_state::enumerate_X_GR_fitness( const std::string& dir, const size_t& genskiprate, const size_t& startgen )
   {
     make_directory( dir );
     std::string fnamebase = dir + "/";

@@ -9,7 +9,7 @@
 #include <vector_utils.h>
 #include <rand_utils.h>
 #include <stat_helpers.h>
-#include <idxsortIMPL.h>
+#include <idxsort.h>
 #include <dream_abc.h>
 //REV: start with a flat prior I guess...
 
@@ -228,3 +228,4 @@ void search_dream_abc_z( const std::string& statefilename,
 
 
 
+#include <dream_abc_z.cpp>

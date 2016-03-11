@@ -43,3 +43,6 @@ std::vector<T> shuffle_values(std::vector<T>& input, std::default_random_engine&
 
 //REV: TODO some static sanity checks for these functions (and to check randomness?) (check sweep_mpi.h with DEBUG > 10 for test of the N choose k)
 
+
+
+#include <stat_helpers.cpp>

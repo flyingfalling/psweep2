@@ -17,25 +17,20 @@
 
 
 //REV: what var?
-std::string setvar(const functsig& fs)
+/*std::string setvar(const functsig& fs)
 {
   //What is this function? A global function for setting a global variable list? I really should have a more local one...? Some way of specifying "which"
   //variable to set? Which may be latent?
   SETVAR( fs.args[0], fs.args[1] );
-}
+  }*/
 
 
 //Whoa, sometimes it needs to return something? I.e. a string? Oh shit, it always does...?
-std::string getvar(const functsig& fs)
+/*std::string getvar(const functsig& fs)
 {
   return GETVAR( fs.args[0] );
-}
+  }*/
 
-struct functsig
-{
-  std::string tag;
-  std::vector<std::string> args; //args.size() is number of args.
-};
   
   //Constructor
 functlist_item::functlist_item( const std::string _tag, const std::function<void(functsig)> _funct, const size_t _nargs )

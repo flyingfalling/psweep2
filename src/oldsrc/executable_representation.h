@@ -10,14 +10,20 @@
 #include "variable.h"
 
 
+struct functsig
+{
+  std::string tag;
+  std::vector<std::string> args; //args.size() is number of args.                                                                                                                                          
+};
+
 
 //REV: what var?
-std::string setvar(const functsig& fs);
+//std::string setvar(const functsig& fs);
 
 //Whoa, sometimes it needs to return something? I.e. a string? Oh shit, it always does...?
-std::string getvar(const functsig& fs);
+//std::string getvar(const functsig& fs);
 
-struct functsig;
+
 
 
 //REV: make it also implicitly take a "variable context" or something, so we know which variable set to draw from?

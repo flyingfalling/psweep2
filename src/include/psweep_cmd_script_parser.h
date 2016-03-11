@@ -201,18 +201,19 @@ void enum_leaf_stmnt( const client::LEAF_STMNT& s, const size_t& depth );
 
 namespace client
 {
-  template <typename It, typename Skipper = qi::space_type>
+  template <typename It, typename Skipper = qi::space_type >
+
   //struct parser : qi::grammar<It, PSET(), Skipper>
   struct parser : qi::grammar<It, PARAMPOINT(), Skipper>
   {
     //parser() : parser::base_type(pset)
-  parser() : parser::base_type(parampoint);
+    parser();
    
-    qi::rule< It, PARAMPOINT(), qi::space_type > parampoint;
-    qi::rule< It, PSET(), qi::space_type > pset;
+    qi::rule< It, client::PARAMPOINT(), qi::space_type > parampoint;
+    qi::rule< It, client::PSET(), qi::space_type > pset;
     //qi::rule< It, std::vector<std::string>(), qi::space_type> stmnt;
-    qi::rule< It, STMNT(), qi::space_type> stmnt;
-    qi::rule< It, LEAF_STMNT(), qi::space_type> leafstmnt;
+    qi::rule< It, client::STMNT(), qi::space_type> stmnt;
+    qi::rule< It, client::LEAF_STMNT(), qi::space_type> leafstmnt;
     qi::rule< It, std::vector<std::string>(), qi::space_type> startpset; //REV: this needs to be a tuple of strings or something? Waht...?
     qi::rule< It, std::string(), qi::space_type> fname; //REV: this needs to be a tuple of strings or something? Waht...?
     qi::rule< It, std::string(), qi::space_type> literal; //REV: this needs to be a tuple of strings or something? Waht...?
@@ -222,7 +223,7 @@ namespace client
     //qi::rule< It, STMNT(), qi::space_type> farg; //REV: this needs to be a tuple of strings or something? Waht...?
     //qi::rule< It, std::vector<std::string>, qi::space_type> arglist; //REV: this needs to be a tuple of strings or something? Waht...?
     //qi::rule< It, std::vector<std::string>(), qi::space_type> arglist; //REV: this needs to be a tuple of strings or something? Waht...?
-    qi::rule< It, std::vector<LEAF_STMNT>(), qi::space_type> arglist; //REV: this needs to be a tuple of strings or something? Waht...?
+    qi::rule< It, std::vector<client::LEAF_STMNT>(), qi::space_type> arglist; //REV: this needs to be a tuple of strings or something? Waht...?
     qi::rule< It, void(std::string), qi::space_type> endpset;
   
   };
@@ -232,3 +233,4 @@ namespace client
 client::PARAMPOINT parse_psweep_script( std::string input );
 
 
+#include <psweep_cmd_script_parser.cpp>

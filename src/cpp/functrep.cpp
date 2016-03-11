@@ -2,17 +2,11 @@
 
 #include <functrep.h>
 
-struct functsig
-{
-  std::string mytag;
-  size_t nargs;
-  functtype funct;
-
-  functsig()
+  functsig::functsig()
   {
   }
   
-functsig( const std::string& _tag, const size_t& argsize, const functtype& f )
+  functsig::functsig( const std::string& _tag, const size_t& argsize, const functtype& f )
 :
   mytag(_tag),
     nargs( argsize ),
@@ -20,7 +14,7 @@ functsig( const std::string& _tag, const size_t& argsize, const functtype& f )
   {
     //Do nothing.
   }
-};
+
 
 
 FUNCTDEF( GET_PREV_VAR )
@@ -253,7 +247,7 @@ FUNCTDEF( CAT )
 }
 
 
-functsig functlist::findfunct( /*const*/ client::STMNT& s );
+functsig functlist::findfunct( /*const*/ client::STMNT& s )
   {
     //artificially convert to a READVAR. Ghetto, I know ;)
     
