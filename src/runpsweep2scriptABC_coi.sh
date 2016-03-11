@@ -1,9 +1,9 @@
 #!/bin/bash
 #Examples for running psweep2
 
-NRANKS=7
+NRANKS=21
 
-NCHAINS=50
+NCHAINS=40
 MAXGEN=100000
 STATEFILE=psweepdreamABC.state
 MINMAXFILE=testabc_minmax.bounds
@@ -13,7 +13,7 @@ DIR=testabcdir
 SEARCHTYPE=DREAM-ABC
 WORKSCRIPT=../configs/test_abc_twopeak.cfg
 
-HOSTFILE=/nfs-mirror/gpumachinefile
+HOSTFILE=/nfs-mirror/cpumachinefile
 
 stdo=stdout_psweepABC
 stde=stderr_psweepABC
