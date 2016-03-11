@@ -30,7 +30,7 @@ std::vector<size_t> find_legaldevs()
       cudaSetDevice(dev);
       cudaDeviceProp deviceProp;
       cudaGetDeviceProperties(&deviceProp, dev);
- //     printf("\nDevice %d: \"%s\"\n", dev, deviceProp.name);
+//      printf("\nDevice %d: \"%s\"\n", dev, deviceProp.name);
       /*
 	char msg[256];
         SPRINTF(msg, "  Total amount of global memory:                 %.0f MBytes (%llu bytes)\n",

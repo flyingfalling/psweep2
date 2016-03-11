@@ -45,9 +45,11 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
   
   outputf = std::string(argv[4]);
   //fprintf(stdout, "TEST PROGRAM: USING OUTPUT FILE [%s]\n", outputf.c_str());
-
+  
   std::string devnum="-1";
-    size_t mydev=0;
+
+  size_t mydev=0;
+
   if(argv.size() == 7)
     {
       if( argv[5].compare( "-dev") != 0 )
@@ -61,7 +63,7 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
 
   std::vector<size_t> devs = find_legaldevs();
 
-  
+
   if( mydev >= devs.size() )
     {
       fprintf(stderr, "BIG ERROR, not enough devices on the host you provided!!!!!! I should not have been farmed!!!\n");
