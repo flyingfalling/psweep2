@@ -1,3 +1,5 @@
+#include <cumulsum.h>
+
 
 //REV: SHIT, if they're zero probability EVERYWHERE, it should be the LAST before the change!
 template <typename T>
@@ -351,5 +353,3 @@ std::vector<size_t> choose_k_multinomial_no_replace_wrand(std::vector<T>& array,
   
   return ret;
 }
-
-

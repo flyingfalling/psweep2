@@ -15,20 +15,11 @@ class psweep2
 {
  public:
   
-  void run_search( const int& argc, char* *argv )
-  {
-    //REV: Crap, all ranks are parsing the options...
-    optlist opts( argc, argv );
-    srch.run_search( opts );
-    return;
-   
-  }
+  void run_search( const int& argc, char* *argv );
   
-  void register_funct( const std::string& name, const fake_system_funct_t& funct)
-  {
-    srch.register_funct( name, funct );
-  }
   
+  void register_funct( const std::string& name, const fake_system_funct_t& funct);
+ 
  private:
   
   searcher srch;

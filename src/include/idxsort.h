@@ -34,25 +34,16 @@ struct sorter
   
   void runsort();
 
-  void add_l(long int* a)
-  {
-    largs.push_back(a);
-  }
+  void add_l(long int* a);
   
-  void add_i(int* a)
-  {
-    iargs.push_back(a);
-  }
+  void add_i(int* a);
+ 
   
-  void add_f(float* a)
-  {
-    fargs.push_back(a);
-  }
+  void add_f(float* a);
+ 
 
-  void add_d(double* a)
-  {
-    dargs.push_back(a);
-  }
+  void add_d(double* a);
+  
   
   
   int* indices;

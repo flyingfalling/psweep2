@@ -23,6 +23,24 @@ std::vector<T> compute_cumsum( const std::vector<T>& array );
 template <typename T>
 std::vector<size_t> choose_k_multinomial_no_replace_wrand(std::vector<T>& array, const std::vector<T>& cumsum, const std::vector<T>& randns);
 */
+template <typename T>
+void test_binary_search_cumsum();
+
+template <typename T>
+void printvect_cerr(std::vector<T> v);
+
+template <typename T>
+size_t binary_search_cumsum(const std::vector<T>& array, size_t start, size_t end, T targ);
+  
+template <typename T>
+void recompute_cumsum_based_on_choice(const std::vector<T>& array, std::vector<T>& cumsum, size_t choice);
+
+template <typename T>
+std::vector<T> compute_cumsum( const std::vector<T>& array );
+
+template <typename T>
+std::vector<size_t> choose_k_multinomial_no_replace_wrand(std::vector<T>& array, const std::vector<T>& cumsum, const std::vector<T>& randns);
 
 
-#include <cumulsum.cpp>
+
+//#include <cumulsum.cpp>

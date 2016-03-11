@@ -1,15 +1,54 @@
 #pragma once
 
-#include <random>
-#include <vector>
-#include <cstdio>
-#include <cstdlib>
-#include <algorithm>
+#include <stat_helpers.h>
 
+
+
+template <typename T>
+std::vector< T > indices_to_vector_slices(const std::vector< T >& source, const std::vector<size_t>& indices)
+{
+  std::vector<T > res( indices.size() );
+  for(size_t i=0; i<indices.size(); ++i)
+    {
+      if( indices[i] < source.size() )
+	{
+	  res[i] = source[ indices[i] ];
+	}
+      else
+	{
+	  fprintf(stderr, "Super error in indices_to_vector_slices! Requested index is > size of vector! [%ld] requested from [%ld]\n", indices[i], source.size());
+	  exit(1);
+	}
+      
+    }
+  return res;
+}
+//actually return the (k) values
+template <typename T>
+std::vector<T> choose_k_values_from_N_no_replace(std::vector<T>& input, size_t _k, std::default_random_engine& rand_gen)
+{
+  std::vector<size_t> idx = choose_k_indices_from_N_no_replace(input.size(), _k, rand_gen);
+  return indices_to_vector_slices(input, idx);
+}
+
+
+//actually return the (N) values in random order
+template <typename T>
+std::vector<T> shuffle_values(std::vector<T>& input, std::default_random_engine& rand_gen)
+{
+  std::vector<size_t> idx = choose_k_indices_from_N_no_replace(input.size(), input.size(), rand_gen);
+  return indices_to_vector_slices(input, idx);
+}
+
+
+
+
+
+//impl of known types (size_t)
 
 //choose k from N (indices)
 //Use "slice" to get slice from this. Not so efficient though haha.
-inline std::vector<size_t> choose_k_indices_from_N_no_replace(size_t _N, size_t _k, std::default_random_engine& rand_gen)
+std::vector<size_t> choose_k_indices_from_N_no_replace(size_t _N, size_t _k, std::default_random_engine& rand_gen)
 {
   std::vector<size_t> selected;
   std::vector<size_t> selected2; //ordered
@@ -52,7 +91,7 @@ inline std::vector<size_t> choose_k_indices_from_N_no_replace(size_t _N, size_t 
 
 
 //shuffle indices. There should be no bias. We could do faster by simply drawing N random numbers and somehow mapping those to targets...?
-inline std::vector<size_t> shuffle_indices(size_t _N, std::default_random_engine& rand_gen)
+std::vector<size_t> shuffle_indices(size_t _N, std::default_random_engine& rand_gen)
 {
   //just choose all N.
   std::vector<size_t> result = choose_k_indices_from_N_no_replace(_N, _N, rand_gen);

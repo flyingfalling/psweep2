@@ -21,25 +21,13 @@ struct seedgen
   std::default_random_engine reng; //keep my own in here to generate values to generate seeds...
   
   
-  void seed( const long& seedval )
-  {
-    //seq = std::seed_seq( {seedval} );
-    reng.seed(seedval);
-  }
+  void seed( const long& seedval );
+  
 
   //Hopefully it keeps state...?
   //REV: Generate random int in here from our chain and use it as seed...not very beautiful, but same as doing seeds(1)
-  std::uint32_t nextseed()
-  {
-    std::uniform_int_distribution<std::uint32_t> mydistr(0, 666666666);
-    std::vector<std::uint32_t> seeds(1);
-    seq = std::seed_seq( { mydistr( reng ) } );
-    seq.generate(seeds.begin(), seeds.end());
-    
-    //fprintf( stdout, "GENERATED SEED: [%d]\n", seeds[0] );
+  std::uint32_t nextseed();
 
-    return seeds[0];
-  }
 };
 
 struct parampoint_coord
@@ -50,15 +38,9 @@ struct parampoint_coord
   size_t pitemn;
 
 
-  parampoint_coord()
-  {
-  }
+  parampoint_coord();
   
-parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi )
-: parampointn(pp), psetn(ps), pitemn(pi)
-  {
-    //REV: nothing to do.
-  }
+  parampoint_coord( const size_t& pp, const size_t& ps, const size_t& pi );
 };
   
 
@@ -73,18 +55,8 @@ struct pset_functional_representation
   
   //Takes some registered functions struct (list?), and the (unrolled) stmnts thing.
   //    std::vector< client::STMNT >& stmnts ) //so, we take the STMNT list of this pset, and make what we need.
-  pset_functional_representation( client::PSET& p )
-  {
-    myname = p.NAME;
-    pset_width = std::stoul( p.NREP );
-    for( size_t s=0; s<p.CONTENT.size(); ++s )
-      {
-	functrep tmpfr(p.CONTENT[s], myfl);
-	frlist.push_back( tmpfr );
-      }
-    
-    //frlist now has the recursive functional representations that we can call each of frlist[f].execute( vectofHIERCH, myHIEARCHindex)
-  }
+  pset_functional_representation( client::PSET& p );
+  
 
 
   
@@ -114,91 +86,12 @@ struct pitem
   //REV: REQUIRED for boost serialization (to send over MPI)
   friend class boost::serialization::access;
   template<class Archive>
-  void serialize(Archive & ar, const unsigned int version)
-  {
-    ar & mycmd;
-    ar & required_files;
-    ar & success_files;
-    ar & output_files;
-    ar & input_file;
-    ar & mydir;
-  }
+  void serialize(Archive & ar, const unsigned int version);
+  
   
   //In new version, this may call from memory to speed things up.
-  bool execute_cmd( fake_system& fakesys, memfsys& myfsys )
-  {
-    //fprintf(stdout, "Attempting to check ready in execute cmd\n");
-    std::vector< std::string > notready = check_ready( myfsys );
-    //fprintf(stdout, "FINISHED to check ready in execute cmd\n");
-
-    //FIRST, TRY TO CALL IT WITH USER THING.
-    //REV: user might be trying to call a script with python or something...? E.g. pythong SCRIPT go...? In which case we better not find it lol.
-    std::string ostensible_cmd = mycmd[0]; //Hopefully it doesn't start with a ./ etc.? We can correct that to check heh.
-    //std::vector<std::string> args = std::vector<std::string>( mycmd.begin()+1, mycmd.end() );
-    //bool calledfake = fakesys.call_funct( ostensible_cmd, args );
-    //REV: 10 Feb 2016 -- make it same as ARGV so user doesn't have to change much...
-    //fprintf(stdout, "Attempting to call FAKESYS mycmd\n");
-    bool calledfake = fakesys.call_funct( ostensible_cmd, mycmd, myfsys );
-    //fprintf(stdout, "SUCCESSFULLY to call FAKESYS mycmd\n");
-    
-    if( calledfake == false )
-      {
-	//fprintf(stdout, "THINK I **DIDNT** call a fakesystem, i.e. will attempt real system()\n");
-	std::string stderrfile = mydir+"/stderr";
-	std::string stdoutfile = mydir+"/stdout";
-	mycmd.push_back( "1>"+stdoutfile );
-	mycmd.push_back( "2>"+stderrfile );
-	
-	
-	std::string sep = " ";
-	//std::string execute_string = mycmd.CONCATENATE_STR_ARRAY( cmdarray, sep );
-	std::string execute_string = CONCATENATE_STR_ARRAY( mycmd, sep );
-	
-	if( notready.size() > 0 )
-	  {
-	    fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", execute_string.c_str());
-	    fprintf(stderr, "found [%ld] NON-EXISTENT REQUIRED FILES: ", notready.size() );
-	    for(size_t f=0; f<notready.size(); ++f)
-	      {
-		fprintf(stderr, "FILE: [%s]\n", notready[f].c_str());
-	      }
-	    fprintf(stderr, "\n");
-	    exit(1);
-	  }
-
-	//fprintf(stdout, "----EXECUTING [%s]\n", execute_string.c_str() );
-	
-	int sysret = system( execute_string.c_str() );
-	
-	std::vector<std::string> notdone = checkdone( myfsys );
-
-	size_t tries=0;
-	size_t NTRIES=10;
-	while( notdone.size() > 0 && tries < NTRIES)
-	  {
-	    sysret = system( execute_string.c_str() ); //Delete/reset this pitem?
-	    notdone = checkdone( myfsys );
-	    ++NTRIES;
-	  }
-
-	if(notdone.size() > 0)
-	  {
-	    fprintf(stderr, "REV: Error in executing of command:\n[%s]\n", execute_string.c_str());
-	    fprintf(stderr, "found [%ld] NON-EXISTENT SUCCESS FILES: ", notdone.size() );
-	    for(size_t f=0; f<notdone.size(); ++f)
-	      {
-		fprintf(stderr, "FILE: [%s]\n", notdone[f].c_str());
-	      }
-	    exit(1); //Just exiting now...but meh.
-	    return false;
-	  }
-
-	//More elegantly exit. Note all guys should output to a certain specific output file!!! In their dir.
-      }
-    return true;
-    //this only tells if it was SUCCESSFUL or not (?). For example we had problems before due to something failing for one reason or another. In this way
-    //we can automatically restart it...?
-  }
+  bool execute_cmd( fake_system& fakesys, memfsys& myfsys );
+  
   
 
   //Basically, OLD MYDIR is X, NEW MYDIR is Y
@@ -242,413 +135,35 @@ struct pitem
   //SLAVE is DONE.
 
   void rename_to_targ( std::vector<std::string>& targvect, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir,
-		       const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames )
-  {
-    if( newfnames.size() != targvect.size() || newfnames.size() != oldfnames.size() )
-      {
-	fprintf(stderr, "ERROR newfnames or oldfnames != targvect.size\n");
-	exit(1);
-      }
-
-    //Note, NEWFNAMES will be the list we pushed back to of new fnames. They will be not set in NEWDIR, we need to add the NEWDIR to them? NO, THEY ARE
-    //SET IN THE NEWDIR!!!
-
-    std::vector<bool> reqmarked( targvect.size(), false );
-    
-    for(size_t x=0; x<oldfnames.size(); ++x)
-      {
-	//For all guys, I already know the ORIGINAL and NEW fnames. Specifically ORIGINAL should still be in TARGVECT (?) We'll replace them one by one.
-	std::string fname = canonicalize_fname(oldfnames[x]);
-
-	//locate it in cmd...if it exists...
-	std::vector<size_t> reqmatched=find_matching_files(fname, targvect, reqmarked); //will canonicalize fnames in MYCMD as they go.
-	std::vector<size_t> cmdmatched=find_matching_files(fname, mycmd, marked); //will canonicalize fnames in MYCMD as they go.
-
-	std::string newfname = canonicalize_fname( newdir + "/" + newfnames[x] );
-
-	//fprintf( stdout, "NEW FNAME IN RENAME-to-TARG: new fname [%s] (dir=[%s])\n", newfname.c_str(), newdir.c_str());
-	replace_old_fnames_with_new( targvect, newfname, reqmatched ); //replaces mycmd inline.
-	replace_old_fnames_with_new( mycmd, newfname, cmdmatched ); //replaces mycmd inline.
-	
-      }
-
-    bool alldone=true;
-    for(size_t x=0; x<reqmarked.size(); ++x)
-      {
-	if( reqmarked[x] == false )
-	  {
-	    alldone = false;
-	  }
-      }
-    if( alldone == false )
-      {
-	fprintf(stderr, "ERROR, not ALLDONE after doing RENAMING OF FILES, not all (REQUIRED FILES) were renamed, some are missing from newfnames/oldfnames?\n");
-	exit(1);
-      }
-
-  }
+		       const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames );
+ 
 
   void rename_str_to_targ( std::string& targstr, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir,
-		       const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames )
-  {
-    if( newfnames.size() != oldfnames.size() )
-      {
-	fprintf(stderr, "ERROR newfnames !=  oldfnames \n");
-	exit(1);
-      }
-
-    //Note, NEWFNAMES will be the list we pushed back to of new fnames. They will be not set in NEWDIR, we need to add the NEWDIR to them? NO, THEY ARE
-    //SET IN THE NEWDIR!!!
-    
-    std::vector<bool> reqmarked = {false};
-
-    std::vector<std::string> dummyvect = { targstr };
-    
-    for(size_t x=0; x<oldfnames.size(); ++x)
-      {
-	//For all guys, I already know the ORIGINAL and NEW fnames. Specifically ORIGINAL should still be in TARGVECT (?) We'll replace them one by one.
-	std::string fname = canonicalize_fname(oldfnames[x]);
-
-	//fprintf(stdout, "Checking match: targ [%s] vs OLD fname [%s]\n", targstr.c_str(), oldfnames[x].c_str() );
-	
-	//locate it in cmd...if it exists...
-	std::vector<size_t> reqmatched=find_matching_files(fname, dummyvect, reqmarked); //will canonicalize fnames in MYCMD as they go.
-	std::vector<size_t> cmdmatched=find_matching_files(fname, mycmd, marked); //will canonicalize fnames in MYCMD as they go.
-
-	
-	
-		
-	
-	if(reqmatched.size() > 0)
-	  {
-	    std::string newfname = canonicalize_fname( newdir + "/" + newfnames[x] );
-	    //fprintf(stdout, "FOUND MATCH!!!! New fname: [%s]  (newdir: [%s]\n", newfname.c_str() , newdir.c_str());
-		    
-	    //found it, rename it.
-	    targstr = newfname;
-	    //replace_old_fnames_with_new( targvect, newfname, reqmatched ); //replaces mycmd inline.
-	    replace_old_fnames_with_new( mycmd, newfname, cmdmatched ); //replaces mycmd inline. Was already replaced in REQ so no need.
-	  }
-	
-      }
-
-    bool alldone=true;
-    for(size_t x=0; x<reqmarked.size(); ++x)
-      {
-	if( reqmarked[x] == false )
-	  {
-	    alldone = false;
-	  }
-      }
-    if( alldone == false )
-      {
-	fprintf(stderr, "ERROR, not ALLDONE after doing RENAMING OF FILES, not all (REQUIRED FILES) were renamed, some are missing from newfnames/oldfnames?\n");
-	exit(1);
-      }
-
-  }
-
-  void rename_str_to_targ_dir( std::string& targ, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir )
-  {
-    
-    std::string fnametail;
-
-    //REV: oops I fucked up, I need to only change the DIR for these!
-    std::string dirname = get_canonical_dir_of_fname( targ, fnametail );
-
-    if( dirname.compare( canonicalize_fname( olddir ) ) != 0 )
-      {
-	fprintf(stderr, "in REBASE DIRECTORY: ERROR: olddir and found dir in SUCCESS file are not the same!!! WTF target: [%s], old: [%s] (targ: [%s], newdir: [%s], fnametail: [%s]\n", dirname.c_str(), olddir.c_str(), targ.c_str(), newdir.c_str(), fnametail.c_str());
-	
-	exit(1);
-      }
-	
-    std::string fname = canonicalize_fname(targ);
-    //locate it in cmd...if it exists...
-    
-    std::vector<size_t> matched=find_matching_files(fname, mycmd, marked);
-
-    std::string newfname = newdir + "/" + fnametail;
-    //fprintf(stdout, "In renamed_str_to_targ_dir, about to replace with [%s]\n", newfname.c_str());
-    replace_old_fnames_with_new( mycmd, newfname, matched ); //replaces mycmd inline.
-
-    //Now replace SUCCESS itself.
-    targ = newfname;
-      
-
-  }
+			   const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames );
   
-  void rename_to_targ_dir( std::vector<std::string>& targvect, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir )
-  {
-    for(size_t x=0; x<targvect.size(); ++x)
-      {
-	rename_str_to_targ_dir( targvect[x], marked, olddir, newdir );
-      }
-    
-  }
+
+  void rename_str_to_targ_dir( std::string& targ, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir );
+  
+  
+  void rename_to_targ_dir( std::vector<std::string>& targvect, std::vector<bool>& marked, const std::string& olddir, const std::string& newdir );
+ 
   
   //REV: For success etc. check existence AND THAT IT IS A FILE!!!! I.e. we don't do DIRS (for now)
-  void re_base_directory( const std::string& olddir, const std::string& newdir, const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames )
-  {
-    std::vector<bool> marked(mycmd.size(), false);
-
-    rename_to_targ_dir(success_files, marked, olddir, newdir);//, oldfnames);
-    rename_to_targ_dir(output_files, marked, olddir, newdir);//, oldfnames);
-    
-    //REV: Input file is just a string, not vector<string>, so need to have a similar function to just do single file...And modify underlying string.
-    //REV: BY DEFAULT, input will be named as "REQUIRED". I should just rename it that way...
-    //rename_str_to_targ_dir(input_file, marked, olddir, newdir);//, oldfnames);
-    //REV: HERE. Note clear what to do. There is simply ONE old/new, which is input_file and how it was renamed specifically. So, I need to go through
-    //it as if it was a CMD or required_files, and replace all renaemd references there. We determined old/new fnames from REBASE. So I need to make
-    //sure to change INPUTFILE too? I.e. I need to be aware of changing INPUT file name. OK.
-    //fprintf(stdout, "ORIG INPUT: [%s]\n", input_file.c_str());
-    
-    
-    rename_to_targ(required_files, marked, olddir, newdir, oldfnames, newfnames);
-    //bool marked1=false;
-    
-    rename_str_to_targ(input_file, marked, olddir, newdir, oldfnames, newfnames);//, oldfnames);
-
-    //fprintf(stdout, "REBASED INPUT: [%s]\n", input_file.c_str());
-    
-    //All MARKED not necessarily, because it might contain non-files in the string vector representing the command.
-    
-  }
-
-  pitem( )
-  {
-  }
+  void re_base_directory( const std::string& olddir, const std::string& newdir, const std::vector<std::string>& oldfnames, const std::vector<std::string>& newfnames );
+ 
+    pitem( );
   
-  pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv, memfsys& myfsys, const std::uint32_t& myseed, const bool& usedisk=false )
-  {
-    //Need to add to the most recent pset a child...
-    std::vector<size_t> rootchildren = hv.get_children( 0 );
-    size_t npsets = rootchildren.size();
-    varlist<std::string> emptyvl;
-    size_t myidx = hv.add_child( rootchildren[npsets-1],  emptyvl); //add child to the last PSET (!!)
-    size_t mychildnum = hv.get_children( rootchildren[npsets-1] ).size()-1;
-    
-    my_hierarchical_idx = myidx;
-
-    //Set up the required variables. Automatically name the things here (like choose dir based on sub of parent), much easier ;)
-
-    std::string parentdir = hv.vl[ rootchildren[npsets-1] ].getvar( "__MY_DIR" ).get_s();
-    mydir = parentdir + "/" + std::to_string( mychildnum ); //REV: whatever, to_string shouldn't cause a problem here, other than not padding zeroes.
-    
-    
-    variable<std::string> var1( "__MY_DIR", mydir );
-
-    std::vector<std::string> emptyvect;
-    variable<std::string> var2( "__MY_REQUIRED_FILES", emptyvect );
-    variable<std::string> var3( "__MY_SUCCESS_FILES", emptyvect );
-    variable<std::string> var4( "__MY_OUTPUT_FILES", emptyvect );
-    variable<std::string> var5( "__MY_CMD", emptyvect );
-    variable<std::string> var6( "__MY_RANDSEED", std::to_string(myseed) );
-    hv.vl[myidx].addvar( var1 );
-    hv.vl[myidx].addvar( var2 );
-    hv.vl[myidx].addvar( var3 );
-    hv.vl[myidx].addvar( var4 );
-    hv.vl[myidx].addvar( var5 );
-    hv.vl[myidx].addvar( var6 );
-
-    //Reserve __ vars internally or something? I'm not doing unrolling so whatever I guess.
-    
-    
-        
-    
-    //Each must have for each worker the "required" files etc. Then it creates stuff and 
-    bool succ = make_directory( mydir );
-    
-    
-    std::vector<hierarchical_varlist<std::string>> hvl;
-    hvl.push_back( hv ); //will it modify it? I'm not sure! Crap.
-    //This is a copy operator, so it will not bubble up the copy operator
-    //unless I re-copy
-    //Add other HVarlist to it such as the global NAMES one.
-
-    std::vector<size_t> idcs = {myidx};
-
-    //REV: THIS is where it executes. Get INPUT and SUCCESS first, easier.
-    
-    
-    //And now execute all arguments in pset_functional_rep
-    for(size_t s=0; s<pfr.frlist.size(); ++s)
-      {
-	myvar_t retval = pfr.frlist[s].execute( hvl, idcs );
-	//What to do with retval?!?!?! Ignore it?
-      }
-
-    
-    //ghetto hack. GLOBAL namespace doesn't exist.
-    hv = hvl[0];
-    
-
-    //Getting input file NAME to here.
-    input_file = hv.get_val_var( "__MY_INPUT_FILE", my_hierarchical_idx );
-    
-    hv.add_to_var( "__MY_REQUIRED_FILES" , input_file, my_hierarchical_idx );
-
-
-    output_files = hv.get_array_var( "__MY_OUTPUT_FILES", my_hierarchical_idx );
-
-    for(size_t x=0; x<output_files.size(); ++x)
-      {
-	hv.add_to_var( "__MY_SUCCESS_FILES" , output_files[x], my_hierarchical_idx );
-      }
-    
-    
-    required_files = hv.get_array_var( "__MY_REQUIRED_FILES", my_hierarchical_idx );
-    success_files = hv.get_array_var( "__MY_SUCCESS_FILES", my_hierarchical_idx );
-    
-    //std::vector<std::string> cmdarray = hv.get_array_var( "__MY_CMD", my_hierarchical_idx );
-    mycmd = hv.get_array_var( "__MY_CMD", my_hierarchical_idx );
-    
-    //Add output to correct file.
-    
-
-
-    //REV: this was error, this should have been cmdarray before changing mycmd to be vector of strings.
-
-    
-    
-        
-    //std::string sep = " "; //spaces. Make user specify "cmd sep" if it exists or something?
-
-    //mycmd = CONCATENATE_STR_ARRAY( cmdarray, sep ); //hv.get_val_var( "__MY_CMD", my_hierarchical_idx );
-    
-    
-    
-    
-    //REV: I need to set INPUT files too, which I will write to from what? From HVL I guess? OK...
-    //Will it do all of them, or only the first one?
-    //We need a "setup" way or something. Note this is for every PITEM. I.e. it will re-write it each time, which is not good
-    //Maybe only the FIRST one needs it. OK.
-    
-    //REV: ANOTHER OPTION, automatically copy it to desired filename in a dir?
-    
-
-    //fprintf(stdout, "XXXXXXX In PITEM const -- Set input_file to [%s]\n", input_file.c_str());
-    
-    //REV: here is the problem, it was outputting ALL local variables to the INPUT file of the user...crap.
-    //hv.tofile( input_file, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
-
-    //REV: AH, I am outputting 0th HV index to input_file! This is why it is only the bottommost.
-    //Ideally I should do each, leaving "most leaf-most" values of same guys as the same?
-
-    
-    //REV: HERE is final place to modify TODISK filesystem from filesystem. I need to set at creation time whether it should actually write
-    //to something? I should store a memfsys internal to each, problem is that each PITEM will need to communicate with previous ones, which
-    //will cause problems?
-
-    //Zeroth is the base, i.e. root...the varlist that was passed that I built off of haha.
-    //hv.tofile( input_file, 0, myfsys, usedisk ); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
-    //This will output ALL of my varlist...is this necessary? Ugh...
-    //Note some of them may be ARRAY types, which will lead to problems reading the varlist from file (?)
-    hv.tofile( input_file, myidx, myfsys, usedisk ); //, my_hierarchical_idx ); //HAVE TO DO THIS HERE BECAUSE I NEED ACCESS TO THE HV. I could do it at top level though...
-
-    //fprintf(stdout, "YYYYYY Succeeded in setting (wrote to file?)\n");
-    //Input files are REQUIRED files (by default, might be checked twice oh well).
-    //Furthermore, output files are SUCCESS files (fails and tries to re-run without their creation of course).
-    //required_files.push_back( input_file );
-
-    /*for(size_t o=0; o<output_files.size(); ++o)
-      {
-	success_files.push_back( output_files[o] );
-      }
-    */
-    //but then I need to do it for each ugh.
-    //REV: note this will write EVERYTHING in here out, which may not be needed/might mess things up.
-    //Can we specify only things that are tagged for this model or something?
-    //Just do all for now, hope it doesn't break lol.
-    
-    //mydir = hv.vl[my_hierarchical_idx].getvar("MY_DIR").get_s();
-    
-        
-    //Finished constructing pitem, i.e. setting all variables.
-    //Now we go through and use those to set REQUIRED and SUCCESS files
-    //and MYCMD, and MYDIR, etc.
-    //From our specific SPECIAL VARIABLES. May be more than 1? Or will
-    //be an array?
-    //MM yea, set zero length array SUCCESS and REQUIRED from beginning
-    //and also (empty) CMD string variable? OK, those are "set". Also, like
-    //MYDIR. Functions will return those variables.
-    //Need a way like "get_success_variable_name" or something? User
-    //may want to SET them. OK.
-
-    //I.e. at the end of this these REAL variables will be set.
-
-    //We need ways of finding inside GLOBAL vars named var etc.
-  }
+  pitem( pset_functional_representation& pfr, const size_t idx,  hierarchical_varlist<std::string>& hv, memfsys& myfsys, const std::uint32_t& myseed, const bool& usedisk=false );
+ 
   
-  //REV: HERE, need to make them appropriately check!
-  std::vector<std::string> check_ready( memfsys& myfsys )
-  {
-    std::vector<std::string> notreadylist;
-    //bool ready=true;
-    //Strings must be FULL filename? Or are they relative? Assume full...
-
-    //REV: Check existence in memfsys!!
-    for(size_t f=0; f<required_files.size(); ++f)
-      {
-	//fprintf(stdout, " # # # CHECKING FOR EXISTENCE OF REQUIRED FILE: [%s]\n", required_files[f].c_str());
-	bool checkdisk=true;
-	bool rdy= myfsys.check_existence( required_files[f], checkdisk );
-	//fprintf(stdout, " X X X checked done\n");
-	  
-	if (rdy == false )
-	  /*if( check_file_existence( required_files[f] ) == false ) */
-	  {
-	    notreadylist.push_back( required_files[f] );
-	  }
-	
-      }
-    return notreadylist;
-    
-    //checks if all required files are present?? etc.
-  }
+  std::vector<std::string> checkdone( memfsys& myfsys );
   
-  std::vector<std::string> checkdone( memfsys& myfsys )
-  {
-    std::vector<std::string> notdonelist;
-    //Strings must be FULL filename? Or are they relative? Assume full...
-    for(size_t f=0; f<success_files.size(); ++f)
-      {
-	//REV: Check existence in memfsys!!
-	bool checkdisk=true;
-	if( myfsys.check_existence( success_files[f], checkdisk ) == false)
-	  //if( check_file_existence( success_files[f] ) == false )
-	  {
-	    //ready = false;
-	    notdonelist.push_back( success_files[f] );
-	  }
-      }
-    //REV: Ah, VARLIST does not reflect modifications to REQUIRED FILES/SUCCESS FILES etc....
-    
-    return notdonelist;
-    
-    //checks if I'm done. Specifically by seeing if all required guys are
-    //finished. I need multiple "variable lists" of guys, some that
-    //set required guys for starting, some that check required files for
-    //ending. Don't check file contents though.
-  }
-
   
-  varlist<std::string> get_output( memfsys& myfsys, const bool& usedisk=false )
-  {
-    varlist<std::string> retvarlist;
-    
-    //REV: I could read this some other way? Some number of (named) varlists? A list of them? OK.
-    for(size_t f=0; f<output_files.size(); ++f)
-      {
-	retvarlist.inputfromfile( output_files[f], myfsys, usedisk );
-      }
-    return retvarlist;
-  }
+  varlist<std::string> get_output( memfsys& myfsys, const bool& usedisk=false );
+  
 
-  std::vector<std::string> get_cmd()
-  {
-    return mycmd;
-  }
+  std::vector<std::string> get_cmd();
+ 
   
   
 };
@@ -659,18 +174,11 @@ struct functional_representation
   std::vector< pset_functional_representation > pset_list;
   
   //Constructs the list of each parampoint. Great.
-  functional_representation( client::PARAMPOINT& pp )
-  {
-    for( size_t ps=0; ps<pp.psets.size(); ++ps)
-      {
-	pset_functional_representation pfr( pp.psets[ ps ] );
-	pset_list.push_back( pfr );
-      }
-  }
+  functional_representation( client::PARAMPOINT& pp );
+  
 
-  functional_representation()
-  {
-  }
+  functional_representation();
+  
   
 };
 
@@ -711,37 +219,12 @@ struct pset
   }
   */
 
-  pset(hierarchical_varlist<std::string>& hv)
-  {
-    //std::vector<size_t> rootchildren = hv.get_children(0);
-    varlist<std::string> emptyvl;
-    size_t myidx = hv.add_child( 0, emptyvl ); //add child to root;
-    my_hierarchical_idx = myidx;
-
-    size_t mychildnum = hv.get_children( 0 ).size()-1;
-
-    //REV: get root's dir... i.e. my parent...
-    std::string parentdir = hv.vl[ 0 ].getvar( "__MY_DIR" ).get_s();
-
-
-    //Which PSET am I???
-    mydir = parentdir + "/" + std::to_string( mychildnum ); //REV: whatever, to_string shouldn't cause a problem here, other than not padding zeroes.
-
-
-    bool succ = make_directory( mydir );
-    
-    variable<std::string> var1( "__MY_DIR", mydir );
-    hv.vl[myidx].addvar( var1 );
-        
-  }
+  pset(hierarchical_varlist<std::string>& hv);
   
   
   
-  void add_pitem( const pitem& p )
-  {
-    pitems.push_back ( p );
-    return;
-  }
+  void add_pitem( const pitem& p );
+ 
   
   
 };
@@ -765,10 +248,7 @@ struct parampoint
   static const size_t my_hierarchical_idx = 0;
 
 
-  void add_pset( const pset& myps)
-  {
-    psets.push_back( myps );
-  }
+  void add_pset( const pset& myps);
   
   //bool done=false;
 
@@ -841,15 +321,8 @@ struct parampoint
 
 
   //Makes the dir at the location "inside", but success and required files are still treated as if they are purely global names.
-  parampoint( hierarchical_varlist<std::string>& hv, std::string dirname )
-  {
-    mydir = dirname;
-    variable<std::string> var1( "__MY_DIR", mydir );
-    hv.vl[ my_hierarchical_idx ].addvar( var1 );
-    //REV: OK, __MY_DIR is set after all!
-
-    bool succ = make_directory( mydir );
-  }
+  parampoint( hierarchical_varlist<std::string>& hv, std::string dirname );
+  
 
 
   
@@ -896,49 +369,13 @@ struct executable_representation
   //This is the functional representation of the script, specifically a list of the things to do.
   functional_representation fscript;
   
-  executable_representation()
-  {
-    //Do nothing, will reconstruct anyway.
-  }
+  executable_representation();
+  
   
   //build the exec rep using config file(s) passed by user.
   //For now, force it to be a single file...
-  executable_representation( const std::string& script_filename )
-  {
-    //constructor. Constructs all the stuff, based on input script FILENAME?
-
-    fprintf(stdout, "EXEC REPRESENT: trying to get contents from file [%s]\n", script_filename.c_str());
-    std::string input = get_file_contents( script_filename  );
-
-#if DEBUG>5
-    fprintf(stdout, "GOT FILE CONTENTS FROM file [%s]; [%s]\n", script_filename.c_str(), input.c_str());
-#endif
-    
-    if( input.compare("") == 0 )
-      {
-	fprintf(stderr, "Huh whacko error in reading of script in creating executable_representation: script is empty/script file didn't exist? [%s]\n", script_filename.c_str() );
-	exit(1);
-      }
-
-
-    //construct the actual PARAMPOINT (config file representation?)
-    ppscript = parse_psweep_script( input );
-
-#if DEBUG > 1
-    fprintf(stdout, "PARSED PARAMPOINT, got [%ld] PSETS\n", ppscript.psets.size());
-    for(size_t a=0; a<ppscript.psets.size(); ++a)
-      {
-	fprintf(stdout, "PSET # [%ld]\n", a);
-	enum_pset( ppscript.psets[a] );
-      }
-#endif
-    
-    //construct the executable representations based on that. I.e. construct for all PSETs inside it, the actual PSET things.
-    fscript = functional_representation( ppscript );
-    
-  } //end constructor
-
-
+  executable_representation( const std::string& script_filename );
+ 
   //FSCRIPT now contains the list (vector!) of pset functional representations, at construction.
   //Constructing a parampoint involves actually executing and generating the workers based on the passed param vals passed.
   //I.e. for each
@@ -953,79 +390,8 @@ struct executable_representation
   //etc.
 
   //Builds and returns a parampoint. Which can then be executed in its own way.
-  parampoint build_parampoint( hierarchical_varlist<std::string>& hv, const std::string& dir, memfsys& myfsys, seedgen& sg, const bool& usedisk=false )
-  {
-    //REV: this will not work lol, I need one of my own?!??!!
-    parampoint mypp( hv, dir );
-    
-    //make each pset...
-    for(size_t p=0; p<fscript.pset_list.size(); ++p)
-      {
-
-	//This does the actual execution? Nah, but we might set DIR? Ah
-	//Remember I control the DIR format, I need to decide how to
-	//organize the DIRS of working etc.
-	//This will add the child, and then set the my_hierarch_idx to
-	//the correct newly added one.
-	pset mypset(hv);
-		    
-	//I will now have a PARALLEL list of the pitems. But those are each one generated by a running of the whole script, which is what the
-	//pset_list is (stmnt list).
-	//So, I need to somehow locally generate/modify the local hierarch varlist to set e.g. INDEX NUMBER etc. Do it manually here? Based on where
-	//I iterate through each of NUM_PITEMS or something?
-	//I need to set
-
-	//pset_list[p] holds the pset_funct_rep, which has members like X.pset_width, which is # of parallel guys to do for this. Use that to set
-	//a variable (i.e. which "index" number am I?)? Need a way to set (in the config) to e.g. set to FILE_X.dat etc., X is my #. And need a way
-	//to specify REQUIRED files as e.g. PSET_N/PITEM_X/FILE.dat, and it will resolve those variables to their actual directories. I can handle
-	//that within my hierarchical thing, I go up to the PSET, go up, move over one, etc.. Do I know which "child" number each child is? Ah, that's
-	//the problem. If we only care about "global" numbering that's fine.
-	//Either way, need a "get my index" type thing.
-
-
-	//Add child to HV here, set myidx to that added guy.
-	for( size_t w=0; w<fscript.pset_list[p].pset_width; ++w )
-	  {
-	    //PITEM CONSTRUCTOR WILL EXECUTE THE GUYS IN ORDER TO
-	    //GENERATE CMD?
-	    //Constructor does the modification of HV?!?!!! OK.
-	    //REV: This is where memfsys comes in.
-	    pitem mypitem( fscript.pset_list[p], w, hv, myfsys, sg.nextseed(), usedisk);
-	    mypset.add_pitem(mypitem);
-	  }
-
-	mypp.add_pset( mypset );
-      }
-
-    return mypp;
-
-    //This will be the list of PSETS, and list of PITEM. And certain "special" variables will be set telling of required files, success files, directories
-    //to run in, etc. I.e. at runtime, only CMD will run, all the other stuff is static.
-    //Furthermore, "READ OUT" variables are specified by setting filenames that way. So, it will read those out and pass back to either main program or
-    //whatever. Each PSET has possibility of returning? Nah, each PITEM even. But for fitness, it will return only from PPOINT!
-    
-    
-    //What does this actually do? It doesn't return anything? It needs to actually execute everything and finally set the CMD variable. I.e. it modifies
-    //all variables, etc. Can other things have side effects such as creating/removing directories, changing directories, etc.? Will the thing create
-    //them automatically when it tries to go? What about stuff like setting /tmp?
-    
-    //Runs the function for the stored script and functional representation...
-    //This will execute everything down to the CMD. It will also set all appropriate required variables etc.?
-    //Ah, best idea is to have this generate lists of worker_functional_rep, which include e.g. SUCCESS and FAILURE. And then finally it will read
-    //the CMD variable. Um, CALL it, with SET_CMD(blah). That is what will be executed later, using like "mydir" etc.
-
-    //We need to know "which" thing to set it to. I.e. we need to "create" the individual guys, OK that's fine. We create them one at a time...and then
-    //go execute them, checking success files of previous (no they are checked after), and required files of this time. And we make the guys to execute.
-    //And we return the list of those. We need to make sure they're executed in order though, crap. *THAT* is what an executable representation is.
-    //It will literally be farmed straight out to workers.
-
-    //Ah, so we literally build our own set of worker representations in that order.
-    
-    //How about getting stuff out? We are setting some "specific" variables for this "sweep type", we need to tell it where those are. Or tell it to
-    //read those into a special varlist? As results. I.e. this expects some specific variables to be set by this config file. To tell where the results
-    //will come from/what those files will be named. Like "add results file". etc. They will always be in format of variables? And be read in that way?
-    //name the files and read them in accordingly. Meh.
-  }
+  parampoint build_parampoint( hierarchical_varlist<std::string>& hv, const std::string& dir, memfsys& myfsys, seedgen& sg, const bool& usedisk=false );
+  
 };
 
 
@@ -1053,35 +419,21 @@ struct executable_representation
 //Have a list of currently processing. PARAMPOINT/PSET/PITEM. Linked list or something... deque.
 
 
-//REV: this is the structure that operates almost entirely on param point space
-//It also knows what needs to be done to detect convergence etc.?
-//User passes a function pointer or something? Or there are several "algorithms" that are selected.
-struct search_function
-{
-  
-};
 
 
 struct pset_result
 {
   std::vector< varlist<std::string> > pitem_results;
-  pset_result( const size_t& nitems )
-  {
-    pitem_results = std::vector< varlist<std::string> >( nitems );
-  }
+  pset_result( const size_t& nitems );
+ 
 };
 
 struct parampoint_result
 {
   std::vector< pset_result > pset_results;
 
-  parampoint_result( const parampoint& myp  )
-  {
-    for(size_t x=0; x<myp.psets.size(); ++x)
-      {
-	pset_results.push_back( pset_result( myp.psets[x].pitems.size() ) );
-      }
-  }
+  parampoint_result( const parampoint& myp  );
+  
 };
 
 
@@ -1106,56 +458,17 @@ struct parampoint_generator
   executable_representation exec_rep; //representation of the "script" to run to generate psets (param point) etc.
 
     
-  void set_result( const parampoint_coord& pc, const varlist<std::string>& result )
-  {
-    parampoint_results[ pc.parampointn ].pset_results[ pc.psetn ].pitem_results[ pc.pitemn ] = result;
-    return;
-  }
+  void set_result( const parampoint_coord& pc, const varlist<std::string>& result );
+ 
 
-  varlist<std::string> get_result( const parampoint_coord& pc )
-  {
-    return  parampoint_results[ pc.parampointn ].pset_results[ pc.psetn ].pitem_results[ pc.pitemn ];
-    
-  }
+  varlist<std::string> get_result( const parampoint_coord& pc );
+ 
 
-  std::vector<varlist<std::string>> get_last_N_results( const size_t& N )
-  {
-    if( parampoints.size() < N )
-      {
-	fprintf(stderr, "ERROR in get last N: parampoints size too small [%ld] for N [%ld]\n", parampoints.size(), N);
-	exit(1);
-      }
-    
-    std::vector<varlist<std::string> > ret( N );
-    for(size_t x=parampoint_results.size()-N; x<parampoint_results.size(); ++x)
-      {
-	if( parampoint_results.size() <= x )
-	  {
-	    fprintf(stderr, "Error parampoint results size too small in get last N (results size: [%ld], trying to get Xth [%ld]\n", parampoint_results.size(), x);
-	    exit(1);
-	  }
-	if( parampoint_results[x].pset_results.size() == 0 )
-	  {
-	    fprintf(stderr, "ERROR parampoint results, PSET results size is 0\n" );
-	    exit(1);
-	  }
-	if(parampoint_results[x].pset_results[ parampoint_results[x].pset_results.size()-1 ].pitem_results.size() != 1)
-	  {
-	    fprintf(stderr, "REV: In get last N results (parampoint results): Final PSET is of width != 1\n");
-	    exit(1);
-	  }
-	ret[x] = parampoint_results[x].pset_results[ parampoint_results[x].pset_results.size()-1 ].pitem_results[0];
-      }
-    
-    
-    return ret;
-    
-  }
+  std::vector<varlist<std::string>> get_last_N_results( const size_t& N );
+ 
 
-  varlist<std::string> get_result( const size_t& ppnum, const size_t& psetnum, const size_t& pitemn )
-  {
-    return  get_result( parampoint_coord( ppnum, psetnum, pitemn ) );
-  }
+  varlist<std::string> get_result( const size_t& ppnum, const size_t& psetnum, const size_t& pitemn );
+  
 
 
   //REV: How to do this? User should specify how often to cleanup...
@@ -1166,56 +479,20 @@ struct parampoint_generator
   //REV: Might want to also clean up (write to HDF5 log) the stuff
   //from file system if it is saved there? Otherwise it will grow.
   //In other words, memfsystem? I.e. iteratively do parampoint.
-  void cleanup_parampoints_upto( const size_t& ppidx )
-  {
-    //Note all arrays should be of same size...if not there's a problem..
-    if( ppidx > parampoint_vars.size() )
-      {
-	fprintf(stderr, "ERROR, cleanup_parmpoints_upto, requested ppidx [%ld] > size of array [%ld]\n", ppidx, parampoint_vars.size() );
-	exit(1);
-      }
-
-
-    //REV: .end() pointer should point PAST end of guys we are erasing. So this will including the +ppidx-1 guy I assume...?
-    parampoint_vars.erase(parampoint_vars.begin(), parampoint_vars.begin()+ppidx );
-    parampoints.erase(parampoints.begin(), parampoints.begin()+ppidx );
-    parampoint_results.erase(parampoint_results.begin(), parampoint_results.begin()+ppidx );
-    parampoint_memfsystems.erase(parampoint_memfsystems.begin(), parampoint_memfsystems.begin()+ppidx );
-
-    if( parampoint_vars.size() != 0 )
-      {
-	fprintf(stderr, "REV: WARNING in cleanup parampoints upto: parampoint length is not 0! It is [%ld]\n", parampoint_vars.size() );
-      }
-
-    return;
-  }
-
+  void cleanup_parampoints_upto( const size_t& ppidx );
   
-  void log_parampoints_upto( const size_t& ppidx)
-  {
-    //REV: Some regular way to handle these? force user to do something about it?
-  }
+  
+  void log_parampoints_upto( const size_t& ppidx);
+ 
   
   
   
   //Construct it by specifying global vars or something?
 
-  parampoint_generator()
-  {
-    //do nothing, dummy constructor
-  }
+  parampoint_generator();
+ 
+  parampoint_generator( const std::string& scriptfname, const std::string& bdir );
   
-  parampoint_generator( const std::string& scriptfname, const std::string& bdir )
-  {
-    fprintf(stdout, "Making exec rep\n");
-    exec_rep = executable_representation( scriptfname );
-
-    fprintf(stdout, "FINISHED Making exec rep\n");
-    
-    basedir = bdir;
-    make_directory( basedir ); //better already exist...
-  }
-
   
   //takes an argument which is just a (new?) variable list of the parameters to test, and does stuff. Note some (other fixed parameters) might be global.
   //This ONLY generates, it is totally independent to sending stuff to be executed.
@@ -1226,32 +503,8 @@ struct parampoint_generator
   //I.e. control passes to that to farm out that "set" of paramthings at a time? May be a generation, may not be?
   //We pass a set of varlists to execute, and it does everything for me.
   
-  size_t generate( const varlist<std::string>& vl, seedgen& sg, const bool& usedisk=false )
-  {
-    //Takes the varlist...
-    hierarchical_varlist<std::string> hv( vl );
-    
-    parampoint_vars.push_back( hv );
-    
-    std::string dirname = basedir + "/" + std::to_string( parampoints.size() );
-    
-    memfsys myfsys;
-    
-    parampoint retp = exec_rep.build_parampoint( hv, dirname, myfsys, sg, usedisk );
-    
-    parampoints.push_back ( retp );
-
-    parampoint_results.push_back( parampoint_result( retp ) );
-    
-    //fprintf(stdout, "Finished, now GENERATE pg, will enumerate.\n");
-    //hv.enumerate();
-    
-    parampoint_memfsystems.push_back( myfsys );
-    
-    return (parampoints.size() - 1);
-  }
-
-
+  size_t generate( const varlist<std::string>& vl, seedgen& sg, const bool& usedisk=false );
+ 
   
 }; //end struct parampoint_gen
 

@@ -1,28 +1,3 @@
-//REV: ORGANIZATION:
-//There are two hierarchical variable lists.
-//
-//1) One is a general "named" variable list. Which will have a "flat" list of variable lists, which may be
-//per-model etc.
-//
-//2) The other is the param-point varlist, which is a list, but it is hierarchical, for the purpose of e.g.
-//a GENERATIONS
-//b PSETS
-//c WORKERS
-
-//And, what is actually passed is any of the guys, and it will go up to parents.
-//How about just making a single structure. It has the named side, and it has the parampoint side. Which will contain all the param point lists?
-//Will it store all previous parampoints as well? No...each param point is a new one, OK. Why not just make them all part of one, and parampoints are
-//just some simple guy..? Hm, nah. How to specify global parameters we want to read, and which not to? Via "namespace" type guys? If we give mytag
-//type string names to the guys...hm. Realistically, how will I use it? At any rate, I need the way to search for a variable, given the guy.
-
-
-
-//REV: User functions will NECESSARILY know how to use/parse targets. Only user defined "bound" functions such as those to distribute -b X -b N
-//etc will be able to use variables...? When reading variables, it will always only convert to a single string. During reading, if user tries to read
-//an array raw, that will cause an error of course... He must always convert to a string somehow first? Some default tells what separator to use.
-//OK. So, now I have defined hierarchy. I need to tell "which" of the varlist to search in. One is hierarchical.
-//Note, one is root...? It's "always" a list of hierarchical varlists?
-
 
 #pragma once
 
@@ -36,40 +11,13 @@
 
 
 
-//REV: OK, so now what I have is the functions etc. that does executable representation, and they will "create" the appropriate varlist etc., based
-//on "parampoint" etc.?
-//Note, there are some "functional" variables, such as file directory, etc.? Worker number?
-
-//Let user add to these, etc. How do we do "named" vars? How do we access "worker X in previous paramset etc.?"
-
-
-
-
-
-//User writes his own functions, which are void functions that just take a functsig as argument, and runs a specified function.
-
-
 //REV: what var?
-std::string setvar(const functsig& fs)
-{
-  //What is this function? A global function for setting a global variable list? I really should have a more local one...? Some way of specifying "which"
-  //variable to set? Which may be latent?
-  SETVAR( fs.args[0], fs.args[1] );
-}
-
+std::string setvar(const functsig& fs);
 
 //Whoa, sometimes it needs to return something? I.e. a string? Oh shit, it always does...?
-std::string getvar(const functsig& fs)
-{
-  return GETVAR( fs.args[0] );
-}
+std::string getvar(const functsig& fs);
 
-
-struct functsig
-{
-  std::string tag;
-  std::vector<std::string> args; //args.size() is number of args.
-};
+struct functsig;
 
 
 //REV: make it also implicitly take a "variable context" or something, so we know which variable set to draw from?
@@ -148,24 +96,8 @@ struct functlist_item
   
   
   //Constructor
-  functlist_item( const std::string _tag, const std::function<void(functsig)> _funct, const size_t _nargs )
-  : tag(_tag),
-    funct(_funct),
-    nargs(_nargs)
-  {
-    //REV: do nothing
-  }
+  functlist_item( const std::string _tag, const std::function<void(functsig)> _funct, const size_t _nargs );
   
-  std::string execute( const functsig& fs )
-  {
-    if( fs.args.size() != nargs )
-      {
-	fprintf(stderr, "ERROR: in execute of functlist_item [%s]: nargs (%ld) != args of passed functsig (%ld)\n", tag.c_str(), nargs, fs.args.size());
-	exit(1);
-      }
-    else
-      {
-	return funct( fs );
-      }
-  }
+  std::string execute( const functsig& fs );
+  
 };

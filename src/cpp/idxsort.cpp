@@ -1,6 +1,43 @@
 #pragma once
+#include <idxsort.h>
 
-#include "idxsort.h"
+
+template <typename T>
+bool sortthing<T>::operator()  (int i, int j)
+{
+  return (dat[i] < dat[j]);
+}
+
+template <typename T>
+sortthing<T>::sortthing(T* da)
+  : dat(da)
+{
+}
+
+
+template <typename T>
+void sorter<T>::add_l(long int* a)
+{
+  largs.push_back(a);
+}
+  template <typename T>
+void sorter<T>::add_i(int* a)
+  {
+    iargs.push_back(a);
+  }
+  template <typename T>
+  void sorter<T>::add_f(float* a)
+  {
+    fargs.push_back(a);
+  }
+template <typename T>
+  void sorter<T>::add_d(double* a)
+  {
+    dargs.push_back(a);
+  }
+ 
+
+
 
 //REV: Rofl this is template implementation...
 template <typename T>
