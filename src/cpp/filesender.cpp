@@ -25,8 +25,10 @@ void filesender::init_local_worker_idx()
   std::string retval=std::getenv( "OMPI_COMM_WORLD_LOCAL_RANK" );
   mylocalidx = std::stol(retval);
   std::string cmdname = "ROOTNAME";
+  
   if( world.rank() == 0 )
     {
+      fprintf(stdout, "ROOT host is [%s], root local idx is [%s]([%ld])\n", myname.c_str(), retval.c_str(), mylocalidx);
       //Rank zero had sure as heck better be the 0th in its guy.
       //I guess it really doesn't matter (?) but that means I need
       //to figure out what to do. If I send my number as well, other
@@ -51,9 +53,13 @@ void filesender::init_local_worker_idx()
 	  fprintf(stderr, "REV: MAJOR ERROR, worker [%d] recieved cmd from root, expecting [%s] but got [%s]\n", world.rank(), cmdname.c_str(), c.CMD.c_str() );
 	  exit(1);
 	}
+
       psweep_cmd c2 = receive_cmd_from_root();
+      
+
       if( myname.compare( c2.CMD ) == 0 )
 	{
+	  fprintf(stdout, "RANK [%d] hostname is [%s], my local idx is [%s]([%ld]). From root I received [%s] (I MATCHED)\n", world.rank(), myname.c_str(), retval.c_str(), mylocalidx, c2.CMD.c_str());
 	  //I am in same as root rank, need to subtract 1!
 	  if( mylocalidx > 0 )
 	    {
@@ -63,6 +69,10 @@ void filesender::init_local_worker_idx()
 	    {
 	      fprintf(stderr, "ERROR: RANK [%d]: Attempting to subtract 1 from my local index, but my local index is already ZERO. Wat?\n", world.rank());
 	    }
+	}
+      else
+	{
+	  fprintf(stdout, "RANK [%d] hostname is [%s], my local idx is [%s]([%ld]). From root I received [%s] (I *DID NOT* MATCH)\n", world.rank(), myname.c_str(), retval.c_str(), mylocalidx, c2.CMD.c_str());
 	}
 
       //receive it and check if its same. If so, subtract 1 from retval
@@ -652,13 +662,13 @@ void filesender::send_int( const int& targrank, const int& tosend ) //, boost::m
     return outputvlist;
   }
 
-std::string filesender::get_local_rank( )
+size_t filesender::get_local_rank( )
 {
   //REV: BIG PROBLEM, this doesn't work because those on same machine as rank 0 will need to be +1...ugh
-  std::string retval=std::getenv( "OMPI_COMM_WORLD_LOCAL_RANK" );
+  //std::string retval=std::getenv( "OMPI_COMM_WORLD_LOCAL_RANK" );
   //fprintf(stdout, "Got local rank. It's [%s]\n", retval.c_str());
   //char retval = secure_getenv("OMPI_COMM_WORLD_LOCAL_RANK");
-  return (retval);
+  return mylocalidx;
 }
 
 void filesender::mangle_with_local_worker_idx( pitem& mypitem )
@@ -674,7 +684,9 @@ void filesender::mangle_with_local_worker_idx( pitem& mypitem )
 	      fprintf(stderr, "REV: ERROR: in mangle_with_local_worker_idx: requested index of arg in mycmd [%ld] is larger than size of array [%ld]\n", mypitem.setlocalidx[x], mypitem.mycmd.size() );
 	      exit(1);
 	    }
-	  mypitem.mycmd[ mypitem.setlocalidx[x] ] = get_local_rank(); //std::to_string( get_local_rank() ); //std::to_string( local_worker_idx[world.rank()] );
+	  //TODO REV: Make to string here
+	  //std::stringstream ss;
+	  mypitem.mycmd[ mypitem.setlocalidx[x] ] = std::to_string( get_local_rank() ); //std::to_string( get_local_rank() ); //std::to_string( local_worker_idx[world.rank()] );
 	}
     }
   return;

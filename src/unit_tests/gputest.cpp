@@ -66,7 +66,7 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
 
   if( mydev >= devs.size() )
     {
-      fprintf(stderr, "BIG ERROR, not enough devices on the host you provided!!!!!! I should not have been farmed!!!\n");
+      fprintf(stderr, "BIG ERROR, not enough devices on the host you provided!!!!!! I should not have been farmed!!! Mydev is[%ld] but there are only [%ld] devs on this machine\n", mydev, devs.size());
       exit(1);
     }
   fprintf(stdout, "My rank is [%ld] so I should be using dev [%ld]\n", mydev, devs[mydev]);

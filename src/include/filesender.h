@@ -332,7 +332,7 @@ struct filesender
   //REV: this needs to "find" which PITEM was allocated to that worker/ thread.
   //REV: Note we could use todisk, but easier to do it as todisk?
   varlist<std::string> handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem, memfsys& myfsys, const bool& usedisk=false );
-  std::string get_local_rank( );
+  size_t get_local_rank( );
   void mangle_with_local_worker_idx( pitem& mypitem );
   
   bool execute_work( pitem& mypitem, memfsys& myfsys );
