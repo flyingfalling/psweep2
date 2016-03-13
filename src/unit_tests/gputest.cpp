@@ -108,8 +108,8 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
   std::vector<float64_t> cpu_dist1( ndims, -666 );
   std::vector<float64_t> cpu_dist2( ndims, -666 );
 
-  std::vector<float64_t> gpu_dist1( ndims, -666 );
-  std::vector<float64_t> gpu_dist2( ndims, -666 );
+  std::vector<float64_t> gpu_dist1( ndims, -444 );
+  std::vector<float64_t> gpu_dist2( ndims, -444 );
   
   //Compute GPUDIST
   gpu_dist1 = gpucomp( estimate, peak1vec, mylegaldev);
