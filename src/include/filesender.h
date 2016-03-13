@@ -52,7 +52,15 @@
 
 
 
-struct psweep_cmd;
+struct psweep_cmd
+{
+  int SRC;
+  std::string CMD;
+  psweep_cmd( const int srcr, const std::string& cm );
+  psweep_cmd()
+  {
+  }
+};
 
 struct filesender
 {
@@ -70,6 +78,8 @@ struct filesender
 
   boost::mpi::communicator world;
 
+  size_t mylocalidx;
+  
   //std::vector<size_t> local_worker_idx; //this is created and is same size as workers, but contains local index.
 
   
@@ -214,6 +224,7 @@ struct filesender
     
   };
 
+  
 
   //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
   //static filesender* Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk=false );
@@ -244,7 +255,8 @@ struct filesender
     //REV: the other one should naturally delete it here.
   }
 
-  
+  void init_local_worker_idx();
+  void broadcast_cmd( const std::string& cmd );
   //REV; TODO: at some point, build the fake MEM_FILESYSTEM, and furthermore, populate the FAKE_SYSTEM_CALLS if we want to...
   //Note when we construct and send PITEM, then we are writing to target, but we don't want to actually write out to local one unless we are executing
   //the stuff. In other words. only do it right before execute? Only if execute returns false? Execute takes the stuff. Hmm, we will be writing large numbers

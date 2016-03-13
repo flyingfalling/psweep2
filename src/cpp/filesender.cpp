@@ -3,42 +3,96 @@
 
 
 
-struct psweep_cmd
+
+psweep_cmd::psweep_cmd( const int srcr, const std::string& cm )
+  : SRC( srcr ), CMD( cm )
 {
-  int SRC;
-  std::string CMD;
+  //NOTHING
+}
 
-psweep_cmd( const int srcr, const std::string& cm )
-: SRC( srcr ), CMD( cm )
-  {
-    //NOTHING
-  }
-};
+//REV: This will get processor name (only for the root). All those with same number as ROOT remember that they need to add 1.
+//This way I only compute it once, a bit better this way... I could have user-side store a GPU associate counter for speed though ;)
+void filesender::init_local_worker_idx()
+{
+  //This is stored locally in each rank of course
+  //So, I really only need to compute it once.
+  //local_worker_idx.resize( world.size(), 0 );
+  std::vector<char> name(MPI_MAX_PROCESSOR_NAME);
+  int namelen=-1;
+  MPI_Get_processor_name(name.data(), &namelen);
+  std::string myname(name.begin(), name.begin()+namelen); //will this work?
+  //Now, if my rank is 0, send, else, receive.
+  std::string retval=std::getenv( "OMPI_COMM_WORLD_LOCAL_RANK" );
+  mylocalidx = std::stol(retval);
+  std::string cmdname = "ROOTNAME";
+  if( world.rank() == 0 )
+    {
+      //Rank zero had sure as heck better be the 0th in its guy.
+      //I guess it really doesn't matter (?) but that means I need
+      //to figure out what to do. If I send my number as well, other
+      //guys can compute how many they need to go "down", but
+      //that's a PITA.
+      if( mylocalidx != 0 )
+	{
+	  fprintf(stderr, "REV: WHOA, rank 0 is not index 0!!!\n  It is rank(string) [%s] (translated to [%ld]\n\n", retval.c_str(), mylocalidx);
+	  exit(1);
+		  
+	  //Error?
+	}
+      //send to all, my name
+      broadcast_cmd(cmdname);
+      broadcast_cmd(myname);
+    }
+  else
+    {
+      psweep_cmd c = receive_cmd_from_root();
+      if( c.CMD.compare( cmdname ) != 0 )
+	{
+	  fprintf(stderr, "REV: MAJOR ERROR, worker [%d] recieved cmd from root, expecting [%s] but got [%s]\n", world.rank(), cmdname.c_str(), c.CMD.c_str() );
+	  exit(1);
+	}
+      psweep_cmd c2 = receive_cmd_from_root();
+      if( myname.compare( c2.CMD ) == 0 )
+	{
+	  //I am in same as root rank, need to subtract 1!
+	  if( mylocalidx > 0 )
+	    {
+	      mylocalidx -= 1;
+	    }
+	  else
+	    {
+	      fprintf(stderr, "ERROR: RANK [%d]: Attempting to subtract 1 from my local index, but my local index is already ZERO. Wat?\n", world.rank());
+	    }
+	}
+
+      //receive it and check if its same. If so, subtract 1 from retval
+      //
+    }
+  
+  
+} //init_local_worker_idx done.
 
 
-
-
-  //REV; TODO: at some point, build the fake MEM_FILESYSTEM, and furthermore, populate the FAKE_SYSTEM_CALLS if we want to...
-  //Note when we construct and send PITEM, then we are writing to target, but we don't want to actually write out to local one unless we are executing
-  //the stuff. In other words. only do it right before execute? Only if execute returns false? Execute takes the stuff. Hmm, we will be writing large numbers
-  //of files possibly still, massive waste. So, I need a way to stop it from doing that...
-  filesender::filesender()
-  {
-    MPI_Init(0, NULL);
+//REV; TODO: at some point, build the fake MEM_FILESYSTEM, and furthermore, populate the FAKE_SYSTEM_CALLS if we want to...
+//Note when we construct and send PITEM, then we are writing to target, but we don't want to actually write out to local one unless we are executing
+//the stuff. In other words. only do it right before execute? Only if execute returns false? Execute takes the stuff. Hmm, we will be writing large numbers
+//of files possibly still, massive waste. So, I need a way to stop it from doing that...
+filesender::filesender()
+{
+  MPI_Init(0, NULL);
     
-    //Assume that world/env are automatically constructed?
-    //local_worker_idx.resize( world.size(), 0 );
-    _workingworkers.resize( world.size(), true );
-    //Wait, does this contain the info about everything e.g. -n 4??? Like ARGC and ARGV...?
-
-    //world.rank()OMPI_COMM_WORLD_LOCAL_RANK
-  }
+  //Assume that world/env are automatically constructed?
+  init_local_worker_idx();
+  _workingworkers.resize( world.size(), true );
+  //Wait, does this contain the info about everything e.g. -n 4??? Like ARGC and ARGV...?
+}
 
 filesender::filesender(fake_system& _fakesys, const bool& _todisk)
 : fakesys( _fakesys ), todisk(_todisk)
   {
     MPI_Init(0, NULL);
 
+    init_local_worker_idx();
     bool currworking=true;
     //Assume that world/env are automatically constructed?
     _workingworkers.resize( world.size(), currworking );
@@ -113,85 +167,97 @@ filesender::filesender(fake_system& _fakesys, const bool& _todisk)
     //destruct
     }*/
 
-  void filesender::send_varlist(  const int& targrank, const varlist<std::string>& v ) //, boost::mpi::communicator& world )
-  {
-    //*world.send( targrank, boost::mpi::any_tag, v );
-    //world->send( targrank, boost::mpi::any_tag, v );
-    world.send( targrank, 0, v );
-  }
+void filesender::send_varlist(  const int& targrank, const varlist<std::string>& v ) //, boost::mpi::communicator& world )
+{
+  //*world.send( targrank, boost::mpi::any_tag, v );
+  //world->send( targrank, boost::mpi::any_tag, v );
+  world.send( targrank, 0, v );
+}
 
+void filesender::broadcast_cmd( const std::string& cmd ) //, boost::mpi::communicator& world )
+{
+  //world.broadcast( MPI_COMM_WORLD, cmd, world.rank() );
+  std::string c=cmd;
+  boost::mpi::broadcast( world, c, world.rank() );
+  return;
+}
 
-  void filesender::send_cmd( const std::string& cmd, const int& targrank ) //, boost::mpi::communicator& world )
-  {
-    //world->send( targrank, boost::mpi::any_tag, cmd );
-    world.send( targrank, 0, cmd );
-  }
+void filesender::send_cmd( const std::string& cmd, const int& targrank ) //, boost::mpi::communicator& world )
+{
+  //world->send( targrank, boost::mpi::any_tag, cmd );
+  world.send( targrank, 0, cmd );
+}
 
-  void filesender::send_pitem( const pitem& mypitem, const int& targrank ) //, boost::mpi::communicator& world )
-  {
-    //world->send( targrank, boost::mpi::any_tag, mypitem ); //will serialize it for me.
-    world.send( targrank, 0, mypitem ); //will serialize it for me.
-  }
+void filesender::send_pitem( const pitem& mypitem, const int& targrank ) //, boost::mpi::communicator& world )
+{
+  //world->send( targrank, boost::mpi::any_tag, mypitem ); //will serialize it for me.
+  world.send( targrank, 0, mypitem ); //will serialize it for me.
+}
 
-  varlist<std::string> filesender::receive_varlist( const int& targrank ) //, boost::mpi::communicator& world  )
-  {
-    varlist<std::string> tmpv;
-    world.recv( targrank, boost::mpi::any_tag, tmpv );
-    return tmpv;
-  }
+varlist<std::string> filesender::receive_varlist( const int& targrank ) //, boost::mpi::communicator& world  )
+{
+  varlist<std::string> tmpv;
+  world.recv( targrank, boost::mpi::any_tag, tmpv );
+  return tmpv;
+}
 
-  //I want to block but I want to get message from target before handling others.
-  psweep_cmd filesender::receive_cmd_from_any( ) //boost::mpi::communicator& world )
-  {
-    boost::mpi::status msg = world.probe();
+//I want to block but I want to get message from target before handling others.
+psweep_cmd filesender::receive_cmd_from_any( ) //boost::mpi::communicator& world )
+{
+  boost::mpi::status msg = world.probe();
   
-    std::string data;
-
-    
-    world.recv(msg.source(), boost::mpi::any_tag, data);
-    
-    psweep_cmd pc( msg.source(), data );
-
-    return pc;
-  }
-
-  psweep_cmd filesender::receive_cmd_from_root( ) //boost::mpi::communicator& world )
-  {
-    boost::mpi::status msg = world.probe();
+  std::string data;
   
-    std::string data;
-
-    if ( msg.source() == 0 )
-      {
-	world.recv(msg.source(), boost::mpi::any_tag, data);
-      }
-    
-    psweep_cmd pc( msg.source(), data );
-
-    return pc;
-  }
-
-  pitem filesender::receive_pitem( const int& targrank ) //, boost::mpi::communicator& world  )
-  {
-    pitem newpitem;
-    world.recv( targrank, boost::mpi::any_tag, newpitem );
-    return newpitem;
-  }
-
-  int filesender::receive_int( const int& targrank ) //, boost::mpi::communicator& world )
-  {
-    int newint;
-    world.recv( targrank, boost::mpi::any_tag, newint );
-    return newint;
-  }
-
-  void filesender::send_int( const int& targrank, const int& tosend ) //, boost::mpi::communicator& world )
-  {
-    int newint;
-    //world.send( targrank, boost::mpi::any_tag, tosend );
-    world.send( targrank, 0, tosend );
   
-  }
+  world.recv(msg.source(), boost::mpi::any_tag, data);
+  
+  psweep_cmd pc( msg.source(), data );
+
+  return pc;
+}
+
+psweep_cmd filesender::receive_cmd_from_root( ) //boost::mpi::communicator& world )
+{
+  boost::mpi::status msg = world.probe();
+  
+  std::string data;
+
+  if ( msg.source() == 0 )
+    {
+      world.recv(msg.source(), boost::mpi::any_tag, data);
+    }
+  else
+    {
+      fprintf(stderr, "ERROR, rank [%d] got a non-root message (from [%d]) even though I'm requesting receive_cmd_from_root\n", world.rank(), msg.source() );
+      exit(1);
+    }
+    
+  psweep_cmd pc( msg.source(), data );
+
+  return pc;
+}
+
+pitem filesender::receive_pitem( const int& targrank ) //, boost::mpi::communicator& world  )
+{
+  pitem newpitem;
+  world.recv( targrank, boost::mpi::any_tag, newpitem );
+  return newpitem;
+}
+
+int filesender::receive_int( const int& targrank ) //, boost::mpi::communicator& world )
+{
+  int newint;
+  world.recv( targrank, boost::mpi::any_tag, newint );
+  return newint;
+}
+
+void filesender::send_int( const int& targrank, const int& tosend ) //, boost::mpi::communicator& world )
+{
+  int newint;
+  //world.send( targrank, boost::mpi::any_tag, tosend );
+  world.send( targrank, 0, tosend );
+  
+}
 
   //So, depending on the RANK, this will SEND or RECEIVE.
   //All SLAVES enter a LOOP of waiting for a MESG.
@@ -588,6 +654,7 @@ filesender::filesender(fake_system& _fakesys, const bool& _todisk)
 
 std::string filesender::get_local_rank( )
 {
+  //REV: BIG PROBLEM, this doesn't work because those on same machine as rank 0 will need to be +1...ugh
   std::string retval=std::getenv( "OMPI_COMM_WORLD_LOCAL_RANK" );
   //fprintf(stdout, "Got local rank. It's [%s]\n", retval.c_str());
   //char retval = secure_getenv("OMPI_COMM_WORLD_LOCAL_RANK");
