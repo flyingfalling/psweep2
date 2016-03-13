@@ -69,7 +69,7 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
       fprintf(stderr, "BIG ERROR, not enough devices on the host you provided!!!!!! I should not have been farmed!!! Mydev is[%ld] but there are only [%ld] devs on this machine\n", mydev, devs.size());
       exit(1);
     }
-  fprintf(stdout, "My rank is [%ld] so I should be using dev [%ld]\n", mydev, devs[mydev]);
+  //fprintf(stdout, "My rank is [%ld] so I should be using dev [%ld]\n", mydev, devs[mydev]);
 
 
   size_t mylegaldev = devs[mydev];
@@ -115,6 +115,7 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
   gpu_dist1 = gpucomp( estimate, peak1vec, mylegaldev);
   gpu_dist2 = gpucomp( estimate, peak2vec, mylegaldev);
   
+
   
   for(size_t d=0; d<ndims; ++d)
     {
@@ -124,10 +125,12 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
       
       t1 += cpu_dist1[d];
       t2 += cpu_dist2[d];
-      
+
+      fprintf(stdout, "%lf ", gpu_dist1[d] );
       gt1 += gpu_dist1[d];
       gt2 += gpu_dist2[d];
     }
+  fprintf(stdout, "\n");
 
   gt1 = sqrt(gt1);
   gt2 = sqrt(gt2);
