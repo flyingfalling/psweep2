@@ -114,7 +114,6 @@ std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64
   //REV: Do I need to synch it or something?
   cudaDeviceSynchronize() ;
 
-// Copy array back to host
   checkCudaErrors(cudaMemcpy( result.data(), d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost ));
 
   checkCudaErrors(cudaFree( d_estptr ));
