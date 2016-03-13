@@ -7,6 +7,8 @@
 #include <string>
 #include <cstdio>
 
+#include <commontypes.h>
+
 
 std::vector<size_t> find_legaldevs()
 {
@@ -17,8 +19,8 @@ std::vector<size_t> find_legaldevs()
   cudaError_t error_id = cudaGetDeviceCount(&deviceCount);
   if (error_id != cudaSuccess)
     {
-      printf("cudaGetDeviceCount returned %d\n-> %s\n", (int)error_id, cudaGetErrorString(error_id));
-      printf("Result = FAIL\n");
+      fprintf(stderr, "cudaGetDeviceCount returned %d\n-> %s\n", (int)error_id, cudaGetErrorString(error_id));
+      fprintf(stderr, "Result = FAIL\n");
       exit(EXIT_FAILURE);
     }
   
@@ -48,4 +50,75 @@ std::vector<size_t> find_legaldevs()
     }
   //cudaDeviceReset();
   return ret;
+}
+
+__global__ void compDist( float64_t *res, float64_t *a, float64_t *b, size_t sizen )
+{
+  // Get our global thread ID
+  int id = (blockIdx.x*blockDim.x) + threadIdx.x;
+  
+  // Make sure we do not go out of bounds
+  if (id < sizen)
+    {
+      res[id] = a[id] - b[id];
+      res[id] = (res[id]*res[id]);
+    }
+  //else
+  //   { do nothing } 
+
+  return;
+}
+
+std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64_t>& actual, size_t& cudadevnum )
+{
+  cudaSetDevice(cudadevnum); //check errors? rofl.
+  
+  if(est.size() != actual.size())
+    {
+      fprintf(stderr,"REV: ERROR in cuda gpucomp, actual != est size!\n"); exit(1);
+    }
+
+  std::vector<float64_t> result( est.size(), -666 );
+  
+  float64_t* d_estptr;
+  float64_t* d_actualptr;
+  float64_t* d_resultptr;
+  
+  //Run the appropriate kernel
+  cudaMalloc(&d_estptr, est.size()*sizeof(est[0]) );
+  cudaMalloc(&d_actualptr, actual.size()*sizeof(actual[0]) );
+  cudaMalloc(&d_resultptr, result.size()*sizeof(result[0]) );
+  
+  cudaMemcpy(d_estptr, est.data(), est.size()*sizeof(est[0]), 
+	     cudaMemcpyHostToDevice);
+  cudaMemcpy(d_actualptr, actual.data(), actual.size()*sizeof(actual[0]), 
+	     cudaMemcpyHostToDevice);
+  cudaMemcpy(d_resultptr, result.data(), result.size()*sizeof(result[0]), 
+	     cudaMemcpyHostToDevice);
+
+  //RUN KERNEL
+  int blockSize=0;
+  int gridSize=0;
+ 
+  // Number of threads in each thread block
+  blockSize = 1024;
+ 
+  // Number of thread blocks in grid
+  gridSize = (int)ceil((float)est.size()/blockSize);
+  
+  // Execute the kernel
+  compDist<<<gridSize, blockSize>>>(d_resultptr, d_estptr, d_actualptr, result.size());
+
+  //REV: Do I need to synch it or something?
+  //  cudaDeviceSynchronize() ;
+  
+  // Copy array back to host
+  cudaMemcpy( result.data(), d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost );
+
+  cudaFree( d_estptr );
+  cudaFree( d_actualptr );
+  cudaFree( d_resultptr );
+  
+  return result;  
+  
 }

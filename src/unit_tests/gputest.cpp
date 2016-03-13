@@ -57,7 +57,7 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
 	  fprintf(stderr, "REV: Error in user program, didn't get expected [-dev] for device\n");
 	}
       devnum=argv[6];
-      fprintf( stdout, "User program dev number is [%s]\n", devnum.c_str() );
+      //fprintf( stdout, "User program dev number is [%s]\n", devnum.c_str() );
       mydev=std::stol(devnum);
     }
 
@@ -71,6 +71,9 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
     }
   fprintf(stdout, "My rank is [%ld] so I should be using dev [%ld]\n", mydev, devs[mydev]);
 
+
+  size_t mylegaldev = devs[mydev];
+  
   
   double peak1=  5.0;
   double peak2= -5.0;
@@ -84,36 +87,63 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
   int64_t ndims = 20; //vl.get_int64( "NDIMS" );
 
   std::vector<float64_t> estimate( ndims );
-  std::vector<float64_t> truemeans( ndims );
-
-
-  //REV: Do this on the GPU
-  double t1 = 0.0;
-  double t2 = 0.0;
+  //std::vector<float64_t> truemeans( ndims );
   
   for(size_t d=0; d<ndims; ++d)
     {
       std::string vname = "VAR_" + std::to_string( d );
       float64_t paramval = vl.get_float64( vname );
-      t1 += pow ( paramval - peak1, 2 ); //center at -5 //distance from peak 1
-      t2 += pow ( paramval - peak2, 2 ); //center at +5 //distance from peak 2
+      estimate[d] = paramval;
+    }
+  
+  //REV: Do this on the GPU
+  double t1 = 0.0;
+  double t2 = 0.0;
+  double gt1 = 0.0;
+  double gt2 = 0.0;
+
+  std::vector<float64_t> peak1vec( ndims, peak1 );
+  std::vector<float64_t> peak2vec( ndims, peak2 );
+  
+  std::vector<float64_t> cpu_dist1( ndims, -666 );
+  std::vector<float64_t> cpu_dist2( ndims, -666 );
+
+  std::vector<float64_t> gpu_dist1( ndims, -666 );
+  std::vector<float64_t> gpu_dist2( ndims, -666 );
+  
+  //Compute GPUDIST
+  gpu_dist1 = gpucomp( estimate, peak1vec, mylegaldev);
+  gpu_dist2 = gpucomp( estimate, peak2vec, mylegaldev);
+  
+  
+  for(size_t d=0; d<ndims; ++d)
+    {
+      //This is CPU comp.
+      cpu_dist1[d] = pow ( estimate[d] - peak1vec[d], 2 );
+      cpu_dist2[d] = pow ( estimate[d] - peak2vec[d], 2 );
+      
+      t1 += cpu_dist1[d];
+      t2 += cpu_dist2[d];
+      
+      gt1 += gpu_dist1[d];
+      gt2 += gpu_dist2[d];
     }
 
-  //REV: need to make both models "performant"
-  //t1 = log( 1.0/3.0 * exp( -t1 ) );
-  //t2 = log( 2.0/3.0 * exp( -t2 ) );
+  gt1 = sqrt(gt1);
+  gt2 = sqrt(gt2);
+  
   t1 = sqrt(t1);
   t2 = sqrt(t2);
-
+  
   double value=100000.0;
   
-  if ( t1 < t2 )
+  if ( gt1 < gt2 )
     {
-      value = t1;
+      value = gt1;
     }
   else
     {
-      value = t2;
+      value = gt2;
     }
   
   varlist<std::string> newvl;
