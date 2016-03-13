@@ -52,7 +52,7 @@ std::vector<size_t> find_legaldevs()
   return ret;
 }
 
-__global__ void compDist( float64_t *res, float64_t *a, float64_t *b, size_t sizen )
+__global__ void compDist( float64_t *res, float64_t *a, float64_t *b, int sizen )
 {
   // Get our global thread ID
   int id = (blockIdx.x*blockDim.x) + threadIdx.x;
@@ -66,7 +66,7 @@ __global__ void compDist( float64_t *res, float64_t *a, float64_t *b, size_t siz
   //else
   //   { do nothing } 
 
-  return;
+  //return;
 }
 
 std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64_t>& actual, size_t& cudadevnum )
@@ -107,13 +107,17 @@ std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64
   gridSize = (int)ceil((float)est.size()/blockSize);
   
   // Execute the kernel
-  compDist<<<gridSize, blockSize>>>(d_resultptr, d_estptr, d_actualptr, result.size());
+  compDist<<<gridSize, blockSize>>>(d_resultptr, d_estptr, d_actualptr, (int)result.size());
 
   //REV: Do I need to synch it or something?
-  //  cudaDeviceSynchronize() ;
+  cudaDeviceSynchronize() ;
+
+  float64_t localmem[result.size()];
   
   // Copy array back to host
-  cudaMemcpy( result.data(), d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost );
+  //cudaMemcpy( result.data(), d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost );
+  cudaMemcpy( &localmem, d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost );
+  fprintf(stdout, "RESULT IS [%lf]\n", localmem[0]);
 
   cudaFree( d_estptr );
   cudaFree( d_actualptr );
