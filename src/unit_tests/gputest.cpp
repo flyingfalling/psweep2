@@ -57,7 +57,7 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
 	  fprintf(stderr, "REV: Error in user program, didn't get expected [-dev] for device\n");
 	}
       devnum=argv[6];
-      fprintf( stdout, "User program dev number is [%s]\n", devnum.c_str() );
+      //fprintf( stdout, "User program dev number is [%s]\n", devnum.c_str() );
       mydev=std::stol(devnum);
     }
 

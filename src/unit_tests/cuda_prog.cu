@@ -17,8 +17,8 @@ std::vector<size_t> find_legaldevs()
   cudaError_t error_id = cudaGetDeviceCount(&deviceCount);
   if (error_id != cudaSuccess)
     {
-      printf("cudaGetDeviceCount returned %d\n-> %s\n", (int)error_id, cudaGetErrorString(error_id));
-      printf("Result = FAIL\n");
+      fprintf(stderr, "cudaGetDeviceCount returned %d\n-> %s\n", (int)error_id, cudaGetErrorString(error_id));
+      fprintf(stderr, "Result = FAIL\n");
       exit(EXIT_FAILURE);
     }
   

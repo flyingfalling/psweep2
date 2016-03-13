@@ -28,7 +28,9 @@ void filesender::init_local_worker_idx()
   
   if( world.rank() == 0 )
     {
+#if DEBUG>5
       fprintf(stdout, "ROOT host is [%s], root local idx is [%s]([%ld])\n", myname.c_str(), retval.c_str(), mylocalidx);
+#endif
       //Rank zero had sure as heck better be the 0th in its guy.
       //I guess it really doesn't matter (?) but that means I need
       //to figure out what to do. If I send my number as well, other
@@ -59,7 +61,9 @@ void filesender::init_local_worker_idx()
 
       if( myname.compare( c2.CMD ) == 0 )
 	{
+#if DEBUG>5
 	  fprintf(stdout, "RANK [%d] hostname is [%s], my local idx is [%s]([%ld]). From root I received [%s] (I MATCHED)\n", world.rank(), myname.c_str(), retval.c_str(), mylocalidx, c2.CMD.c_str());
+#endif
 	  //I am in same as root rank, need to subtract 1!
 	  if( mylocalidx > 0 )
 	    {
@@ -72,7 +76,9 @@ void filesender::init_local_worker_idx()
 	}
       else
 	{
+#if DEBUG>5
 	  fprintf(stdout, "RANK [%d] hostname is [%s], my local idx is [%s]([%ld]). From root I received [%s] (I *DID NOT* MATCH)\n", world.rank(), myname.c_str(), retval.c_str(), mylocalidx, c2.CMD.c_str());
+#endif
 	}
 
       //receive it and check if its same. If so, subtract 1 from retval
