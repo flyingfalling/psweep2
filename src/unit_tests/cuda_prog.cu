@@ -9,6 +9,8 @@
 
 #include <commontypes.h>
 
+#include <helper_cuda.h>
+
 
 std::vector<size_t> find_legaldevs()
 {
@@ -71,7 +73,7 @@ __global__ void compDist( float64_t *res, float64_t *a, float64_t *b, int sizen 
 
 std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64_t>& actual, size_t& cudadevnum )
 {
-  cudaSetDevice(cudadevnum); //check errors? rofl.
+  checkCudaErrors(cudaSetDevice(cudadevnum)); //check errors? rofl.
   
   if(est.size() != actual.size())
     {
@@ -85,16 +87,16 @@ std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64
   float64_t* d_resultptr;
   
   //Run the appropriate kernel
-  cudaMalloc(&d_estptr, est.size()*sizeof(est[0]) );
-  cudaMalloc(&d_actualptr, actual.size()*sizeof(actual[0]) );
-  cudaMalloc(&d_resultptr, result.size()*sizeof(result[0]) );
+  checkCudaErrors(cudaMalloc(&d_estptr, est.size()*sizeof(est[0]) ));
+  checkCudaErrors(cudaMalloc(&d_actualptr, actual.size()*sizeof(actual[0]) ));
+  checkCudaErrors(cudaMalloc(&d_resultptr, result.size()*sizeof(result[0]) ));
   
-  cudaMemcpy(d_estptr, est.data(), est.size()*sizeof(est[0]), 
-	     cudaMemcpyHostToDevice);
-  cudaMemcpy(d_actualptr, actual.data(), actual.size()*sizeof(actual[0]), 
-	     cudaMemcpyHostToDevice);
-  cudaMemcpy(d_resultptr, result.data(), result.size()*sizeof(result[0]), 
-	     cudaMemcpyHostToDevice);
+  checkCudaErrors(cudaMemcpy(d_estptr, est.data(), est.size()*sizeof(est[0]), 
+	     cudaMemcpyHostToDevice));
+  checkCudaErrors(cudaMemcpy(d_actualptr, actual.data(), actual.size()*sizeof(actual[0]), 
+	     cudaMemcpyHostToDevice));
+  checkCudaErrors(cudaMemcpy(d_resultptr, result.data(), result.size()*sizeof(result[0]), 
+	     cudaMemcpyHostToDevice));
 
   //RUN KERNEL
   int blockSize=0;
@@ -111,17 +113,15 @@ std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64
 
   //REV: Do I need to synch it or something?
   cudaDeviceSynchronize() ;
-  
-  float64_t localmem[result.size()];
-  
-  // Copy array back to host
-  //cudaMemcpy( result.data(), d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost );
-  cudaMemcpy( &localmem, d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost );
-  fprintf(stdout, "RESULT IS [%lf]\n", localmem[0]);
 
-  cudaFree( d_estptr );
-  cudaFree( d_actualptr );
-  cudaFree( d_resultptr );
+// Copy array back to host
+  checkCudaErrors(cudaMemcpy( result.data(), d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost ));
+
+  checkCudaErrors(cudaFree( d_estptr ));
+		  checkCudaErrors(cudaFree( d_actualptr ));
+  checkCudaErrors( cudaFree( d_resultptr ) );
+
+  getLastCudaError("REV: Kernel execution failed");
   
   return result;  
   
