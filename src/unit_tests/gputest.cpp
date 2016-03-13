@@ -71,7 +71,8 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
     }
   fprintf(stdout, "My rank is [%ld] so I should be using dev [%ld]\n", mydev, devs[mydev]);
 
-  
+
+  size_t mylegaldev = devs[mydev];
   
   
   double peak1=  5.0;
@@ -111,8 +112,8 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
   std::vector<float64_t> gpu_dist2( ndims, -666 );
   
   //Compute GPUDIST
-  gpu_dist1 = gpucomp( estimate, peak1vec );
-  gpu_dist2 = gpucomp( estimate, peak2vec );
+  gpu_dist1 = gpucomp( estimate, peak1vec, mylegaldev);
+  gpu_dist2 = gpucomp( estimate, peak2vec, mylegaldev);
   
   
   for(size_t d=0; d<ndims; ++d)

@@ -69,8 +69,10 @@ __global__ void compDist( float64_t *res, float64_t *a, float64_t *b, size_t siz
   return;
 }
 
-std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64_t>& actual )
+std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64_t>& actual, size_t& cudadevnum )
 {
+  cudaSetDevice(cudadevnum); //check errors? rofl.
+  
   if(est.size() != actual.size())
     {
       fprintf(stderr,"REV: ERROR in cuda gpucomp, actual != est size!\n"); exit(1);
@@ -106,12 +108,17 @@ std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64
   
   // Execute the kernel
   compDist<<<gridSize, blockSize>>>(d_resultptr, d_estptr, d_actualptr, result.size());
- 
 
+  //REV: Do I need to synch it or something?
+  //  cudaDeviceSynchronize() ;
   
   // Copy array back to host
   cudaMemcpy( result.data(), d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost );
 
+  cudaFree( d_estptr );
+  cudaFree( d_actualptr );
+  cudaFree( d_resultptr );
+  
   return result;  
   
 }
