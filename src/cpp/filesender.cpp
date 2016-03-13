@@ -28,6 +28,7 @@ void filesender::init_local_worker_idx()
   
   if( world.rank() == 0 )
     {
+      fprintf(stdout, "ROOT host is [%s], root local idx is [%s]([%ld])\n", myname.c_str(), retval.c_str(), mylocalidx);
 #if DEBUG>5
       fprintf(stdout, "ROOT host is [%s], root local idx is [%s]([%ld])\n", myname.c_str(), retval.c_str(), mylocalidx);
 #endif
