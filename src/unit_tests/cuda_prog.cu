@@ -2,6 +2,7 @@
 #include <unit_tests/cuda_prog.h>
 
 #include <cuda.h>
+#include <cuda_runtime.h>
 #include <cstdlib>
 #include <vector>
 #include <string>
@@ -103,7 +104,7 @@ std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64
   int gridSize=0;
  
   // Number of threads in each thread block
-  blockSize = 1024;
+  blockSize = 128;
  
   // Number of thread blocks in grid
   gridSize = 1; //(int)ceil((float)est.size()/blockSize);
@@ -112,7 +113,7 @@ std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64
   compDist<<<gridSize, blockSize>>>(d_resultptr, d_estptr, d_actualptr, (int)result.size());
 
   //REV: Do I need to synch it or something?
-  cudaDeviceSynchronize() ;
+  cudaDeviceSynchronize();
 
   checkCudaErrors(cudaMemcpy( result.data(), d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost ));
 
