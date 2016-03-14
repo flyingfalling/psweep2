@@ -126,11 +126,9 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
       t1 += cpu_dist1[d];
       t2 += cpu_dist2[d];
 
-      fprintf(stdout, "%lf ", gpu_dist1[d] );
       gt1 += gpu_dist1[d];
       gt2 += gpu_dist2[d];
     }
-  fprintf(stdout, "\n");
 
   gt1 = sqrt(gt1);
   gt2 = sqrt(gt2);

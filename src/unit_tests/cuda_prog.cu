@@ -55,16 +55,18 @@ std::vector<size_t> find_legaldevs()
   return ret;
 }
 
-__global__ void compDist( float64_t *res, float64_t *a, float64_t *b, int sizen )
+__global__
+//void compDist( float64_t *res, float64_t *a, float64_t *b, int sizen )
+void compDist( double *res, double *a, double *b, int sizen )
 {
   // Get our global thread ID
   int id = (blockIdx.x*blockDim.x) + threadIdx.x;
   
   // Make sure we do not go out of bounds
-  if (id < sizen)
+  if(id < sizen)
     {
-      res[id] = a[id] - b[id];
-      res[id] = (res[id]*res[id]);
+      double c = a[id] - b[id];
+      res[id] = (c*c);
     }
   //else
   //   { do nothing } 
