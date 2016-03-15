@@ -1178,7 +1178,7 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
     //REV: This makes it so they match more...?
     file.flush(H5F_SCOPE_GLOBAL);
 
-    fprintf(stderr, "Calling backup\n");
+    //fprintf(stderr, "Calling backup\n");
     if(!backup_initialized)
       {
 	//REV: PROBLEM the copy takes some time initially (it's not blocking until filesystem copy is done?!?!)

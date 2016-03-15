@@ -5,18 +5,18 @@ NRANKS=13
 
 NCHAINS=50
 MAXGEN=100000
-STATEFILE=psweepdreamABC.state
+STATEFILE=psweepdreamABCz.state
 MINMAXFILE=testabc_minmax.bounds
 OBSFILE=testabc_observ.data
 EPSILFILE=testabc.epsilons
 DIR=testabcdir
-SEARCHTYPE=DREAM-ABC
+SEARCHTYPE=DREAM-ABC-Z
 WORKSCRIPT=../configs/test_abc_twopeak_gpu.cfg
 
 HOSTFILE=/nfs-mirror/gpumachinefile
 
-stdo=stdout_psweepABC
-stde=stderr_psweepABC
+stdo=stdout_psweepABCz
+stde=stderr_psweepABCz
 
 #nohup mpirun -n $NCHAINS ./test_psweep2_lib.exe -DIR $DIR -WORKSCRIPT $WORKSCRIPT -SEARCHTYPE $SEARCHTYPE -VARIABLES $MINMAXFILE -OBSERVATIONS $OBSFILE -EPSILONS $EPSILFILE -STATEFILE $STATEFILE -MAXGENS $MAXGEN -NCHAINS $NCHAINS 1>$stdo 2>$stde
 
