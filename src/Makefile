@@ -24,7 +24,7 @@ deps = $(srcs:.cpp=.d)
 default: libpsweep2.so
 
 install: libpsweep2.so
-	mkdir -p $(INSTALL_PATH)/lib
+	mkdir -p "$(INSTALL_PATH)/lib"
 	cp libpsweep2.so $(INSTALL_PATH)/lib
 	ldconfig -v
 
