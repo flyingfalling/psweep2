@@ -240,7 +240,7 @@ struct filesender
   //static filesender* Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk=false );
 
     //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
-  static filesender* /*filesender::*/Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk, const size_t& _wrkperrank )
+  static filesender* /*filesender::*/Create( const std::string& runtag, fake_system& _fakesys, const size_t& _wrkperrank , const bool& _todisk )
   {
     filesender* fs = new filesender(_fakesys,  _wrkperrank, _todisk);
     
