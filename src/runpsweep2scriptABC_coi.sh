@@ -2,7 +2,8 @@
 #Examples for running psweep2
 
 NGPU=12
-NWORKERS=$((3*$NGPU))
+NPERGPU=1
+NWORKERS=$(($NPERGPU * $NGPU))
 NRANKS=$((1+$NWORKERS))
 
 echo "Starting with $NWORKERS workers and $NRANKS ranks"
