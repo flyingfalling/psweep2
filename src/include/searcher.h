@@ -102,7 +102,7 @@ struct searcher
   std::string _mydir="__ERROR_NOMYDIR";
   std::string _runtag="scratch";
   bool _writefiles=false; //set in preparseopts
-  bool _wrkperrank=1; //set in preparseopts
+  size_t _wrkperrank=1; //set in preparseopts
 
   searcher( );
 

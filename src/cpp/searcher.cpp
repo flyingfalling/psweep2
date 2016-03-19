@@ -86,7 +86,7 @@ void searcher::run_search( optlist& opts )
     //parse to required guys that I want... ONLY ROOT RANK SHOULD EXECUTE THIS, CRAP.
     preparseopts( opts );
     
-    filesender* fs = filesender::Create( _runtag , fakesys, _writefiles, _wrkperrank );
+    filesender* fs = filesender::Create( _runtag , fakesys, _wrkperrank, _writefiles );
     
     opts.enumerateparsed();
     opts.enumerateextras();
