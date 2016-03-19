@@ -730,8 +730,9 @@ varlist<std::string> filesender::handle_finished_work( const psweep_cmd& pc, pit
   //(received) buffers from other guys in place while I'm doing this?
   //Or, allow it to do non-blocking, i.e. spin off threads? That
   //seems best.
-
+  fprintf(stdout, "ROOT: handling finished work from worker [%d]. Getting INT\n", targworker);
   size_t nfiles = receive_int_from_worker( targworker );
+  fprintf(stdout, "ROOT: handling finished work from worker [%d]. Got INT (nfiles=[%ld])\n", targworker, nfiles);
 
   for(size_t x=0; x<nfiles; ++x)
     {
@@ -771,8 +772,10 @@ varlist<std::string> filesender::handle_finished_work( const psweep_cmd& pc, pit
 	  mfp.close();
 	}
     }
+  fprintf(stdout, "ROOT: handling finished work from worker [%d]. Finished receiving all files (nfiles=[%ld]). Now getting varlist\n", targworker, nfiles);
 
   varlist<std::string> outputvlist = receive_varlist_from_worker( targworker );
+  fprintf(stdout, "ROOT: handling finished work from worker [%d]. GOT varlist\n", targworker);
   
   return outputvlist;
 }
@@ -993,12 +996,13 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	      pitem handledpitem = wprog.get_corresponding_pitem_from_workernum( pg, workernum );
 	      //fprintf(stdout, "Got handled pitem from that coordinate\n");
 
-
+	      
 	      //Specifically, call it on the parampoint#, from pg.parampoint_memfsystems[ pc.parampointn ].
 	      //REV: THIS will write to files! Modify to use a local (temporary) memfsys
 	      varlist<std::string> result = handle_finished_work( pcmd, handledpitem, pg.parampoint_memfsystems[ pc.parampointn ], usedisk );
 		
-	      //fprintf(stdout, "MASTER: got result from worker [%ld]. Now marking done...\n", workernum);
+	      fprintf(stdout, "MASTER: got result from worker [%ld]. Now marking done...\n", workernum);
+	      
 	      //need to mark it DONE in pitem representation.
 	      wprog.mark_done( pc );
 		
