@@ -95,6 +95,8 @@
 //in turn creates the threads based on some other parameter. That is fine. Problem is that workers don't directly map to ranks anymore. They now map
 //to rank by: worker# is 1+(rank-1)*NPERRANK. So, 0th rank is nothing ofc. ??? rank of worker is (worker# - TAG)/NPERRANK + 1. tag is worker# % NPERRANK.
 
+
+
 #pragma once
 
 #include <commontypes.h>
@@ -105,13 +107,14 @@
 
 #ifdef CUDA_SUPPORT
 #include <psweep2_cuda_functs_impl.h>
-#else
+#endif
 
 //Problem is this will depend on workersperguy
 size_t compute_gpu_idx( const size_t& localidx, const size_t& nworkersperrank, const size_t& ranknum )
 {
   size_t mydevidx = localidx / nworkersperrank;
   std::string devname = "Tesla K80";
+
 #ifdef CUDA_SUPPORT
   std::vector<size_t> devs = findlegaldevices_byname(devname); //Base it on some requirements of user.
   if( devs.size() <= mydevidx )
@@ -121,12 +124,15 @@ size_t compute_gpu_idx( const size_t& localidx, const size_t& nworkersperrank, c
     }
   mydevidx = devs[mydevidx];
 #endif
+
   return mydevidx;
 }
 
 void set_cuda_device(const size_t& idx)
 {
+
 #ifdef CUDA_SUPPORT
   set_cuda_device(idx);
 #endif
+
 }

@@ -15,11 +15,19 @@ NVCC=/usr/local/cuda/bin/nvcc
 GENCODE=-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_37,code=sm_37 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52
 NVCCFLAGS=-m64 -g -G -DDEBUG=6 $(GENCODE)
 
+CUDADIR=./cudaimpl
+
 INSTALL_PATH=/usr/local
 
 srcs = $(wildcard $(CPPDIR)/*.cpp)
 objs = $(srcs:.cpp=.o)
 deps = $(srcs:.cpp=.d)
+
+#CUDA_SUPPORT=1
+
+ifdef CUDA_SUPPORT
+srcs += $(wildcard $(CUDADIR)/*.cu)
+endif
 
 default: libpsweep2.so
 

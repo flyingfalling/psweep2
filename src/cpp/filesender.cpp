@@ -5,13 +5,13 @@
 
 
 psweep_cmd::psweep_cmd( const int& srcworker, const std::string& cm )
-  : SRC( srcr ), CMD( cm )
+  : SRC( srcworker ), CMD( cm )
 {
   //NOTHING
 }
 
 
-void filesender::start_worker_loop(std::string& runtag)
+void filesender::start_worker_loop(const std::string& runtag)
 {
   //REV: In here, I will mess around with threads!
   //Each filesender instance will only have a single dev#, etc.
@@ -21,12 +21,13 @@ void filesender::start_worker_loop(std::string& runtag)
   if(workersperrank > 1)
     {
       thrs.resize( workersperrank-1 );
+      for(size_t tag=0; tag<thrs.size(); ++tag)
       {
-	thrs[tag] = std::thread( execute_slave_loop, runtag, tag+1 );
+	thrs[tag] = std::thread( &filesender::execute_slave_loop, tag+1, runtag );
       }
     }
   //std::thread thr( execute_slave_loop(runtag, 0) );
-  execute_slave_loop(runtag, 0);
+  execute_slave_loop(0, runtag);
   
   for(size_t tag=0; tag<thrs.size(); ++tag)
     {
@@ -41,7 +42,7 @@ void filesender::init_local_worker_idx()
   //This is stored locally in each rank of course
   //So, I really only need to compute it once.
   //local_worker_idx.resize( world.size(), 0 );
-  std::vector<char> name(MPI_MAX_PROCESSOR_NAME);
+  std::vector<char> name( MPI_MAX_PROCESSOR_NAME );
   int namelen=-1;
   MPI_Get_processor_name(name.data(), &namelen);
   std::string myname(name.begin(), name.begin()+namelen); //will this work?
@@ -161,13 +162,13 @@ void filesender::initfilesender()
   init_local_worker_idx();
   
   //I actually don't need to do this
-#ifdef CUDA_SUPPORT
+  //#ifdef CUDA_SUPPORT
   mygpuidx=compute_gpu_idx( mylocalidx, workersperrank, getrank() );
-#endif
+  //#endif
   
   bool currworking=true;
   //Rank 1 has only 1 worker (the root master), all others have workersperrank.
-  size_t nworkers = 1 + (world.size()-1)*workersperank;
+  size_t nworkers = 1 + (world.size()-1)*workersperrank;
   _workingworkers.resize( nworkers, true );
 }
 
@@ -176,7 +177,7 @@ filesender::filesender()
   initfilesender();
 }
 
-filesender::filesender(fake_system& _fakesys, const bool& _todisk, const& size_t& _wrkperrank)
+filesender::filesender(fake_system& _fakesys, const size_t& _wrkperrank, const bool& _todisk )
   : fakesys( _fakesys ), todisk(_todisk), workersperrank( _wrkperrank )
 {
   initfilesender();
@@ -214,7 +215,7 @@ int filesender::getrank()
   return myrank;
 }
 
-void filesender::send_varlist_to_worker(  const varlist<std::string>& v, const int& targworker) //, boost::mpi::communicator& world )
+void filesender::send_varlist_to_worker(  const varlist<std::string>& v, const int& targworker)
 {
   if( checkroot() == false )
     {
@@ -226,7 +227,7 @@ void filesender::send_varlist_to_worker(  const varlist<std::string>& v, const i
   ulmux();
 }
 
-void filesender::send_varlist_to_root( const varlist<std::string>& v, const int& mytag/*=0*/ ) //, boost::mpi::communicator& world )
+void filesender::send_varlist_to_root( const varlist<std::string>& v, const int& mytag )
 {
   if( checkroot() == true )
     {
@@ -238,7 +239,7 @@ void filesender::send_varlist_to_root( const varlist<std::string>& v, const int&
   ulmux();
 }
 
-void filesender::broadcast_cmd( const std::string& cmd ) //, boost::mpi::communicator& world )
+void filesender::broadcast_cmd( const std::string& cmd ) 
 {
   //world.broadcast( MPI_COMM_WORLD, cmd, world.rank() );
   std::string c=cmd;
@@ -246,7 +247,7 @@ void filesender::broadcast_cmd( const std::string& cmd ) //, boost::mpi::communi
   return;
 }
 
-void filesender::send_cmd_to_worker( const std::string& cmd, const int& targworker ) //, boost::mpi::communicator& world )
+void filesender::send_cmd_to_worker( const std::string& cmd, const int& targworker )
 {
   if( checkroot() == false )
     {
@@ -254,11 +255,11 @@ void filesender::send_cmd_to_worker( const std::string& cmd, const int& targwork
       exit(1);
     }
   lmux();
-  world.send( getworkerrank(targworker), getworkertag(tagworker), cmd );
+  world.send( getworkerrank(targworker), getworkertag(targworker), cmd );
   ulmux();
 }
 
-void filesender::send_cmd_to_root( const std::string& cmd, const int& mytag ) //, boost::mpi::communicator& world )
+void filesender::send_cmd_to_root( const std::string& cmd, const int& mytag )
 {
   if( checkroot() == true )
     {
@@ -295,7 +296,7 @@ void filesender::send_pitem_to_root( const pitem& mypitem, const int& mytag )
   ulmux();
 }
 
-varlist<std::string> filesender::receive_varlist_from_worker( const int& targworker ) //, boost::mpi::communicator& world  )
+varlist<std::string> filesender::receive_varlist_from_worker( const int& targworker )
 {
   if( checkroot() == false )
     {
@@ -304,7 +305,22 @@ varlist<std::string> filesender::receive_varlist_from_worker( const int& targwor
     }
   varlist<std::string> tmpv;
   lmux();
-  world.recv( getworkerrank(targrank), getworkertag( targrank ), tmpv );
+  world.recv( getworkerrank(targworker), getworkertag( targworker ), tmpv );
+  ulmux();
+  return tmpv;
+}
+
+varlist<std::string> filesender::receive_varlist_from_root( const int& targworker, const int& mytag )
+{
+  if( checkroot() == true )
+    {
+      fprintf(stderr, "ERROR: REV: recv varlist root, should only be called from non ROOT rank >0, but calling from [%d]\n", getrank());
+      exit(1);
+    }
+  
+  varlist<std::string> tmpv;
+  lmux();
+  world.recv( 0, mytag, tmpv );
   ulmux();
   return tmpv;
 }
@@ -324,6 +340,25 @@ psweep_cmd filesender::receive_cmd_from_any_worker( )
   ulmux();
   
   psweep_cmd pc( getworker( msg.source(), msg.tag() ),  data );
+  return pc;
+}
+
+psweep_cmd filesender::receive_cmd_from_root( )
+{
+  if( checkroot() == true )
+    {
+      fprintf(stderr, "ERROR: REV: recv cmd from ROOT, should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
+      exit(1);
+    }
+  
+  std::string data;
+  //I literally block until there is a mesg from root?
+  lmux();
+  world.recv(0, boost::mpi::any_tag, data);
+  ulmux();
+
+  psweep_cmd pc( 0, data );
+
   return pc;
 }
 
@@ -524,11 +559,11 @@ memfsys filesender::worker_handle_pitem( pitem& mypitem, const std::string& dir,
   std::string fnamebase= "reqfile";
   for(size_t f=0; f<numfiles; ++f)
     {
-      memfile mf = receive_file( 0 );
+      memfile mf = receive_file_from_root( mytag );
       //mfs.push_back( mf );
 
 #ifdef PRINTWORKER
-      fprintf(stdout, "RANK [%d] TAG [%d] (worker [%d]): Received file with fname [%s]\n", getrank(), mytag, getworker(getrank, mytag), mf.filename.c_str() );
+      fprintf(stdout, "RANK [%d] TAG [%d] (worker [%d]): Received file with fname [%s]\n", getrank(), mytag, (size_t)getworker(getrank, mytag), mf.filename.c_str() );
 #endif
 	
       //mfs.push_back( mf );
@@ -617,7 +652,7 @@ pitem filesender::handle_cmd( const psweep_cmd& pcmd, const int& mytag )
   if( pcmd.CMD.compare("EXIT") == 0 )
     {
       //exit
-      fprintf(stderr, "::: rank [%d] tag [%d] (worker: [%ld]) received EXIT command from root rank\n", getrank(), mytag, getworker(getrank(), mytag));
+      fprintf(stderr, "::: rank [%d] tag [%d] (worker: [%ld]) received EXIT command from root rank\n", getrank(), mytag, (size_t)getworker(getrank(), mytag));
       exit(1);
     }
   //else if( strcmp( pcmd.CMD, "PITEM") == 0 )
@@ -778,7 +813,9 @@ void filesender::cleanup_workspace( const pitem& mypitem )
 }
 
 //REV: 11 Mar 2016: MODIFIED TO GET MY OWN RANK IN HERE ;)
-void filesender::execute_slave_loop( const std::string& runtag, const size_t& mytag)
+//void filesender::execute_slave_loop( const size_t& mytag, const std::string& runtag
+//REV: Can't use refs b/c I start with thread
+void filesender::execute_slave_loop( const size_t mytag, const std::string runtag )
 {
   bool loopslave=true;
   std::string LOCALDIR = "/tmp/" + runtag + "_" + std::to_string( getworker( getrank(), mytag ) );
@@ -800,7 +837,7 @@ void filesender::execute_slave_loop( const std::string& runtag, const size_t& my
 	
       if( cmd_is_exit( cmd ) == true )
 	{
-	  fprintf(stderr, "REV: WORKER [%d] received EXIT\n", getworker( getrank(), mytag) );
+	  fprintf(stderr, "REV: WORKER [%ld] received EXIT\n", getworker( getrank(), mytag) );
 	  loopslave = false;
 	  break;
 	}

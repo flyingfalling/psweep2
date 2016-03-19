@@ -50,9 +50,10 @@
 #include <memfsys.h>
 #include <fake_system.h>
 
-#ifdef CUDA_SUPPORT
+#include <mutex>
+#include <thread>
+
 #include <psweep2_cuda_utils.h>
-#endif
 
 
 struct psweep_cmd
@@ -88,9 +89,9 @@ struct filesender
   size_t mylocalidx=0;
   int myrank;
   
-#ifdef CUDA_SUPPORT
+  //#ifdef CUDA_SUPPORT
   size_t mygpuidx=0;
-#endif
+  //#endif
   
   struct pitem_rep
   {  
@@ -241,7 +242,7 @@ struct filesender
     //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
   static filesender* /*filesender::*/Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk, const size_t& _wrkperrank )
   {
-    filesender* fs = new filesender(_fakesys, _todisk, _wrkperrank);
+    filesender* fs = new filesender(_fakesys,  _wrkperrank, _todisk);
     
     if( fs->world.rank() == 0 )
       {
@@ -263,7 +264,18 @@ struct filesender
     fprintf(stderr, "REV: MASSIVE ERROR in filesender CREATOR: I reached end of function, which NEVER SHOULD HAPPEN\n");
     //REV: the other one should naturally delete it here.
   }
+  size_t getworker( const size_t& rank, const size_t& tag );
+  size_t getworkerrank( const size_t& wnum );
+  size_t getworkertag( const size_t& wnum );
+  
+  void initfilesender();
+  bool checkroot();
+  void lmux();
 
+  void ulmux();
+  int getrank();
+
+  
   void init_local_worker_idx();
   void broadcast_cmd( const std::string& cmd );
   //REV; TODO: at some point, build the fake MEM_FILESYSTEM, and furthermore, populate the FAKE_SYSTEM_CALLS if we want to...
@@ -272,36 +284,48 @@ struct filesender
   //of files possibly still, massive waste. So, I need a way to stop it from doing that...
   filesender();
   
-  filesender(fake_system& _fakesys, const bool& _todisk = false);
+  filesender(fake_system& _fakesys, const size_t& _wrkperrank = 1, const bool& _todisk = false);
   ~filesender();
 
-  void send_varlist(  const int& targrank, const varlist<std::string>& v ); //, boost::mpi::communicator& world )
-  
-  
-  
-  void send_cmd( const std::string& cmd, const int& targrank ); //, boost::mpi::communicator& world )
+  void send_varlist_to_root( const varlist<std::string>& v, const int& mytag );
+  void send_varlist_to_worker(  const varlist<std::string>& v, const int& targworker);
+  //void send_varlist(  const int& targrank, const varlist<std::string>& v );
+
+  void send_cmd_to_worker( const std::string& cmd, const int& targworker );
+  void send_cmd_to_root( const std::string& cmd, const int& mytag );
+  //  void send_cmd( const std::string& cmd, const int& targrank );
   
 
-  void send_pitem( const pitem& mypitem, const int& targrank ); //, boost::mpi::communicator& world )
+  void send_pitem_to_worker( const pitem& mypitem, const int& targworker );
+  void send_pitem_to_root( const pitem& mypitem, const int& mytag );
+  //void send_pitem( const pitem& mypitem, const int& targrank );
+
+  varlist<std::string> receive_varlist_from_root( const int& targworker, const int& mytag );
+  varlist<std::string> receive_varlist_from_worker( const int& targworker );
+  //varlist<std::string> receive_varlist( const int& targrank );
 
 
-  varlist<std::string> receive_varlist( const int& targrank ); //, boost::mpi::communicator& world  )
+  //REV: FOr intiial setup
+  psweep_cmd receive_cmd_from_root( );
+
+  
+  psweep_cmd receive_cmd_from_root( const int& mytag );
+  psweep_cmd receive_cmd_from_any_worker( );
+  //psweep_cmd receive_cmd_from_any( );
+  //psweep_cmd receive_cmd_from_root( );
+  
+  
+  pitem receive_pitem_from_root( const int& mytag ) ;
+  pitem receive_pitem_from_worker( const int& targworker ) ;
+  //pitem receive_pitem( const int& targrank );
+  
+  int receive_int_from_root( const int& mytag );
+  int receive_int_from_worker( const int& targworker ) ;
+  //int receive_int( const int& targrank );
  
-
-  //I want to block but I want to get message from target before handling others.
-  psweep_cmd receive_cmd_from_any( ); //boost::mpi::communicator& world )
-  
-
-  psweep_cmd receive_cmd_from_root( ); //boost::mpi::communicator& world )
-  
-
-  pitem receive_pitem( const int& targrank ); //, boost::mpi::communicator& world  )
- 
-
-  int receive_int( const int& targrank ); //, boost::mpi::communicator& world )
- 
-
-  void send_int( const int& targrank, const int& tosend ); //, boost::mpi::communicator& world )
+  void send_int_to_root( const int& tosend, const int& mytag ) ;
+  void send_int_to_worker( const int& tosend, const int& targworker );
+    //void send_int( const int& targrank, const int& tosend ); //, boost::mpi::communicator& world )
   
 
   //So, depending on the RANK, this will SEND or RECEIVE.
@@ -311,32 +335,39 @@ struct filesender
   //This will rename all files in MYPITEM (in SUCCESS only?), given a list of files? An array of files? Yea, it will tell which ones should be renamed.
   //I.e. gives list of indices to it.
 
- 
+  void start_worker_loop(const std::string& runtag);
   //compare two filenames in canonical thing? E.g. /.././../. etc. /. will remove current, i.e. can be safely removed. /.. will remove the previous
   //thing (if it starts with that /.. then error out). Can't handle things like symlinks anyway so whatever...
 
   //REV: BIG PROBLEM, I need to check whether it starts with a / or not.
 
-  memfsys handle_pitem( pitem& mypitem, const std::string& dir );
+  memfsys worker_handle_pitem( pitem& mypitem, const std::string& dir, const int& mytag );
+    //memfsys handle_pitem( pitem& mypitem, const std::string& dir, const int& mytag );
 
+  void send_file_to_worker( const memfile& memf, const int& targworker);
+  void send_file_to_root( const memfile& memf, const int& mytag );
+  void send_file_to_root_from_disk( const std::string& fname, const int& mytag );
+  void send_file_to_worker_from_disk( const std::string& fname, const int& targworker );
   
   //void send_file( const int& targrank, const mem_file& memf )
-  void send_file( const int& targrank, const memfile& memf );
+  //void send_file( const int& targrank, const memfile& memf );
   
-  void send_file_from_disk( const int& targrank, const std::string& fname );
+  //void send_file_from_disk( const int& targrank, const std::string& fname );
   
-  
-  memfile receive_file( const int& targrank );
+  memfile receive_file_from_worker( const int& targworker );
+  memfile receive_file_from_root( const int& mytag );
+    //memfile receive_file( const int& targrank );
 
   //arbitrary byte array as VECTOR, and we can cast it to a target TYPE in some way? Like...static_cast? whoa...blowin my mind haha.
-  std::vector< char > receive_memory( const int& targrank );
+  //std::vector< char > receive_memory( const int& targrank );
  
   bool cmd_is_exit(  const psweep_cmd& pcmd );
 
   //REV: This is only for WORKERS
-  pitem handle_cmd( const psweep_cmd& pcmd );
+  pitem handle_cmd( const psweep_cmd& pcmd, const int& mytag );
 
-  void notify_finished( pitem& mypitem, memfsys& myfsys );
+  void worker_notify_finished( pitem& mypitem, memfsys& myfsys, const int& mytag );
+  //void notify_finished( pitem& mypitem, memfsys& myfsys );
 
   //REV: this needs to "find" which PITEM was allocated to that worker/ thread.
   //REV: Note we could use todisk, but easier to do it as todisk?
@@ -349,7 +380,7 @@ struct filesender
 
   void cleanup_workspace( const pitem& mypitem );
   
-  void execute_slave_loop( const std::string& runtag="scratch");
+  void execute_slave_loop( const size_t mytag, const std::string runtag="scratch" );
  
   bool is_finished_work( const psweep_cmd& pcmd );
  

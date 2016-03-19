@@ -119,7 +119,7 @@ void searcher::preparseopts( optlist& opts )
       }
 
     //set internal variables with parseopts
-    auto a = opts.get_opt_args( "WORKERSPERRANK" );
+    a = opts.get_opt_args( "WORKERSPERRANK" );
     if( a.size() == 0 )
       {
 	//defaulting to 1.
@@ -332,7 +332,7 @@ void searcher::run_search( const std::string& searchtype, const std::string& scr
 
 
     //Can a static funct take an argument...? I guess so.
-    filesender* fs = filesender::Create( _runtag, fakesys, writefiles );
+    filesender* fs = filesender::Create( _runtag, fakesys, writefiles, 1 );
     //REV: Oh crap, on this side, it might need to read them in the first place...hm.
 
 
