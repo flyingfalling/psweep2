@@ -270,8 +270,13 @@ void filesender::send_cmd_to_root( const std::string& cmd, const int& mytag )
       fprintf(stderr, "ERROR: REV: send varlist to root, should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
       exit(1);
     }
+
+  //REV: KNOW MY PROBLEM, Im using the same mux for send and recv. So I lock it and wait for recv, but other guys cant send! So need to probe/tag etc.
+  fprintf(stdout, "WORKER [%ld]: ATTEMPTING TO LOCK MUX for send CMD to ROOT\n", getworker( getrank(), mytag) );
   lmux();
+  fprintf(stdout, "WORKER [%ld]: SUCCEEDED TO LOCK MUX for send CMD to ROOT\n", getworker( getrank(), mytag) );
   world.send( 0, mytag, cmd );
+  fprintf(stdout, "WORKER [%ld]: FINISHED send CMD to ROOT, will unlock mux\n", getworker( getrank(), mytag) );
   ulmux();
 }
 
@@ -340,7 +345,8 @@ psweep_cmd filesender::receive_cmd_from_any_worker( )
   
   lmux();
   boost::mpi::status msg = world.probe();
-  world.recv(msg.source(), boost::mpi::any_tag, data);
+  //world.recv(msg.source(), boost::mpi::any_tag, data);
+  world.recv(msg.source(), msg.tag(), data);
   ulmux();
   
   psweep_cmd pc( getworker( msg.source(), msg.tag() ),  data );
@@ -677,6 +683,8 @@ pitem filesender::handle_cmd( const psweep_cmd& pcmd, const int& mytag )
 
 void filesender::worker_notify_finished( pitem& mypitem, memfsys& myfsys, const int& mytag )
 {
+
+  fprintf(stdout, "WORKER [%ld] sending DONE to root\n", getworker( getrank(), mytag ) );
   send_cmd_to_root( "DONE", mytag );
 
   //Then send what? A "finished" struct? No, just send the "results"
@@ -690,11 +698,15 @@ void filesender::worker_notify_finished( pitem& mypitem, memfsys& myfsys, const 
   //Check also INPUT and REQUIRED separately. Make sure there are no
   //doubles...
 
+  fprintf(stdout, "WORKER [%ld] done sending DONE to root, will send INT\n", getworker( getrank(), mytag ) );
+  
   //Note, all OUTPUT are automatically appended to SUCCESS, so just
   //return all SUCCESS files.
   size_t nsuccess = mypitem.success_files.size();
+
+
   send_int_to_root( nsuccess, mytag);
-  
+  fprintf(stdout, "WORKER [%ld] done sending INT to root. Will now send [%ld] files\n", getworker( getrank(), mytag ), nsuccess );  
   for(size_t x=0; x<nsuccess; ++x)
     {
       std::string mfname = mypitem.success_files[x];
@@ -705,10 +717,13 @@ void filesender::worker_notify_finished( pitem& mypitem, memfsys& myfsys, const 
       send_file_to_root( mfp.get_memfile(), mytag );
       mfp.close();
     }
-    
+
+
+  fprintf(stdout, "WORKER [%ld] done sending FILES to root. Will send VARLIST\n", getworker( getrank(), mytag ) );
   varlist<std::string> resvar = mypitem.get_output( myfsys, todisk );
     
   send_varlist_to_root( resvar, mytag );
+  fprintf(stdout, "WORKER [%ld] done sending VARLIST to root\n", getworker( getrank(), mytag ) );
     
   return;
 }
@@ -950,7 +965,16 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
   //be done if there are any workers working...
   while( wprog.check_all_done() == false )
     {
-      //fprintf(stdout, "Not all done of WPROG!\n");
+      fprintf(stdout, "Not all done of WPROG! WORKING: \n");
+      for(size_t x=0; x<_workingworkers.size(); ++x)
+	{
+	  if( _workingworkers[x] == true )
+	    {
+	      fprintf(stdout, " [%ld] ", x );
+
+	    }
+	}
+      fprintf(stdout, "\n");
       //Only accept messages if there are no available workers and
       //there's no work to do.
       //If there is available workers, but no work to do, accept messages
@@ -961,15 +985,15 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	    wprog.check_work_avail() == true )
 	  )
 	{
-	  //fprintf(stdout, "CASE: Either there is a worker available, OR there is work available. I will receive a response from a worker\n");
+	  fprintf(stdout, "CASE: Either there is a worker available, OR there is work available. I will receive a response from a worker\n");
 	  if( wprog.avail_worker( _workingworkers ) == true )
 	    {
-	      //fprintf(stdout, " NOTE: there ARE workers available\n");
+	      fprintf(stdout, " NOTE: there ARE workers available\n");
 	    }
 
 	  if(  wprog.check_work_avail() == true  )
 	    {
-	      //fprintf(stdout, " NOTE: there IS work available\n");
+	      fprintf(stdout, " NOTE: there IS work available\n");
 	    }
 	  //ACCEPT MESSAGES FROM WORKERS AND HANDLE.
 	  //Note, we want to keep it so that this array will carry over
@@ -1016,8 +1040,9 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	    }
 	  else if( is_ready_for_work( pcmd ) == true )
 	    {
-	      //fprintf(stdout, "NO, IT WAS JUST READY (setting worker [%d] to FALSE)\n", pcmd.SRC);
+	      fprintf(stdout, "NO, IT WAS JUST READY (setting worker [%d] to FALSE)\n", pcmd.SRC);
 	      //Contains READY cmd, just mark to not working.
+	      
 	      _workingworkers[ pcmd.SRC ] = false;
 	    }
 	  else
@@ -1031,7 +1056,7 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
       //both work and worker available: farm it.
       else
 	{
-	  //fprintf(stdout, "CASE: BOTH WORK AND A WORKER ARE AVAILABLE. WILL FARM\n");
+	  fprintf(stdout, "CASE: BOTH WORK AND A WORKER ARE AVAILABLE. WILL FARM\n");
 
 	  //REV: This will only modify local worker-tabulating structs,
 	  //it will not do any actual work or communicate over MPI.
@@ -1053,8 +1078,9 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	  master_to_slave( wprog.get_corresponding_pitem( pg, pc),
 			   farmedworker,
 			   pg.parampoint_memfsystems[pc.parampointn] );
-	  //fprintf(stdout, "DONE master to slave.\n");
+	  fprintf(stdout, "DONE master to slave.\n");
 	}
     } //end while !all done.
+  fprintf(stdout, "\n\nROOT FINISHED GENERATION? (comp pp)\n\n");
 } //end comp_pp_list
 
