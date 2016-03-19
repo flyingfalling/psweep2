@@ -80,13 +80,14 @@ void searcher::register_funct( const std::string& name, const fake_system_funct_
   {
     fakesys.register_funct( name, funct );
   }
+
 void searcher::run_search( optlist& opts )
   {
     //parse to required guys that I want... ONLY ROOT RANK SHOULD EXECUTE THIS, CRAP.
     preparseopts( opts );
     
-    filesender* fs = filesender::Create( _runtag , fakesys, _writefiles);
-
+    filesender* fs = filesender::Create( _runtag , fakesys, _writefiles, _wrkperrank );
+    
     opts.enumerateparsed();
     opts.enumerateextras();
     
@@ -104,7 +105,6 @@ void searcher::run_search( optlist& opts )
 
 void searcher::preparseopts( optlist& opts )
   {
-
     //set internal variables with parseopts
     auto a = opts.get_opt_args( "WRITEFILES" );
     if( a.size() == 0 )
@@ -116,6 +116,26 @@ void searcher::preparseopts( optlist& opts )
       {
 	//fprintf(stdout, "SEARHER: Parseopts, -WRITEFILES defined, *will* write files to filesystem (I.e. will not use memfsys)\n");
 	_writefiles = true;
+      }
+
+    //set internal variables with parseopts
+    auto a = opts.get_opt_args( "WORKERSPERRANK" );
+    if( a.size() == 0 )
+      {
+	//defaulting to 1.
+	_wrkperrank=1;
+      }
+    else
+      {
+	if( a[0].size() > 0 )
+	  {
+	    _wrkperrank = std::stol(a[0][0]);
+	  }
+	else
+	  {
+	    fprintf(stderr, "ERROR. SEARCHER in option WORKERSPERRANK: Requires at least 1 argument (*#WORKERS PER RANK*)\n");
+	    exit(1);
+	  }
       }
 
     //set internal variables with parseopts

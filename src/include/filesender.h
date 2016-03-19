@@ -50,13 +50,16 @@
 #include <memfsys.h>
 #include <fake_system.h>
 
+#ifdef CUDA_SUPPORT
+#include <psweep2_cuda_utils.h>
+#endif
 
 
 struct psweep_cmd
 {
   int SRC;
   std::string CMD;
-  psweep_cmd( const int srcr, const std::string& cm );
+  psweep_cmd( const int& srcworker, const std::string& cm );
   psweep_cmd()
   {
   }
@@ -73,15 +76,21 @@ struct filesender
   fake_system fakesys;
 
   bool todisk=false;
-  
+
+  //REV: I actually only need one copy of this...on ROOT.
   std::vector<bool> _workingworkers;
 
-  boost::mpi::communicator world;
-
-  size_t mylocalidx;
+  size_t workersperrank=1;
+  std::mutex mpimux; //this mux is used for MPI communications of the different threads. In case parallel MPI support is not compiled?
   
-  //std::vector<size_t> local_worker_idx; //this is created and is same size as workers, but contains local index.
-
+  boost::mpi::communicator world;
+  
+  size_t mylocalidx=0;
+  int myrank;
+  
+#ifdef CUDA_SUPPORT
+  size_t mygpuidx=0;
+#endif
   
   struct pitem_rep
   {  
@@ -230,9 +239,9 @@ struct filesender
   //static filesender* Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk=false );
 
     //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
-  static filesender* /*filesender::*/Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk )
+  static filesender* /*filesender::*/Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk, const size_t& _wrkperrank )
   {
-    filesender* fs = new filesender(_fakesys, _todisk);
+    filesender* fs = new filesender(_fakesys, _todisk, _wrkperrank);
     
     if( fs->world.rank() == 0 )
       {
@@ -241,7 +250,7 @@ struct filesender
       }
     else
       {
-	fs->execute_slave_loop( runtag );
+	fs->start_worker_loop(runtag);
 	
 	delete(fs);
 	//execute slave loop
