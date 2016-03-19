@@ -63,15 +63,18 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
 
   std::vector<size_t> devs = find_legaldevs();
 
-
-  if( mydev >= devs.size() )
+  
+  size_t pergpu=3;
+  //Should check there are enough "GPU" here, i.e. pergpu*ngpu! Oh well...
+  if( mydev >= devs.size()*pergpu )
     {
-      fprintf(stderr, "BIG ERROR, not enough devices on the host you provided!!!!!! I should not have been farmed!!! Mydev is[%ld] but there are only [%ld] devs on this machine\n", mydev, devs.size());
+      fprintf(stderr, "BIG ERROR, not enough devices on the host you provided!!!!!! I should not have been farmed!!! Mydev is[%ld] but there are only [%ld] devs on this machine ([%ld] with [%ld] concurrent on each GPU via MPS)\n", mydev, devs.size(), pergpu, devs.size()*pergpu);
       exit(1);
     }
   //fprintf(stdout, "My rank is [%ld] so I should be using dev [%ld]\n", mydev, devs[mydev]);
 
-
+  
+  mydev = mydev/pergpu; //So, if I was 3, I am 1. If I was 6, I am 2. If I was 0, 1, or 2, I am zero. Assumes smart floor.
   size_t mylegaldev = devs[mydev];
   
   

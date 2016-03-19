@@ -115,7 +115,7 @@ std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64
   compDist<<<gridSize, blockSize>>>(d_resultptr, d_estptr, d_actualptr, (int)result.size());
 
   //REV: Do I need to synch it or something?
-  cudaDeviceSynchronize();
+  //cudaDeviceSynchronize();
 
   checkCudaErrors(cudaMemcpy( result.data(), d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost ));
 
