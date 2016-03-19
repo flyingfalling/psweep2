@@ -23,7 +23,7 @@ void filesender::start_worker_loop(const std::string& runtag)
       thrs.resize( workersperrank-1 );
       for(size_t tag=0; tag<thrs.size(); ++tag)
       {
-	thrs[tag] = std::thread( &filesender::execute_slave_loop, tag+1, runtag );
+	//thrs[tag] = std::thread( &filesender::execute_slave_loop, tag+1, runtag );
       }
     }
   //std::thread thr( execute_slave_loop(runtag, 0) );
