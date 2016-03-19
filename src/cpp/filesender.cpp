@@ -851,13 +851,19 @@ void filesender::execute_slave_loop( const size_t mytag, const std::string runta
 
       //REV: may EXIT, or contain a PITEM (to execute).
       pitem mypitem = handle_cmd( cmd, mytag );
+      fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. handled CMD. Will handle PITEM!!!!!!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
 	
       memfsys myfsys = worker_handle_pitem( mypitem, LOCALDIR, mytag);
+      fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. handled PITEM. Executing!!!!!!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
 		
       bool blah = execute_work( mypitem, myfsys );
 
+      fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. DONE Executing, notifying of finished...!!!!!!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
+
       //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
       worker_notify_finished( mypitem, myfsys, mytag );
+      
+      fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. DONE notifying, cleaning up and waiting for next cmd...!!!!!!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
       
       cleanup_workspace( mypitem );
     }
