@@ -244,7 +244,7 @@ struct filesender
   {
     filesender* fs = new filesender(_fakesys,  _wrkperrank, _todisk);
     
-    if( fs->world.rank() == 0 )
+    if( fs->getrank() == 0 )
       {
 	return(fs);
 	//return

@@ -57,9 +57,7 @@ void filesender::init_local_worker_idx()
   if( world.rank() == 0 )
     {
       fprintf(stdout, "ROOT host is [%s], root local idx is [%s]([%ld])\n", myname.c_str(), retval.c_str(), mylocalidx);
-#if DEBUG>5
-      fprintf(stdout, "ROOT host is [%s], root local idx is [%s]([%ld])\n", myname.c_str(), retval.c_str(), mylocalidx);
-#endif
+
       //Rank zero had sure as heck better be the 0th in its guy.
       //I guess it really doesn't matter (?) but that means I need
       //to figure out what to do. If I send my number as well, other
@@ -91,9 +89,9 @@ void filesender::init_local_worker_idx()
 
       if( myname.compare( c2.CMD ) == 0 )
 	{
-#if DEBUG>5
+	  //#if DEBUG>5
 	  fprintf(stdout, "RANK [%d] hostname is [%s], my local idx is [%s]([%ld]). From root I received [%s] (I MATCHED)\n", world.rank(), myname.c_str(), retval.c_str(), mylocalidx, c2.CMD.c_str());
-#endif
+	  //#endif
 	  //I am in same as root rank, need to subtract 1!
 	  if( mylocalidx > 0 )
 	    {
@@ -106,15 +104,15 @@ void filesender::init_local_worker_idx()
 	}
       else
 	{
-#if DEBUG>5
+	  //#if DEBUG>5
 	  fprintf(stdout, "RANK [%d] hostname is [%s], my local idx is [%s]([%ld]). From root I received [%s] (I *DID NOT* MATCH)\n", world.rank(), myname.c_str(), retval.c_str(), mylocalidx, c2.CMD.c_str());
-#endif
+	  //#endif
 	}
 
       //receive it and check if its same. If so, subtract 1 from retval
       //
     }
-  
+  fprintf(stdout, "FINISHED init local worker idx!!!\n");
   
 } //init_local_worker_idx done.
 
@@ -173,6 +171,8 @@ void filesender::initfilesender()
   //Rank 1 has only 1 worker (the root master), all others have workersperrank.
   size_t nworkers = 1 + (world.size()-1)*workersperrank;
   _workingworkers.resize( nworkers, true );
+
+  fprintf(stdout, "Rank [%ld] finished initialize file sender, will now spawn threads...?\n", getrank());
 }
 
 filesender::filesender()
@@ -827,17 +827,21 @@ void filesender::execute_slave_loop( const size_t mytag, const std::string runta
   fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. Starting slave loop...\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
   //REV: This will do nothing if there is no CUDA.
   set_cuda_device( mygpuidx ); 
-  
+
+  fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. SET GPU, now sending READY to root!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
   //REV: need to send first guy to tell its ready
   std::string pcinit = "READY";
   send_cmd_to_root( pcinit, mytag );
+
+  fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. **DONE** sending READY to root. Now waiting for CMD!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
   
   while( loopslave == true )
     {
       make_directory( LOCALDIR );
-	
+      
       psweep_cmd cmd = receive_cmd_from_root( mytag );
-	
+      fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. GOT CMD FROM ROOT!!!!!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
+      
       if( cmd_is_exit( cmd ) == true )
 	{
 	  fprintf(stderr, "REV: WORKER [%ld] received EXIT\n", getworker( getrank(), mytag) );
