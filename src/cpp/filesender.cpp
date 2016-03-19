@@ -141,8 +141,8 @@ size_t filesender::getworkerrank( const size_t& wnum )
       return 0;
     }
   //integer division...+1 for root rank
-  size_t myrank = ((wnum-1) / workersperrank) + 1;
-  return myrank;
+  size_t myr = ((wnum-1) / workersperrank) + 1;
+  return myr;
 }
 
 size_t filesender::getworkertag( const size_t& wnum )
@@ -198,6 +198,7 @@ bool filesender::checkroot()
     {
       return true;
     }
+  return false;
 }
 
 void filesender::lmux()
@@ -350,7 +351,7 @@ psweep_cmd filesender::receive_cmd_from_root( )
 {
   if( checkroot() == true )
     {
-      fprintf(stderr, "ERROR: REV: recv cmd from ROOT, should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: recv cmd from ROOT (noarg), should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
       exit(1);
     }
   
@@ -822,11 +823,10 @@ void filesender::execute_slave_loop( const size_t mytag, const std::string runta
 {
   bool loopslave=true;
   std::string LOCALDIR = "/tmp/" + runtag + "_" + std::to_string( getworker( getrank(), mytag ) );
-
-#ifdef CUDA_SUPPORT
-  set_cuda_device( mygpuidx ); //This will locally set my GPU device ;) Will be a different default stream for each because this is called for
-  //each thread.
-#endif
+  
+  fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. Starting slave loop...\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
+  //REV: This will do nothing if there is no CUDA.
+  set_cuda_device( mygpuidx ); 
   
   //REV: need to send first guy to tell its ready
   std::string pcinit = "READY";

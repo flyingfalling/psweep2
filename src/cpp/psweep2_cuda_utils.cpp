@@ -6,7 +6,7 @@ size_t compute_gpu_idx( const size_t& localidx, const size_t& nworkersperrank, c
   std::string devname = "Tesla K80";
 
 #ifdef CUDA_SUPPORT
-  std::vector<size_t> devs = findlegaldevices_byname(devname); //Base it on some requirements of user.
+  std::vector<size_t> devs = findlegaldevs_byname(devname); //Base it on some requirements of user.
   if( devs.size() <= mydevidx )
     {
       fprintf(stderr, "compute_gpu_idx: ERROR, not enough GPU devices on host (I am [%ld] but there are only [%ld])! (Rank [%ld])\n", mydevidx, devs.size(), ranknum);
@@ -22,7 +22,7 @@ void set_cuda_device(const size_t& idx)
 {
 
 #ifdef CUDA_SUPPORT
-  set_cuda_device(idx);
+  real_set_cuda_device(idx);
 #endif
 
 }

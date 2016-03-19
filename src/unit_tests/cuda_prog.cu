@@ -76,7 +76,7 @@ void compDist( double *res, double *a, double *b, int sizen )
 
 std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64_t>& actual, size_t& cudadevnum )
 {
-  checkCudaErrors(cudaSetDevice(cudadevnum)); //check errors? rofl.
+  //checkCudaErrors(cudaSetDevice(cudadevnum)); //check errors? rofl.
   
   if(est.size() != actual.size())
     {
@@ -116,6 +116,7 @@ std::vector<float64_t> gpucomp( std::vector<float64_t>& est, std::vector<float64
 
   //REV: Do I need to synch it or something?
   //cudaDeviceSynchronize();
+  //cudaStreamSynchronize(cudaStreamPerThread); //works?
 
   checkCudaErrors(cudaMemcpy( result.data(), d_resultptr, result.size()*sizeof(result[0]), cudaMemcpyDeviceToHost ));
 

@@ -12,8 +12,10 @@ CUDALIBS=-lcuda -lcudart
 SHAREDLIBFLAG=-fPIC
 CUDALD=-L/usr/local/cuda-7.5/targets/x86_64-linux/lib
 NVCC=/usr/local/cuda/bin/nvcc
-GENCODE=-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_37,code=sm_37 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52
+#GENCODE=-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_37,code=sm_37 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52
+GENCODE=-gencode arch=compute_37,code=sm_37
 NVCCFLAGS=-m64 -g -G -DDEBUG=6 $(GENCODE)
+NVCCSHAREDLIBFLAG=-Xcompiler '-fPIC'
 
 CUDADIR=./cudaimpl
 
@@ -23,10 +25,13 @@ srcs = $(wildcard $(CPPDIR)/*.cpp)
 objs = $(srcs:.cpp=.o)
 deps = $(srcs:.cpp=.d)
 
-#CUDA_SUPPORT=1
+CUDA_SUPPORT="YES"
+
 
 ifdef CUDA_SUPPORT
-srcs += $(wildcard $(CUDADIR)/*.cu)
+CPPFLAG += -DCUDA_SUPPORT
+NVCCFLAGS += -DCUDA_SUPPORT
+#srcs += $(wildcard $(CUDADIR)/*.cu)
 endif
 
 default: libpsweep2.so
@@ -37,7 +42,12 @@ install: libpsweep2.so
 	ldconfig -v
 
 libpsweep2.so: $(objs)
+ifdef CUDA_SUPPORT
+	$(NVCC) $(NVCCSHAREDLIBFLAG) $(CUDALD) $(NVCCFLAGS) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) -c cudaimpl/psweep2_cuda_functs_impl.cu -lcuda -lcudart
+	$(MPICC) -shared $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) $(objs) psweep2_cuda_functs_impl.o -o libpsweep2.so $(LIBS)
+else
 	$(MPICC) -shared $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) $(objs) -o libpsweep2.so $(LIBS)
+endif
 
 #test: $(objs)
 #	$(MPICC) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) unit_tests/test_psweep2_lib.cpp  $(objs) -o test_psweep2_lib.exe $(LIBS)
@@ -45,9 +55,9 @@ libpsweep2.so: $(objs)
 test: unit_tests/test_psweep2_lib.cpp libpsweep2.so
 	$(MPICC) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) unit_tests/test_psweep2_lib.cpp -o test_psweep2_lib.exe -lpsweep2 $(LIBS)
 
-gputest: unit_tests/gputest.cpp libpsweep2.so unit_tests/cuda_prog.cu unit_tests/cuda_prog.h
+gputest: unit_tests/gputest2.cpp libpsweep2.so unit_tests/cuda_prog.cu unit_tests/cuda_prog.h
 	$(NVCC) $(CUDALD) $(NVCCFLAGS) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) -c unit_tests/cuda_prog.cu -lcuda -lcudart
-	$(MPICC) $(CUDALD) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) unit_tests/gputest.cpp cuda_prog.o -o gputest.exe -lpsweep2 $(LIBS) $(CUDALIBS)
+	$(MPICC) $(CUDALD) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) unit_tests/gputest2.cpp cuda_prog.o -o gputest.exe -lpsweep2 $(LIBS) $(CUDALIBS)
 
 %.o: %.cpp
 	$(MPICC) $(SHAREDLIBFLAG) -MMD -MP -c $(CPPFLAG) $(INCLFLAG) $< -o $@

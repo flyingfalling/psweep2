@@ -3,20 +3,17 @@
 #include <helper_cuda.h>
 #include <psweep2_cuda_functs_impl.h>
 
-
-
-void set_cuda_device( const size_t& idx )
+void real_set_cuda_device( const size_t& idx )
 {
   checkCudaErrors( cudaSetDevice(idx) );
 }
 
-
-std::vector<size_t> findlegaldevs_byname(const std::string& devname);
+std::vector<size_t> findlegaldevs_byname(const std::string& devname)
 {
   std::vector<size_t> ret;
   
   int deviceCount = 0;
-  cudaError_t error_id = checkCudaErrors( cudaGetDeviceCount(&deviceCount) );
+ cudaError_t error_id = cudaGetDeviceCount(&deviceCount) ;
   if (error_id != cudaSuccess)
     {
       fprintf(stderr, "cudaGetDeviceCount returned %d\n-> %s\n", (int)error_id, cudaGetErrorString(error_id));

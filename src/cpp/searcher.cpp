@@ -124,12 +124,15 @@ void searcher::preparseopts( optlist& opts )
       {
 	//defaulting to 1.
 	_wrkperrank=1;
+	fprintf(stdout, "REV: found no cmd line arg, so SETTING WORKERS PER RANK TO [%ld]\n", _wrkperrank);
+
       }
     else
       {
 	if( a[0].size() > 0 )
 	  {
 	    _wrkperrank = std::stol(a[0][0]);
+	    fprintf(stdout, "REV: SETTING WORKERS PER RANK TO [%ld]\n", _wrkperrank);
 	  }
 	else
 	  {
