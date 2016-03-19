@@ -23,7 +23,10 @@ void filesender::start_worker_loop(const std::string& runtag)
       thrs.resize( workersperrank-1 );
       for(size_t tag=0; tag<thrs.size(); ++tag)
       {
-	//thrs[tag] = std::thread( &filesender::execute_slave_loop, tag+1, runtag );
+	//REV: This is issue.
+	//If I call method, how does it know which "base" class to use? Copy of whole "this" filesender?
+	//Need to use this as second, due to the execute thing.
+	thrs[tag] = std::thread( &filesender::execute_slave_loop, this, tag+1, runtag );
       }
     }
   //std::thread thr( execute_slave_loop(runtag, 0) );
