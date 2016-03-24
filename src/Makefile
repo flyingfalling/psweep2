@@ -25,7 +25,7 @@ srcs = $(wildcard $(CPPDIR)/*.cpp)
 objs = $(srcs:.cpp=.o)
 deps = $(srcs:.cpp=.d)
 
-#CUDA_SUPPORT="YES"
+CUDA_SUPPORT="YES"
 
 
 ifdef CUDA_SUPPORT

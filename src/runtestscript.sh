@@ -17,8 +17,8 @@ WORKSCRIPT=../configs/test_abc_twopeak_gpu.cfg
 
 HOSTFILE=/nfs-mirror/gpumachinefile
 
-stdo=stdout_psweepABCz
-stde=stderr_psweepABCz
+stdo=stdout
+stde=stderr
 
 
 #nohup mpirun -n $NRANKS --hostfile $HOSTFILE gputest.exe -DIR $DIR -WORKSCRIPT $WORKSCRIPT -SEARCHTYPE $SEARCHTYPE -VARIABLES $MINMAXFILE -OBSERVATIONS $OBSFILE -EPSILONS $EPSILFILE -STATEFILE $STATEFILE -MAXGENS $MAXGEN -NCHAINS $NCHAINS -WORKERSPERRANK=$WPERRANK  -TAG=ABCYOLO 1>$stdo 2>$stde &

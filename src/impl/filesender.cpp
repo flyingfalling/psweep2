@@ -159,15 +159,15 @@ void filesender::initfilesender()
       _workingworkers.resize( nworkers, true );
     }
 
-  if( sizeof(int) != 32 || sizeof(uint16_t) != 16 )
+  if( sizeof(int) != 4 || sizeof(uint16_t) != 2 )
     {
-      fprintf( stderr, "REV: Tag sending error messed up...for sendrecvstruct, assume that int=32 bits, uint16_t is 16 bits...This *may* not be a problem, if so comment this check out...\n");
+      fprintf( stderr, "REV: Tag sending error messed up...for sendrecvstruct, assume that int=32, but was [%ld] bytes, uint16_t is 16 bits but was [%ld] bytes...This *may* not be a problem, if so comment this check out...\n", sizeof(int), sizeof(uint16_t));
       exit(1);
     }
-
+#define BYTESIZE_BITS 8
   uint32_t maxsize=0xFFFFFFF; //should be all 1s
-  long holdersize = sizeof(uint32_t);
-  long bitspertag = sizeof(uint16_t);
+  long holdersize = sizeof(uint32_t)*BYTESIZE_BITS;
+  long bitspertag = sizeof(uint16_t)*BYTESIZE_BITS;
   if( bitspertag > holdersize )
     {
       fprintf(stderr, "Size of holder bytes > size of bitspertag\n");
