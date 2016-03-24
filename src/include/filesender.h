@@ -26,7 +26,10 @@
 //fakesys() is sent over? It's created ONLY ON USER SIDE (crap). But user funct is there... No, FAKESYS is created on all workers? It's not related
 //at all to script we read etc. We obviously can't send the pointer... 
 
-//Shit, this is a problem. Because, remember, filesender when constructed, it calls the worker on each side without host.
+//REV: PROBLEM WITH MULTI-THREADING:
+//If we add an extra thread to ROOT rank, that is fine, but if user calls SYSTEM then everything is fucked.
+//just don't spawn another thread there for now, I guess. Meh, ROOT is wasted, just add an extra one? How much
+//is spinning for RECV though?
 
 #pragma once
 
@@ -56,52 +59,54 @@
 #include <psweep2_cuda_utils.h>
 
 
-struct sendrecvstruct
+
+struct sendrecvdata
 {
   uint16_t sendtag;
   uint16_t recvtag;
+};
 
+
+//REV: Todo, just use typical X/Y matrix stuff to get the 2 dims.
+//I.e. "X" is just mod width
+//     "Y" is div width. Width is value of how many bits for it, e.g. 65000 or whatever is max.
+// Some max val we can represent in other words.
+struct sendrecvstruct
+{
+  union
+  {
+    sendrecvdata asstruct;
+    int asint;
+  };
+  
   sendrecvstruct()
   {
   }
   
-sendrecvstruct( uint16_t _sendtag, uint16_t _recvtag )
-    : sendtag(_sendtag), recvtag(_recvtag)
+  sendrecvstruct( int _sendtag, int _recvtag )
   {
-    
-  }
-
-  sendrecvstruct( int tag )
-  //: sendtag(_sendtag), recvtag(_recvtag)
-  {
-    sendtag = (sendrecvstruct(tag)).sendtag;
-    recvtag = (sendrecvstruct(tag)).recvtag;
-  }
-
-  int asint()
-  {
-    return *((int*)(this));
+    asstruct.sendtag = _sendtag;
+    asstruct.recvtag = _recvtag;
   }
   
-  //Cast the int as this, and set the values.
-  void setsendtag( int& arg )
+  sendrecvstruct( int tag )
   {
-    sendtag = arg;
+    asint = tag;
+  }
+  
+  int getsendtag()
+  {
+    return asstruct.sendtag;
   }
 
-  int getsendtag( int& arg )
+  int getrecvtag()
   {
-    return (int)sendtag;
+    return asstruct.recvtag;
   }
 
-  void setrecvtag( int& arg )
+  int getasint()
   {
-    recvtag = arg;
-  }
-
-  int getrecvtag( )
-  {
-    return (int)recvtag;
+    return asint;
   }
 };
 
@@ -139,9 +144,9 @@ struct filesender
   size_t mylocalidx=0;
   int myrank;
   
-  //#ifdef CUDA_SUPPORT
   int mygpuidx=0;
-  //#endif
+
+  std::vector<std::thread> workerthreads;
   
   struct pitem_rep
   {  
@@ -296,6 +301,11 @@ struct filesender
     
     if( fs->getrank() == 0 )
       {
+	//Hack so that root starts workersperrank worker threads then returns
+	//Note it does NOT hang in start_root_workerloops.
+	//Those threads must be joined
+	fs->start_worker_loop_ROOT( runtag );
+	
 	return(fs);
 	//return
       }
@@ -316,7 +326,7 @@ struct filesender
   }
 
   inline void start_worker_loop(const std::string& runtag);
-  
+  inline void start_worker_loop_ROOT(const std::string& runtag);
   inline void init_local_worker_idx();
   
   inline int getworker( const int& rank, const int& tag );
@@ -339,6 +349,9 @@ struct filesender
   inline int getrank();
     
   inline void broadcast_cmd( const std::string& cmd );
+
+  template <typename T>
+  inline void send( const T& v, const int& myworker, const int& targworker );
   
   inline void send_varlist_to_worker(  const varlist<std::string>& v, const int& myworker, const int& targworker);
   inline void send_varlist_to_root( const varlist<std::string>& v, const int& myworker );

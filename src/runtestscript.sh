@@ -1,11 +1,11 @@
 #!/bin/bash
 #Examples for running psweep2
 
-NRANKS=2
+NRANKS=4
 
-WPERRANK=3
+WPERRANK=25
 
-NCHAINS=50
+NCHAINS=100
 MAXGEN=100000
 STATEFILE=psweepdreamABCz.state
 MINMAXFILE=testabc_minmax.bounds

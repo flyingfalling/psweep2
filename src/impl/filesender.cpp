@@ -11,33 +11,64 @@ void filesender::start_worker_loop(const std::string& runtag)
   //Each filesender instance will only have a single dev#, etc.
   //but multiple threads of course. First thread is one of them.
   //std::thread mythread();
-  std::vector< std::thread > thrs;
+  //std::vector< std::thread > thrs;
 
   if(workersperrank > 1)
     {
-      thrs.resize( workersperrank-1 );
-      for(size_t tag=0; tag<thrs.size(); ++tag)
+      workerthreads.resize( workersperrank-1 );
+      for(size_t tag=0; tag<workerthreads.size(); ++tag)
       {
 	int myworker = getworker( getrank(), tag+1 );
+	
 	//REV: This is issue.
 	//If I call method, how does it know which "base" class to use? Copy of whole "this" filesender?
 	//Need to use "this" as second, due to the execute class funct issue.
-	thrs[tag] = std::thread( &filesender::execute_slave_loop, this, myworker, runtag );
+	workerthreads[tag] = std::thread( &filesender::execute_slave_loop, this, myworker, runtag );
       }
     }
 
   int myworker = getworker( getrank(), 0 );
   execute_slave_loop(myworker, runtag);
-  
-  for(size_t tag=0; tag<thrs.size(); ++tag)
+
+  //Joined in destructor...
+  /*for(size_t tag=0; tag<workerthreads.size(); ++tag)
     {
-      thrs[tag].join();
-    }
+      workerthreads[tag].join();
+      }*/
 }
+
+
+//Special case for ROOT...
+void filesender::start_worker_loop_ROOT(const std::string& runtag)
+{
+  //REV: In here, I will mess around with threads!
+  //Each filesender instance will only have a single dev#, etc.
+  //but multiple threads of course. First thread is one of them.
+  //std::thread mythread();
+  //std::vector< std::thread > thrs;
+  
+  workerthreads.resize( workersperrank );
+  for(size_t tag=0; tag<workerthreads.size(); ++tag)
+    {
+      int myworker = getworker( getrank(), tag+1 ); //Tag +1 because ROOT worker is the other one. Note,
+      //all computations must add 1 now, fuck.
+      
+      //REV: This is issue.
+      //If I call method, how does it know which "base" class to use? Copy of whole "this" filesender?
+      //Need to use "this" as second, due to the execute class funct issue.
+      workerthreads[tag] = std::thread( &filesender::execute_slave_loop, this, myworker, runtag );
+    }
+  
+}
+
 
 //REV: This will get processor name (only for the root). All those with same number as ROOT remember that they need to add 1.
 //This way I only compute it once, a bit better this way... I could have user-side store a GPU associate counter for speed though ;)
 //REV: Called BEFORE threads spawned.
+//REV: BIG PROBLEM: we can not have different RANKS accessing same GPU, but we can have same RANK accessing multi
+//GPUs. If e.g. 4 GPUs and 6 threads, what do we do? Just 1 1 1 1? Or 1 2 1 2?
+//REV: Ghetto, make variable number of threads per GPU? Or something? Assume user will set num threads and num
+//ranks to fit #GPUs...? Each rank will occupy exactly a single GPU...
 void filesender::init_local_worker_idx()
 {
   //This is stored locally in each rank of course
@@ -51,7 +82,11 @@ void filesender::init_local_worker_idx()
   std::string retval=std::getenv( "OMPI_COMM_WORLD_LOCAL_RANK" );
   mylocalidx = std::stol(retval);
   std::string cmdname = "ROOTNAME";
-    
+
+
+  return;
+
+  //REV: I don't do this anymore b/c root includes other threads.
   if( world.rank() == 0 )
     {
       fprintf(stdout, "ROOT host is [%s], root local idx is [%s]([%ld])\n", myname.c_str(), retval.c_str(), mylocalidx);
@@ -115,26 +150,41 @@ void filesender::init_local_worker_idx()
 
 int filesender::getworker( const int& rank, const int& tag )
 {
-  if(rank==0)
+  if( rank==0 )
     {
-      return 0;
+      return tag;
     }
-  
-  int myworker = (rank * workersperrank) + tag;
-  return myworker;
+  else
+    {
+      int myworker = 1 + (rank * workersperrank) + tag;
+      return myworker;
+    }
 }
 
 int filesender::getworkerrank( const int& myworker )
 {
-  
-  int myr = (myworker / workersperrank);
-  return myr;
+  if( myworker < (workersperrank+1) )
+    {
+      return 0;
+    }
+  else
+    {
+      int myr = ((myworker-1) / workersperrank);
+      return myr;
+    }
 }
 
 int filesender::getworkertag( const int& myworker )
 {
-  int mytag = (myworker % workersperrank);
-  return mytag;
+  if(myworker < (workersperrank+1))
+    {
+      return myworker;
+    }
+  else
+    {
+      int mytag = ((myworker-1) % workersperrank);
+      return mytag;
+    }
 }
 
 void filesender::initfilesender()
@@ -149,7 +199,7 @@ void filesender::initfilesender()
   
   mygpuidx=compute_gpu_idx( mylocalidx, workersperrank, getrank() );
 
-  size_t nworkers = world.size()*workersperrank - 1; //REV: Even main thread has other workers...
+  size_t nworkers = world.size()*workersperrank+1; //REV: Even main thread has other workers...
   
   bool currworking=true;
 
@@ -165,7 +215,7 @@ void filesender::initfilesender()
       exit(1);
     }
 #define BYTESIZE_BITS 8
-  uint32_t maxsize=0xFFFFFFF; //should be all 1s
+  uint32_t maxsize=0xFFFFFFFF; //should be all 1s
   long holdersize = sizeof(uint32_t)*BYTESIZE_BITS;
   long bitspertag = sizeof(uint16_t)*BYTESIZE_BITS;
   if( bitspertag > holdersize )
@@ -175,12 +225,27 @@ void filesender::initfilesender()
     }
   uint32_t shiftover=(holdersize - bitspertag); //I.e. shift over "all but 16"
   maxsize = maxsize >> shiftover; //should fill left side with zeros.
-  fprintf(stdout, "Max size representable by [%ld] bits in sendrecvstruct: [%ud]\n", bitspertag, maxsize);
+  fprintf(stdout, "Max size representable by [%ld] bits in sendrecvstruct: [%d]\n", bitspertag, maxsize);
   if( workersperrank >= maxsize )
     {
       fprintf(stderr, "REV: too many workersperrank to be represented in half-size of sendrecvstruct elements\n");
       exit(1);
     }
+
+  if( sizeof(sendrecvstruct) != sizeof(int) )
+    {
+      fprintf(stderr, "REV: WHOA WHOA WTF SIZE OF SENDRECV STRUCT is NOT sizeof INT. struct is [%ld]\n", sizeof(sendrecvstruct));
+      exit(1);
+    }
+  else
+    {
+      fprintf(stdout, "REV: Sanity check passed: sendrecvstruct is same size as int [%ld] vs [%ld]\n", sizeof(sendrecvstruct), sizeof(int));
+    }
+
+
+  sendrecvstruct tag;
+  tag = sendrecvstruct( 1, 1 );
+  fprintf(stdout, "REV: Sanity check of STRUCT for send/recv: setting 1-1 causes as int [%d], and sendtag is [%d], recvtag is [%d]. (Can I access as int directly... [%d]?)\n", tag.getasint(), tag.getsendtag(), tag.getrecvtag(), tag.asint );
   
   fprintf(stdout, "Rank [%d] finished initialize file sender, will now spawn threads...?\n", getrank());
 }
@@ -198,6 +263,11 @@ filesender::filesender(fake_system& _fakesys, const size_t& _wrkperrank, const b
 
 filesender::~filesender()
 {
+  for(size_t w=0; w<workerthreads.size(); ++w)
+    {
+      workerthreads[w].join();
+    }
+  
   MPI_Finalize();
 }
 
@@ -225,7 +295,7 @@ bool filesender::probe( const int& srcworker, const int& myworker )
 {
   sendrecvstruct sr( srcworker, myworker );
   
-  boost::optional< boost::mpi::status > msg = world.iprobe( getworkerrank( myworker ), sr.asint() );
+  boost::optional< boost::mpi::status > msg = world.iprobe( getworkerrank(srcworker), sr.getasint() );
   
   if(msg)
     {
@@ -239,14 +309,23 @@ bool filesender::probe( const int& srcworker, const int& myworker )
 
 bool filesender::probe_any( const int& myworker, sendrecvstruct& tag )
 {
-    
-  boost::optional< boost::mpi::status > msg = world.iprobe( getworkerrank( myworker ), boost::mpi::any_tag );
+  //fprintf(stdout, "Attempting to PROBE ANY!!\n");
+  //boost::optional< boost::mpi::status > msg = world.iprobe( getworkerrank( myworker ), boost::mpi::any_tag );
+  boost::optional< boost::mpi::status > msg = world.iprobe( boost::mpi::any_source, boost::mpi::any_tag );
   
+  //fprintf(stdout, "Finished probe...\n");
   if(msg) //if we actually got a message... (REV: Fuck we might have problems if we are waiting for a worker to consume something...)
     {
+      //fprintf(stdout, "We got a message!!!!! From src [%d], tag is [%d]\n", msg->source(), msg->tag());
       tag = sendrecvstruct( msg->tag() );
-      if( tag.recvtag == myworker )
+      if( getworkerrank( tag.getsendtag() ) != msg->source() )
 	{
+	  fprintf(stderr, "REV: Something is wrong in how I coded worker conversion to tags, a message with sendtag [%d], i.e. src rank [%d] but source rank [%d] exists\n", tag.getsendtag(), getworkerrank(tag.getsendtag()), msg->source() );
+	  exit(1);
+	}
+      if( tag.getrecvtag() == myworker )
+	{
+	  //fprintf(stdout, "YAY got the probe, i.e. target is me!!!!!!! \n");
 	  return true; //only care if there is a message...
 	}
       else
@@ -256,6 +335,7 @@ bool filesender::probe_any( const int& myworker, sendrecvstruct& tag )
     }
   else
     {
+      //fprintf(stdout, "Nope, still nothing from the probe...\n");
       return false;
     }
 }
@@ -274,6 +354,15 @@ void filesender::broadcast_cmd( const std::string& cmd )
   return;
 }
 
+template <typename T>
+void filesender::send( const T& v, const int& myworker, const int& targworker )
+{
+  sendrecvstruct tag( myworker, targworker );
+  lmux();
+  world.send( getworkerrank(targworker), tag.getasint(), v );
+  ulmux();
+}
+
 void filesender::send_varlist_to_worker(  const varlist<std::string>& v, const int& myworker, const int& targworker )
 {
   if( checkroot( myworker ) == false )
@@ -284,7 +373,7 @@ void filesender::send_varlist_to_worker(  const varlist<std::string>& v, const i
   
   sendrecvstruct tag( myworker, targworker );
   lmux();
-  world.send( getworkerrank(targworker), tag.asint(), v );
+  world.send( getworkerrank(targworker), tag.getasint(), v );
   ulmux();
 }
 
@@ -298,7 +387,7 @@ void filesender::send_varlist_to_root( const varlist<std::string>& v, const int&
 
   sendrecvstruct tag( myworker, ROOTWORKER );
   lmux();
-  world.send( getworkerrank(ROOTWORKER), tag.asint(), v ); //Rank will be implicitly known by root based on SRC
+  world.send( getworkerrank(ROOTWORKER), tag.getasint(), v ); //Rank will be implicitly known by root based on SRC
   ulmux();
 }
 
@@ -313,7 +402,7 @@ void filesender::send_cmd_to_worker( const std::string& cmd, const int& myworker
     }
   sendrecvstruct tag( myworker, targworker );
   lmux();
-  world.send( getworkerrank(targworker), tag.asint(), cmd );
+  world.send( getworkerrank(targworker), tag.getasint(), cmd );
   ulmux();
 }
 
@@ -326,17 +415,25 @@ void filesender::send_cmd_to_root( const std::string& cmd, const int& myworker )
       exit(1);
     }
   
-  sendrecvstruct tag( myworker,  ROOTWORKER);
+  sendrecvstruct tag( myworker, ROOTWORKER);
+
+  //REV: sanity check... if my worker is in upper 16 bits, it should be quite large...
+  //sendrecvstruct tag2( 1, 0 );
+  //fprintf(stdout, "REV: SANITY CHECKING: I have created a sendrecvstruct with (1, 0), which means that bit 16 should be a 1, and all others are zero. This implies value should be 2^16, i.e. 65536. Value is [%d]\n", tag2.getasint() );
+  //exit(1);
   
-  fprintf(stdout, "WORKER [%d]: ATTEMPTING TO LOCK MUX for send CMD to ROOT\n", myworker );
+    
+  //fprintf(stdout, "WORKER [%d]: ATTEMPTING TO LOCK MUX for send CMD to ROOT\n", myworker );
 
   lmux();
 
-  fprintf(stdout, "WORKER [%d]: SUCCEEDED TO LOCK MUX for send CMD to ROOT\n", myworker );
+  //fprintf(stdout, "WORKER [%d]: SUCCEEDED TO LOCK MUX for send CMD to ROOT\n", myworker );
 
-  world.send( getworkerrank( ROOTWORKER ), tag.asint(), cmd );
+  //fprintf(stdout, "Worker [%d], sending cmd [%s] to ROOT, ostensibly with tag [%d], which contains src [%d] and targ [%d]. Will be send to rank [%d]\n", myworker, cmd.c_str(), tag.getasint(), tag.getsendtag(), tag.getrecvtag(), getworkerrank( ROOTWORKER ) );
+  
+  world.send( getworkerrank( ROOTWORKER ), tag.getasint(), cmd );
 
-  fprintf(stdout, "WORKER [%d]: FINISHED send CMD to ROOT, will unlock mux\n", myworker );
+  //fprintf(stdout, "WORKER [%d]: FINISHED send CMD to ROOT, will unlock mux\n", myworker );
 
   ulmux();
 }
@@ -353,7 +450,7 @@ void filesender::send_pitem_to_worker( const pitem& mypitem, const int& myworker
   sendrecvstruct tag( myworker,  targworker);
   
   lmux();
-  world.send( getworkerrank(targworker), tag.asint(), mypitem ); //will serialize it for me.
+  world.send( getworkerrank(targworker), tag.getasint(), mypitem ); //will serialize it for me.
   ulmux();
 }
 
@@ -366,7 +463,7 @@ void filesender::send_pitem_to_root( const pitem& mypitem, const int& myworker )
     }
   sendrecvstruct tag( myworker, ROOTWORKER );
   lmux();
-  world.send( getworkerrank(ROOTWORKER), tag.asint(), mypitem );
+  world.send( getworkerrank(ROOTWORKER), tag.getasint(), mypitem );
   ulmux();
 }
 
@@ -380,10 +477,10 @@ void filesender::recv( const int& sendworker, const int& myworker, T& val )
   while(gotmesg==false)
     {
       lmux();
-      bool gotmesg = probe( sendworker, myworker );
+      gotmesg = probe( sendworker, myworker );
       if( gotmesg )
 	{
-	  world.recv( sendrank, tag.asint(), val );
+	  world.recv( sendrank, tag.getasint(), val );
 	  ulmux();
 	}
       else
@@ -402,18 +499,22 @@ sendrecvstruct filesender::recv_any( const int& myworker, T& val )
   while(gotmesg==false)
     {
       lmux();
-      bool gotmesg = probe_any( myworker, tag );
+      gotmesg = probe_any( myworker, tag );
       if( gotmesg )
 	{
-	  int sendworker= tag.sendtag;
+
+	  int sendworker= tag.getsendtag();
 	  int sendrank = getworkerrank( sendworker );
-	  world.recv( sendrank, tag.asint(), val );
+	  //fprintf(stdout, "REV: recvany: OK, got message of sender [%d] (to worker [%d], should be 0). Will try to recv from that rank [%d]\n", tag.getsendtag(), tag.getrecvtag(), sendrank );
+	  world.recv( sendrank, tag.getasint(), val );
+	  //fprintf(stdout, "REV: recvany: Finished recv!\n");
 	  ulmux();
 	}
       else
 	{
+	  //fprintf(stdout, "REV: recvany: Nope, still sleeping...\n");
 	  ulmux();
-	  usleep( 100 ); //microseconds?
+	  usleep( 1000 ); //microseconds?
 	}
     }
   return tag;
@@ -459,15 +560,16 @@ psweep_cmd filesender::receive_cmd_from_any_worker( const int& myworker )
   
   std::string data;
 
+  //fprintf(stdout, "Will recieve from any worker...\n");
   sendrecvstruct sr = recv_any<std::string>( ROOTWORKER, data );
-  
+  //fprintf(stdout, "Finished receiving from any worker\n");
   /*lmux();
   boost::mpi::status msg = world.probe();
   //world.recv(msg.source(), boost::mpi::any_tag, data);
   world.recv(msg.source(), msg.tag(), data);
   ulmux();
   */
-  psweep_cmd pc( sr.sendtag, data );
+  psweep_cmd pc( sr.getsendtag(), data );
   return pc;
 }
 
@@ -548,7 +650,7 @@ int filesender::receive_int_from_worker( const int& targworker, const int& mywor
       exit(1);
     }
   int newint;
-  recv<int>( myworker, ROOTWORKER, newint);
+  recv<int>( targworker, ROOTWORKER, newint);
   return newint;
 }
 
@@ -563,7 +665,7 @@ void filesender::send_int_to_root( const int& tosend, const int& myworker )
 
   sendrecvstruct tag( myworker, ROOTWORKER );
   lmux();
-  world.send( ROOTWORKER, tag.asint(), tosend );
+  world.send( ROOTWORKER, tag.getasint(), tosend );
   ulmux();
 }
 
@@ -576,7 +678,7 @@ void filesender::send_int_to_worker( const int& tosend, const int& myworker, con
     }
   sendrecvstruct tag( ROOTWORKER, targworker );
   lmux();
-  world.send( getworkerrank(targworker), tag.asint(), tosend );
+  world.send( getworkerrank(targworker), tag.getasint(), tosend );
   ulmux();
 }
 
@@ -590,7 +692,7 @@ void filesender::send_file_to_worker( const memfile& memf, const int& myworker, 
     }
   sendrecvstruct tag( ROOTWORKER, targworker );
   lmux();
-  world.send( getworkerrank(targworker), tag.asint(), memf );
+  world.send( getworkerrank(targworker), tag.getasint(), memf );
   ulmux();
 }
 
@@ -603,7 +705,7 @@ void filesender::send_file_to_root( const memfile& memf, const int& myworker )
     }
   sendrecvstruct tag( myworker, ROOTWORKER );
   lmux();
-  world.send( ROOTWORKER, tag.asint(), memf );
+  world.send( ROOTWORKER, tag.getasint(), memf );
   ulmux();
 }
   
@@ -629,7 +731,7 @@ memfile filesender::receive_file_from_worker( const int& targworker, const int& 
       exit(1);
     }
   memfile mf;
-  recv<memfile>(myworker, ROOTWORKER, mf);
+  recv<memfile>(targworker, ROOTWORKER, mf);
   return mf;
 }
 
@@ -744,18 +846,21 @@ pitem filesender::handle_cmd( const psweep_cmd& pcmd, const int& myworker )
 void filesender::worker_notify_finished( pitem& mypitem, memfsys& myfsys, const int& myworker )
 {
 
-  fprintf(stdout, "WORKER [%d] sending DONE to root\n", myworker );
-  send_cmd_to_root( "DONE", myworker );
+  //fprintf(stdout, "WORKER [%d] sending DONE to root\n", myworker );
+  //send_cmd_to_root( "DONE", myworker );
+  send<std::string>( "DONE", myworker, ROOTWORKER );
 
-  fprintf(stdout, "WORKER [%d] done sending DONE to root, will send INT\n", myworker );
+  //fprintf(stdout, "WORKER [%d] done sending DONE to root, will send INT\n", myworker );
   
   //Note, all OUTPUT are automatically appended to SUCCESS, so just
   //return all SUCCESS files.
   size_t nsuccess = mypitem.success_files.size();
   
   
-  send_int_to_root( nsuccess, myworker);
-  fprintf(stdout, "WORKER [%d] done sending INT to root. Will now send [%ld] files\n", myworker, nsuccess );  
+  //send_int_to_root( nsuccess, myworker);
+  send<int>( (int)nsuccess, myworker, ROOTWORKER );
+  
+  //fprintf(stdout, "WORKER [%d] done sending INT to root. Will now send [%ld] files\n", myworker, nsuccess );  
   for(size_t x=0; x<nsuccess; ++x)
     {
       std::string mfname = mypitem.success_files[x];
@@ -763,16 +868,19 @@ void filesender::worker_notify_finished( pitem& mypitem, memfsys& myfsys, const 
       memfile_ptr mfp = myfsys.open( mfname, todisk );
       //REV: This is where a problem could happen...
       //Send from disk if todisk is true...
-      send_file_to_root( mfp.get_memfile(), myworker );
+      //send_file_to_root( mfp.get_memfile(), myworker );
+      send<memfile>( mfp.get_memfile(), myworker, ROOTWORKER );
       mfp.close();
     }
 
 
-  fprintf(stdout, "WORKER [%d] done sending FILES to root. Will send VARLIST\n", myworker );
+  //fprintf(stdout, "WORKER [%d] done sending FILES to root. Will send VARLIST\n", myworker );
   varlist<std::string> resvar = mypitem.get_output( myfsys, todisk );
     
-  send_varlist_to_root( resvar, myworker );
-  fprintf(stdout, "WORKER [%d] done sending VARLIST to root\n", myworker );
+  //send_varlist_to_root( resvar, myworker );
+  send<varlist<std::string>>( resvar, myworker, ROOTWORKER );
+  
+  //fprintf(stdout, "WORKER [%d] done sending VARLIST to root\n", myworker );
     
   return;
 }
@@ -790,9 +898,9 @@ varlist<std::string> filesender::handle_finished_work( const psweep_cmd& pc, pit
       exit(1);
     }
   
-  fprintf(stdout, "ROOT: handling finished work from worker [%d]. Getting INT\n", targworker);
+  //fprintf(stdout, "ROOT: handling finished work from worker [%d]. Getting INT\n", targworker);
   size_t nfiles = receive_int_from_worker( targworker, myworker );
-  fprintf(stdout, "ROOT: handling finished work from worker [%d]. Got INT (nfiles=[%ld])\n", targworker, nfiles);
+  //fprintf(stdout, "ROOT: handling finished work from worker [%d]. Got INT (nfiles=[%ld])\n", targworker, nfiles);
 
   for(size_t x=0; x<nfiles; ++x)
     {
@@ -832,10 +940,10 @@ varlist<std::string> filesender::handle_finished_work( const psweep_cmd& pc, pit
 	  mfp.close();
 	}
     }
-  fprintf(stdout, "ROOT: handling finished work from worker [%d]. Finished receiving all files (nfiles=[%ld]). Now getting varlist\n", targworker, nfiles);
+  //fprintf(stdout, "ROOT: handling finished work from worker [%d]. Finished receiving all files (nfiles=[%ld]). Now getting varlist\n", targworker, nfiles);
 
   varlist<std::string> outputvlist = receive_varlist_from_worker( targworker, myworker );
-  fprintf(stdout, "ROOT: handling finished work from worker [%d]. GOT varlist\n", targworker);
+  //fprintf(stdout, "ROOT: handling finished work from worker [%d]. GOT varlist\n", targworker);
   
   return outputvlist;
 }
@@ -887,7 +995,7 @@ void filesender::execute_slave_loop( const int myworker, const std::string runta
   bool loopslave=true;
   std::string LOCALDIR = "/tmp/" + runtag + "_" + std::to_string( myworker );
   
-  fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Starting slave loop...\n", myworker, getworkerrank(myworker), getworkertag( myworker ), mygpuidx );
+  fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d] (local idx is %ld). Starting slave loop...\n", myworker, getworkerrank(myworker), getworkertag( myworker ), mygpuidx, mylocalidx );
   //REV: This will do nothing if there is no CUDA.
 
   set_cuda_device( mygpuidx ); 
@@ -895,16 +1003,17 @@ void filesender::execute_slave_loop( const int myworker, const std::string runta
   fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. SET GPU, now sending READY to root!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
   //REV: need to send first guy to tell its ready
   std::string pcinit = "READY";
-  send_cmd_to_root( pcinit, myworker );
+  //send_cmd_to_root( pcinit, myworker );
+  send<std::string>( pcinit, myworker, ROOTWORKER );
 
-  fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. **DONE** sending READY to root. Now waiting for CMD!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
+  fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. **DONE** sending READY to root. Now LOOPING!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
   
   while( loopslave == true )
     {
       make_directory( LOCALDIR );
       
       psweep_cmd cmd = receive_cmd_from_root( myworker );
-      fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Got CMD from root!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
+      //fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Got CMD from root!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
       
       
       if( cmd_is_exit( cmd ) == true )
@@ -916,19 +1025,19 @@ void filesender::execute_slave_loop( const int myworker, const std::string runta
 
       //REV: may EXIT, or contain a PITEM (to execute).
       pitem mypitem = handle_cmd( cmd, myworker );
-      fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Will handle pitem!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
+      //fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Will handle pitem!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
 	
       memfsys myfsys = worker_handle_pitem( mypitem, LOCALDIR, myworker);
-      fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Finished handle PITEM, executing!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
+      //fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Finished handle PITEM, executing!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
       		
       bool blah = execute_work( mypitem, myfsys );
 
-      fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Done executing, notifying of done...!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
+      //fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Done executing, notifying of done...!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
       
       //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
       worker_notify_finished( mypitem, myfsys, myworker );
       
-      fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. DONE notify, cleaning up.....!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
+      //fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. DONE notify, cleaning up.....!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
       
       cleanup_workspace( mypitem );
     }
@@ -963,13 +1072,16 @@ bool filesender::is_ready_for_work( const psweep_cmd& pcmd )
 //REV: Always read from files here...assume there will be none shared.
 void filesender::master_to_slave( const pitem& mypitem, const int& workeridx, const int& myworker, memfsys& myfsys )
 {
-  send_cmd_to_worker( "PITEM", workeridx, myworker );
+  //send_cmd_to_worker( "PITEM", workeridx, myworker );
+  send<std::string>("PITEM", ROOTWORKER, workeridx );
 
-  send_pitem_to_worker( mypitem, workeridx, myworker );
-
+  //send_pitem_to_worker( mypitem, workeridx, myworker );
+  send<pitem>( mypitem, ROOTWORKER, workeridx );
+  
   int nfiles = mypitem.required_files.size();
     
-  send_int_to_worker( nfiles, workeridx, myworker );
+  //send_int_to_worker( nfiles, workeridx, myworker );
+  send<int>( nfiles, ROOTWORKER, workeridx );
 
   //Then, send the files.
   for(size_t f=0; f<mypitem.required_files.size(); ++f)
@@ -979,7 +1091,8 @@ void filesender::master_to_slave( const pitem& mypitem, const int& workeridx, co
       memfile_ptr mfp = myfsys.open( mypitem.required_files[f], true ); //will attempt to read through if it does not exist. Note may be empty?
 	
       //send_file_from_disk( workeridx, mypitem.required_files[f] );
-      send_file_to_worker( mfp.get_memfile(), workeridx, myworker );
+      //send_file_to_worker( mfp.get_memfile(), workeridx, myworker );
+      send<memfile>( mfp.get_memfile(), ROOTWORKER, workeridx );
       mfp.close();
     }
 
@@ -1012,16 +1125,15 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
   //be done if there are any workers working...
   while( wprog.check_all_done() == false )
     {
-      fprintf(stdout, "Not all done of WPROG! WORKING: \n");
-      for(size_t x=0; x<_workingworkers.size(); ++x)
+      //fprintf(stdout, "Not all done of WPROG! WORKING: \n");
+      /*for(size_t x=0; x<_workingworkers.size(); ++x)
 	{
 	  if( _workingworkers[x] == true )
 	    {
 	      fprintf(stdout, " [%ld] ", x );
-
 	    }
 	}
-      fprintf(stdout, "\n");
+	fprintf(stdout, "\n");*/
       //Only accept messages if there are no available workers and
       //there's no work to do.
       //If there is available workers, but no work to do, accept messages
@@ -1032,8 +1144,8 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	    wprog.check_work_avail() == true )
 	  )
 	{
-	  fprintf(stdout, "CASE: Either there is a worker available, OR there is work available. I will receive a response from a worker\n");
-	  if( wprog.avail_worker( _workingworkers ) == true )
+	  //fprintf(stdout, "CASE: Either there is a worker available, OR there is work available. I will receive a response from a worker\n");
+	  /*if( wprog.avail_worker( _workingworkers ) == true )
 	    {
 	      fprintf(stdout, " NOTE: there ARE workers available\n");
 	    }
@@ -1041,7 +1153,7 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	  if(  wprog.check_work_avail() == true  )
 	    {
 	      fprintf(stdout, " NOTE: there IS work available\n");
-	    }
+	      }*/
 	  //ACCEPT MESSAGES FROM WORKERS AND HANDLE.
 	  //Note, we want to keep it so that this array will carry over
 	  //to the next loop??? Fuck. They sent DONE or READY or
@@ -1051,6 +1163,7 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	  //pass around a WORKING thing separate from the list of PP.
 	  //OK, do it.
 
+	  
 	  psweep_cmd pcmd = receive_cmd_from_any_worker( ROOTWORKER );
 	  
 	  if( is_finished_work( pcmd ) == true )
@@ -1072,7 +1185,7 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	      //REV: THIS will write to files! Modify to use a local (temporary) memfsys
 	      varlist<std::string> result = handle_finished_work( pcmd, handledpitem, pg.parampoint_memfsystems[ pc.parampointn ], ROOTWORKER, usedisk );
 		
-	      fprintf(stdout, "MASTER: got result from worker [%ld]. Now marking done...\n", workernum);
+	      //fprintf(stdout, "MASTER: got result from worker [%ld]. Now marking done...\n", workernum);
 	      
 	      //need to mark it DONE in pitem representation.
 	      wprog.mark_done( pc );
@@ -1103,7 +1216,7 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
       //both work and worker available: farm it.
       else
 	{
-	  fprintf(stdout, "CASE: BOTH WORK AND A WORKER ARE AVAILABLE. WILL FARM\n");
+	  //fprintf(stdout, "CASE: BOTH WORK AND A WORKER ARE AVAILABLE. WILL FARM\n");
 
 	  //REV: This will only modify local worker-tabulating structs,
 	  //it will not do any actual work or communicate over MPI.
@@ -1126,9 +1239,9 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 			   farmedworker,
 			   ROOTWORKER,
 			   pg.parampoint_memfsystems[pc.parampointn] );
-	  fprintf(stdout, "DONE master to slave.\n");
+	  //fprintf(stdout, "DONE master to slave.\n");
 	}
     } //end while !all done.
-  fprintf(stdout, "\n\nROOT FINISHED GENERATION? (comp pp)\n\n");
+  //fprintf(stdout, "\n\nROOT FINISHED GENERATION? (comp pp)\n\n");
 } //end comp_pp_list
 
