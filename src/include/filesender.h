@@ -56,31 +56,81 @@
 #include <psweep2_cuda_utils.h>
 
 
+struct sendrecvstruct
+{
+  uint16_t sendtag;
+  uint16_t recvtag;
+
+  sendrecvstruct()
+  {
+  }
+  
+sendrecvstruct( uint16_t _sendtag, uint16_t _recvtag )
+    : sendtag(_sendtag), recvtag(_recvtag)
+  {
+    
+  }
+
+  sendrecvstruct( int tag )
+  //: sendtag(_sendtag), recvtag(_recvtag)
+  {
+    sendtag = (sendrecvstruct(tag)).sendtag;
+    recvtag = (sendrecvstruct(tag)).recvtag;
+  }
+
+  int asint()
+  {
+    return *((int*)(this));
+  }
+  
+  //Cast the int as this, and set the values.
+  void setsendtag( int& arg )
+  {
+    sendtag = arg;
+  }
+
+  int getsendtag( int& arg )
+  {
+    return (int)sendtag;
+  }
+
+  void setrecvtag( int& arg )
+  {
+    recvtag = arg;
+  }
+
+  int getrecvtag( )
+  {
+    return (int)recvtag;
+  }
+};
+
+
 struct psweep_cmd
 {
   int SRC;
   std::string CMD;
-  psweep_cmd( const int& srcworker, const std::string& cm );
-  psweep_cmd()
+
+  inline psweep_cmd( const int& srcworker, const std::string& cm )
+    : SRC( srcworker ), CMD( cm )
+  {
+    //NOTHING
+  }
+
+  inline psweep_cmd()
   {
   }
 };
 
 struct filesender
 {
-
-  //std::shared_ptr< boost::mpi::communicator > world;
-  //std::shared_ptr< boost::mpi::environment > env;
-
-  //REV: This CONTAINS the memfile system thing. So...on other side, I need to re-construct it? Note, user will need to "construct" on this side
-  //in real time?
   fake_system fakesys;
 
   bool todisk=false;
-
+  
   //REV: I actually only need one copy of this...on ROOT.
   std::vector<bool> _workingworkers;
-
+  
   size_t workersperrank=1;
   std::mutex mpimux; //this mux is used for MPI communications of the different threads. In case parallel MPI support is not compiled?
   
@@ -90,7 +140,7 @@ struct filesender
   int myrank;
   
   //#ifdef CUDA_SUPPORT
-  size_t mygpuidx=0;
+  int mygpuidx=0;
   //#endif
   
   struct pitem_rep
@@ -239,8 +289,8 @@ struct filesender
   //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
   //static filesender* Create( const std::string& runtag, fake_system& _fakesys, const bool& _todisk=false );
 
-    //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
-  static filesender* /*filesender::*/Create( const std::string& runtag, fake_system& _fakesys, const size_t& _wrkperrank , const bool& _todisk )
+  //REV: I need to create the FAKE_SYSTEM **before** I actually make the separation to slave loop...
+  static filesender* Create( const std::string& runtag, fake_system& _fakesys, const size_t& _wrkperrank , const bool& _todisk )
   {
     filesender* fs = new filesender(_fakesys,  _wrkperrank, _todisk);
     
@@ -264,127 +314,99 @@ struct filesender
     fprintf(stderr, "REV: MASSIVE ERROR in filesender CREATOR: I reached end of function, which NEVER SHOULD HAPPEN\n");
     //REV: the other one should naturally delete it here.
   }
-  size_t getworker( const size_t& rank, const size_t& tag );
-  size_t getworkerrank( const size_t& wnum );
-  size_t getworkertag( const size_t& wnum );
+
+  inline void start_worker_loop(const std::string& runtag);
   
-  void initfilesender();
-  bool checkroot();
-  void lmux();
-
-  void ulmux();
-  int getrank();
-
+  inline void init_local_worker_idx();
   
-  void init_local_worker_idx();
-  void broadcast_cmd( const std::string& cmd );
-  //REV; TODO: at some point, build the fake MEM_FILESYSTEM, and furthermore, populate the FAKE_SYSTEM_CALLS if we want to...
-  //Note when we construct and send PITEM, then we are writing to target, but we don't want to actually write out to local one unless we are executing
-  //the stuff. In other words. only do it right before execute? Only if execute returns false? Execute takes the stuff. Hmm, we will be writing large numbers
-  //of files possibly still, massive waste. So, I need a way to stop it from doing that...
-  filesender();
+  inline int getworker( const int& rank, const int& tag );
+  inline int getworkerrank( const int& myworker );
+  inline int getworkertag( const int& myworker );
   
-  filesender(fake_system& _fakesys, const size_t& _wrkperrank = 1, const bool& _todisk = false);
-  ~filesender();
+  inline void initfilesender();
 
-  void send_varlist_to_root( const varlist<std::string>& v, const int& mytag );
-  void send_varlist_to_worker(  const varlist<std::string>& v, const int& targworker);
-  //void send_varlist(  const int& targrank, const varlist<std::string>& v );
-
-  void send_cmd_to_worker( const std::string& cmd, const int& targworker );
-  void send_cmd_to_root( const std::string& cmd, const int& mytag );
-  //  void send_cmd( const std::string& cmd, const int& targrank );
+  inline filesender();
+  inline filesender(fake_system& _fakesys, const size_t& _wrkperrank = 1, const bool& _todisk = false);
+  inline ~filesender();
   
+  inline bool checkroot( const int& myworker );
+  inline void lmux();
+  inline void ulmux();
 
-  void send_pitem_to_worker( const pitem& mypitem, const int& targworker );
-  void send_pitem_to_root( const pitem& mypitem, const int& mytag );
-  //void send_pitem( const pitem& mypitem, const int& targrank );
-
-  varlist<std::string> receive_varlist_from_root( const int& targworker, const int& mytag );
-  varlist<std::string> receive_varlist_from_worker( const int& targworker );
-  //varlist<std::string> receive_varlist( const int& targrank );
-
-
-  //REV: FOr intiial setup
-  psweep_cmd receive_cmd_from_root( );
-
+  inline bool probe( const int& srcworker, const int& myworker);
+  inline bool probe_any( const int& myworker, sendrecvstruct& tag );
   
-  psweep_cmd receive_cmd_from_root( const int& mytag );
-  psweep_cmd receive_cmd_from_any_worker( );
-  //psweep_cmd receive_cmd_from_any( );
-  //psweep_cmd receive_cmd_from_root( );
+  inline int getrank();
+    
+  inline void broadcast_cmd( const std::string& cmd );
+  
+  inline void send_varlist_to_worker(  const varlist<std::string>& v, const int& myworker, const int& targworker);
+  inline void send_varlist_to_root( const varlist<std::string>& v, const int& myworker );
+  
+  inline void send_cmd_to_worker( const std::string& cmd, const int& myworker, const int& targworker );
+  inline void send_cmd_to_root( const std::string& cmd, const int& myworker );
+
+  inline void send_pitem_to_worker( const pitem& mypitem, const int& myworker, const int& targworker );
+  inline void send_pitem_to_root( const pitem& mypitem, const int& myworker );
+
+  template <typename T>
+  inline void recv( const int& sendworker, const int& myworker, T& val );
+
+  template <typename T>
+  inline sendrecvstruct recv_any( const int& myworker, T& val );
   
   
-  pitem receive_pitem_from_root( const int& mytag ) ;
-  pitem receive_pitem_from_worker( const int& targworker ) ;
-  //pitem receive_pitem( const int& targrank );
+  inline varlist<std::string> receive_varlist_from_worker( const int& srcworker, const int& myworker );
+  inline varlist<std::string> receive_varlist_from_root( const int& myworker );
+
+  inline psweep_cmd receive_cmd_from_any_worker( const int& myworker );
+  inline psweep_cmd receive_cmd_from_root( );
+  inline psweep_cmd receive_cmd_from_root( const int& myworker );
+    
+  inline pitem receive_pitem_from_root( const int& myworker ) ;
+  inline pitem receive_pitem_from_worker( const int& targworker, const int& myworker ) ;
+
+  inline int receive_int_from_root( const int& myworker );
+  inline int receive_int_from_worker( const int& targworker, const int& myworker ) ;
+
   
-  int receive_int_from_root( const int& mytag );
-  int receive_int_from_worker( const int& targworker ) ;
-  //int receive_int( const int& targrank );
- 
-  void send_int_to_root( const int& tosend, const int& mytag ) ;
-  void send_int_to_worker( const int& tosend, const int& targworker );
-    //void send_int( const int& targrank, const int& tosend ); //, boost::mpi::communicator& world )
+  inline void send_int_to_root( const int& tosend, const int& myworker ) ;
+  inline void send_int_to_worker( const int& tosend, const int& myworker, const int& targworker );
+
+  inline void send_file_to_worker( const memfile& memf, const int& myworker, const int& targworker);
+  inline void send_file_to_root( const memfile& memf, const int& myworker );
+  inline void send_file_to_root_from_disk( const std::string& fname, const int& myworker );
+  inline void send_file_to_worker_from_disk( const std::string& fname, const int& myworker, const int& targworker );
+
+  inline memfile receive_file_from_worker( const int& targworker, const int& myworker );
+  inline memfile receive_file_from_root( const int& myworker );
   
-
-  //So, depending on the RANK, this will SEND or RECEIVE.
-  //All SLAVES enter a LOOP of waiting for a MESG.
-
-  //void rename_file( pitem& mypitem, const std::vector<mem_file>& mf, const std::vector<std::string> newfnames, const std::string& dir )
-  //This will rename all files in MYPITEM (in SUCCESS only?), given a list of files? An array of files? Yea, it will tell which ones should be renamed.
-  //I.e. gives list of indices to it.
-
-  void start_worker_loop(const std::string& runtag);
-  //compare two filenames in canonical thing? E.g. /.././../. etc. /. will remove current, i.e. can be safely removed. /.. will remove the previous
-  //thing (if it starts with that /.. then error out). Can't handle things like symlinks anyway so whatever...
-
-  //REV: BIG PROBLEM, I need to check whether it starts with a / or not.
-
-  memfsys worker_handle_pitem( pitem& mypitem, const std::string& dir, const int& mytag );
-    //memfsys handle_pitem( pitem& mypitem, const std::string& dir, const int& mytag );
-
-  void send_file_to_worker( const memfile& memf, const int& targworker);
-  void send_file_to_root( const memfile& memf, const int& mytag );
-  void send_file_to_root_from_disk( const std::string& fname, const int& mytag );
-  void send_file_to_worker_from_disk( const std::string& fname, const int& targworker );
   
-  //void send_file( const int& targrank, const mem_file& memf )
-  //void send_file( const int& targrank, const memfile& memf );
   
-  //void send_file_from_disk( const int& targrank, const std::string& fname );
+  inline memfsys worker_handle_pitem( pitem& mypitem, const std::string& dir, const int& myworker );
+
+  inline bool cmd_is_exit(  const psweep_cmd& pcmd );
   
-  memfile receive_file_from_worker( const int& targworker );
-  memfile receive_file_from_root( const int& mytag );
-    //memfile receive_file( const int& targrank );
-
-  //arbitrary byte array as VECTOR, and we can cast it to a target TYPE in some way? Like...static_cast? whoa...blowin my mind haha.
-  //std::vector< char > receive_memory( const int& targrank );
- 
-  bool cmd_is_exit(  const psweep_cmd& pcmd );
-
   //REV: This is only for WORKERS
-  pitem handle_cmd( const psweep_cmd& pcmd, const int& mytag );
+  inline pitem handle_cmd( const psweep_cmd& pcmd, const int& myworker );
 
-  void worker_notify_finished( pitem& mypitem, memfsys& myfsys, const int& mytag );
-  //void notify_finished( pitem& mypitem, memfsys& myfsys );
-
-  //REV: this needs to "find" which PITEM was allocated to that worker/ thread.
-  //REV: Note we could use todisk, but easier to do it as todisk?
-  varlist<std::string> handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem, memfsys& myfsys, const bool& usedisk=false );
-  size_t get_local_rank( );
-  void mangle_with_local_worker_idx( pitem& mypitem );
+  inline void worker_notify_finished( pitem& mypitem, memfsys& myfsys, const int& myworker );
   
-  bool execute_work( pitem& mypitem, memfsys& myfsys );
+  inline varlist<std::string> handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem, memfsys& myfsys, const int& myworker, const bool& usedisk=false );
+  inline size_t get_local_rank( );
+  inline void mangle_with_local_worker_idx( pitem& mypitem );
+  
+  inline bool execute_work( pitem& mypitem, memfsys& myfsys );
  
 
-  void cleanup_workspace( const pitem& mypitem );
-  
-  void execute_slave_loop( const size_t mytag, const std::string runtag="scratch" );
+  inline void cleanup_workspace( const pitem& mypitem );
+
+  //REV: Can't be refs bc called from THREAD
+  inline void execute_slave_loop( const int myworker, const std::string runtag="scratch" );
  
-  bool is_finished_work( const psweep_cmd& pcmd );
+  inline bool is_finished_work( const psweep_cmd& pcmd );
  
-  bool is_ready_for_work( const psweep_cmd& pcmd );
+  inline bool is_ready_for_work( const psweep_cmd& pcmd );
  
 
   
@@ -507,7 +529,7 @@ struct filesender
 
 
   //REV: Always read from files here...assume there will be none shared.
-  void master_to_slave( const pitem& mypitem, const size_t& workeridx, memfsys& myfsys );
+  inline void master_to_slave( const pitem& mypitem, const int& workeridx, const int& myworker, memfsys& myfsys );
   
 
 
@@ -699,7 +721,10 @@ struct filesender
   //have access to that from PITEM. I.e. I need to know my PSET and PPOINT.
   //At any rate, at PITEM creation time (construction), I would like a
   //pointer to it...
-  void comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, seedgen& sg, const bool& usedisk=false );
+  inline void comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, seedgen& sg, const bool& usedisk=false );
  
   
 };
+
+
+#include <filesender.cpp>

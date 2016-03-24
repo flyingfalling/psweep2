@@ -1,14 +1,8 @@
 
 #include <filesender.h>
+#include <unistd.h>
 
-
-
-
-psweep_cmd::psweep_cmd( const int& srcworker, const std::string& cm )
-  : SRC( srcworker ), CMD( cm )
-{
-  //NOTHING
-}
+#define ROOTWORKER 0
 
 
 void filesender::start_worker_loop(const std::string& runtag)
@@ -18,19 +12,22 @@ void filesender::start_worker_loop(const std::string& runtag)
   //but multiple threads of course. First thread is one of them.
   //std::thread mythread();
   std::vector< std::thread > thrs;
+
   if(workersperrank > 1)
     {
       thrs.resize( workersperrank-1 );
       for(size_t tag=0; tag<thrs.size(); ++tag)
       {
+	int myworker = getworker( getrank(), tag+1 );
 	//REV: This is issue.
 	//If I call method, how does it know which "base" class to use? Copy of whole "this" filesender?
-	//Need to use this as second, due to the execute thing.
-	thrs[tag] = std::thread( &filesender::execute_slave_loop, this, tag+1, runtag );
+	//Need to use "this" as second, due to the execute class funct issue.
+	thrs[tag] = std::thread( &filesender::execute_slave_loop, this, myworker, runtag );
       }
     }
-  //std::thread thr( execute_slave_loop(runtag, 0) );
-  execute_slave_loop(0, runtag);
+
+  int myworker = getworker( getrank(), 0 );
+  execute_slave_loop(myworker, runtag);
   
   for(size_t tag=0; tag<thrs.size(); ++tag)
     {
@@ -40,6 +37,7 @@ void filesender::start_worker_loop(const std::string& runtag)
 
 //REV: This will get processor name (only for the root). All those with same number as ROOT remember that they need to add 1.
 //This way I only compute it once, a bit better this way... I could have user-side store a GPU associate counter for speed though ;)
+//REV: Called BEFORE threads spawned.
 void filesender::init_local_worker_idx()
 {
   //This is stored locally in each rank of course
@@ -53,7 +51,7 @@ void filesender::init_local_worker_idx()
   std::string retval=std::getenv( "OMPI_COMM_WORLD_LOCAL_RANK" );
   mylocalidx = std::stol(retval);
   std::string cmdname = "ROOTNAME";
-  
+    
   if( world.rank() == 0 )
     {
       fprintf(stdout, "ROOT host is [%s], root local idx is [%s]([%ld])\n", myname.c_str(), retval.c_str(), mylocalidx);
@@ -109,46 +107,33 @@ void filesender::init_local_worker_idx()
 	  //#endif
 	}
 
-      //receive it and check if its same. If so, subtract 1 from retval
-      //
     }
   fprintf(stdout, "FINISHED init local worker idx!!!\n");
   
 } //init_local_worker_idx done.
 
 
-//REV; TODO: at some point, build the fake MEM_FILESYSTEM, and furthermore, populate the FAKE_SYSTEM_CALLS if we want to...
-//Note when we construct and send PITEM, then we are writing to target, but we don't want to actually write out to local one unless we are executing
-//the stuff. In other words. only do it right before execute? Only if execute returns false? Execute takes the stuff. Hmm, we will be writing large numbers
-//of files possibly still, massive waste. So, I need a way to stop it from doing that...
-size_t filesender::getworker( const size_t& rank, const size_t& tag )
+int filesender::getworker( const int& rank, const int& tag )
 {
   if(rank==0)
     {
       return 0;
     }
-  //integer division...+1 for root rank
-  size_t myworker = ((rank-1) * workersperrank) + tag + 1;
+  
+  int myworker = (rank * workersperrank) + tag;
   return myworker;
 }
 
-size_t filesender::getworkerrank( const size_t& wnum )
+int filesender::getworkerrank( const int& myworker )
 {
-  if(wnum == 0)
-    {
-      return 0;
-    }
-  //integer division...+1 for root rank
-  size_t myr = ((wnum-1) / workersperrank) + 1;
+  
+  int myr = (myworker / workersperrank);
   return myr;
 }
 
-size_t filesender::getworkertag( const size_t& wnum )
+int filesender::getworkertag( const int& myworker )
 {
-  if( wnum == 0 )
-    { return 0; }
-  //integer division...+1 for root rank
-  size_t mytag = ((wnum-1) % workersperrank);
+  int mytag = (myworker % workersperrank);
   return mytag;
 }
 
@@ -162,17 +147,42 @@ void filesender::initfilesender()
   //Assume that world/env are automatically constructed?
   init_local_worker_idx();
   
-  //I actually don't need to do this
-  //#ifdef CUDA_SUPPORT
   mygpuidx=compute_gpu_idx( mylocalidx, workersperrank, getrank() );
-  //#endif
+
+  size_t nworkers = world.size()*workersperrank - 1; //REV: Even main thread has other workers...
   
   bool currworking=true;
-  //Rank 1 has only 1 worker (the root master), all others have workersperrank.
-  size_t nworkers = 1 + (world.size()-1)*workersperrank;
-  _workingworkers.resize( nworkers, true );
 
-  fprintf(stdout, "Rank [%ld] finished initialize file sender, will now spawn threads...?\n", getrank());
+  //Only need this in root rank...careful to not try to access it in worker ranks ;)
+  if( myrank == 0 )
+    {
+      _workingworkers.resize( nworkers, true );
+    }
+
+  if( sizeof(int) != 32 || sizeof(uint16_t) != 16 )
+    {
+      fprintf( stderr, "REV: Tag sending error messed up...for sendrecvstruct, assume that int=32 bits, uint16_t is 16 bits...This *may* not be a problem, if so comment this check out...\n");
+      exit(1);
+    }
+
+  uint32_t maxsize=0xFFFFFFF; //should be all 1s
+  long holdersize = sizeof(uint32_t);
+  long bitspertag = sizeof(uint16_t);
+  if( bitspertag > holdersize )
+    {
+      fprintf(stderr, "Size of holder bytes > size of bitspertag\n");
+      exit(1);
+    }
+  uint32_t shiftover=(holdersize - bitspertag); //I.e. shift over "all but 16"
+  maxsize = maxsize >> shiftover; //should fill left side with zeros.
+  fprintf(stdout, "Max size representable by [%ld] bits in sendrecvstruct: [%ud]\n", bitspertag, maxsize);
+  if( workersperrank >= maxsize )
+    {
+      fprintf(stderr, "REV: too many workersperrank to be represented in half-size of sendrecvstruct elements\n");
+      exit(1);
+    }
+  
+  fprintf(stdout, "Rank [%d] finished initialize file sender, will now spawn threads...?\n", getrank());
 }
 
 filesender::filesender()
@@ -189,12 +199,11 @@ filesender::filesender(fake_system& _fakesys, const size_t& _wrkperrank, const b
 filesender::~filesender()
 {
   MPI_Finalize();
-  //~world;
 }
 
-bool filesender::checkroot()
+bool filesender::checkroot( const int& myworker )
 {
-  if(getrank() == 0 )
+  if( getrank() == 0 && getworkertag( myworker ) == 0 )
     {
       return true;
     }
@@ -211,36 +220,50 @@ void filesender::ulmux()
   mpimux.unlock();
 }
 
+
+bool filesender::probe( const int& srcworker, const int& myworker )
+{
+  sendrecvstruct sr( srcworker, myworker );
+  
+  boost::optional< boost::mpi::status > msg = world.iprobe( getworkerrank( myworker ), sr.asint() );
+  
+  if(msg)
+    {
+      return true; //only care if there is a message...
+    }
+  else
+    {
+      return false;
+    }
+}
+
+bool filesender::probe_any( const int& myworker, sendrecvstruct& tag )
+{
+    
+  boost::optional< boost::mpi::status > msg = world.iprobe( getworkerrank( myworker ), boost::mpi::any_tag );
+  
+  if(msg) //if we actually got a message... (REV: Fuck we might have problems if we are waiting for a worker to consume something...)
+    {
+      tag = sendrecvstruct( msg->tag() );
+      if( tag.recvtag == myworker )
+	{
+	  return true; //only care if there is a message...
+	}
+      else
+	{
+	  return false;
+	}
+    }
+  else
+    {
+      return false;
+    }
+}
+
+
 int filesender::getrank()
 {
-  /*lmux();
-  return world.rank();
-  ulmux;*/
   return myrank;
-}
-
-void filesender::send_varlist_to_worker(  const varlist<std::string>& v, const int& targworker)
-{
-  if( checkroot() == false )
-    {
-      fprintf(stderr, "ERROR: REV: send varlist to worker, should only be called from ROOT rank 0, but calling from [%d]\n", getrank());
-      exit(1);
-    }
-  lmux();
-  world.send( getworkerrank(targworker), getworkertag(targworker), v );
-  ulmux();
-}
-
-void filesender::send_varlist_to_root( const varlist<std::string>& v, const int& mytag )
-{
-  if( checkroot() == true )
-    {
-      fprintf(stderr, "ERROR: REV: send varlist to root, should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
-      exit(1);
-    }
-  lmux();
-  world.send( 0, mytag, v ); //Rank will be implicitly known by root based on SRC
-  ulmux();
 }
 
 void filesender::broadcast_cmd( const std::string& cmd ) 
@@ -251,315 +274,384 @@ void filesender::broadcast_cmd( const std::string& cmd )
   return;
 }
 
-void filesender::send_cmd_to_worker( const std::string& cmd, const int& targworker )
+void filesender::send_varlist_to_worker(  const varlist<std::string>& v, const int& myworker, const int& targworker )
 {
-  if( checkroot() == false )
+  if( checkroot( myworker ) == false )
     {
-      fprintf(stderr, "ERROR: REV: send cmd to worker, should only be called from ROOT rank 0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: send varlist to worker, should only be called from ROOT rank 0/thread, but calling from worker [%d]\n", myworker );
       exit(1);
     }
+  
+  sendrecvstruct tag( myworker, targworker );
   lmux();
-  world.send( getworkerrank(targworker), getworkertag(targworker), cmd );
+  world.send( getworkerrank(targworker), tag.asint(), v );
   ulmux();
 }
 
-void filesender::send_cmd_to_root( const std::string& cmd, const int& mytag )
+void filesender::send_varlist_to_root( const varlist<std::string>& v, const int& myworker )
 {
-  if( checkroot() == true )
+  if( checkroot( myworker ) == true )
     {
-      fprintf(stderr, "ERROR: REV: send varlist to root, should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: send varlist to root, should only be called from non-ROOT rank >0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
 
-  //REV: KNOW MY PROBLEM, Im using the same mux for send and recv. So I lock it and wait for recv, but other guys cant send! So need to probe/tag etc.
-  fprintf(stdout, "WORKER [%ld]: ATTEMPTING TO LOCK MUX for send CMD to ROOT\n", getworker( getrank(), mytag) );
+  sendrecvstruct tag( myworker, ROOTWORKER );
   lmux();
-  fprintf(stdout, "WORKER [%ld]: SUCCEEDED TO LOCK MUX for send CMD to ROOT\n", getworker( getrank(), mytag) );
-  world.send( 0, mytag, cmd );
-  fprintf(stdout, "WORKER [%ld]: FINISHED send CMD to ROOT, will unlock mux\n", getworker( getrank(), mytag) );
+  world.send( getworkerrank(ROOTWORKER), tag.asint(), v ); //Rank will be implicitly known by root based on SRC
   ulmux();
 }
 
 
-void filesender::send_pitem_to_worker( const pitem& mypitem, const int& targworker )
+
+void filesender::send_cmd_to_worker( const std::string& cmd, const int& myworker, const int& targworker )
 {
-  if( checkroot() == false )
+  if( checkroot( myworker ) == false )
     {
-      fprintf(stderr, "ERROR: REV: send pitem to worker, should only be called from ROOT rank 0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: send cmd to worker, should only be called from ROOT rank 0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
+  sendrecvstruct tag( myworker, targworker );
   lmux();
-  world.send( getworkerrank(targworker), getworkertag(targworker), mypitem ); //will serialize it for me.
+  world.send( getworkerrank(targworker), tag.asint(), cmd );
   ulmux();
 }
 
-void filesender::send_pitem_to_root( const pitem& mypitem, const int& mytag )
+
+void filesender::send_cmd_to_root( const std::string& cmd, const int& myworker )
 {
-  if( checkroot() == true )
+  if( checkroot( myworker ) == true )
     {
-      fprintf(stderr, "ERROR: REV: send pitem to root, should only be called from ROOT rank 0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: send varlist to root, should only be called from non-ROOT rank >0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
+  
+  sendrecvstruct tag( myworker,  ROOTWORKER);
+  
+  fprintf(stdout, "WORKER [%d]: ATTEMPTING TO LOCK MUX for send CMD to ROOT\n", myworker );
+
   lmux();
-  world.send( 0, mytag, mypitem );
+
+  fprintf(stdout, "WORKER [%d]: SUCCEEDED TO LOCK MUX for send CMD to ROOT\n", myworker );
+
+  world.send( getworkerrank( ROOTWORKER ), tag.asint(), cmd );
+
+  fprintf(stdout, "WORKER [%d]: FINISHED send CMD to ROOT, will unlock mux\n", myworker );
+
   ulmux();
 }
 
-varlist<std::string> filesender::receive_varlist_from_worker( const int& targworker )
+
+void filesender::send_pitem_to_worker( const pitem& mypitem, const int& myworker, const int& targworker )
 {
-  if( checkroot() == false )
+  if( checkroot( myworker ) == false )
     {
-      fprintf(stderr, "ERROR: REV: recv varlist worker, should only be called from ROOT rank 0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: send pitem to worker, should only be called from ROOT rank 0, but calling from worker [%d]\n", myworker);
       exit(1);
+    }
+
+  sendrecvstruct tag( myworker,  targworker);
+  
+  lmux();
+  world.send( getworkerrank(targworker), tag.asint(), mypitem ); //will serialize it for me.
+  ulmux();
+}
+
+void filesender::send_pitem_to_root( const pitem& mypitem, const int& myworker )
+{
+  if( checkroot( myworker ) == true )
+    {
+      fprintf(stderr, "ERROR: REV: send pitem to root, should only be called from ROOT rank 0, but calling from worker [%d]\n", myworker);
+      exit(1);
+    }
+  sendrecvstruct tag( myworker, ROOTWORKER );
+  lmux();
+  world.send( getworkerrank(ROOTWORKER), tag.asint(), mypitem );
+  ulmux();
+}
+
+template <typename T>
+void filesender::recv( const int& sendworker, const int& myworker, T& val )
+{
+  sendrecvstruct tag( sendworker, myworker );
+  int sendrank = getworkerrank( sendworker );
+
+  bool gotmesg=false;
+  while(gotmesg==false)
+    {
+      lmux();
+      bool gotmesg = probe( sendworker, myworker );
+      if( gotmesg )
+	{
+	  world.recv( sendrank, tag.asint(), val );
+	  ulmux();
+	}
+      else
+	{
+	  ulmux();
+	  usleep( 100 ); //microseconds?
+	}
+    }
+}
+
+template <typename T>
+sendrecvstruct filesender::recv_any( const int& myworker, T& val )
+{
+  sendrecvstruct tag;
+  bool gotmesg=false;
+  while(gotmesg==false)
+    {
+      lmux();
+      bool gotmesg = probe_any( myworker, tag );
+      if( gotmesg )
+	{
+	  int sendworker= tag.sendtag;
+	  int sendrank = getworkerrank( sendworker );
+	  world.recv( sendrank, tag.asint(), val );
+	  ulmux();
+	}
+      else
+	{
+	  ulmux();
+	  usleep( 100 ); //microseconds?
+	}
+    }
+  return tag;
+}
+
+//If this is blocking, we have an issue. Ignore for now...
+varlist<std::string> filesender::receive_varlist_from_worker( const int& srcworker, const int& myworker )
+{
+  if( checkroot( myworker ) == false )
+    {
+      fprintf(stderr, "ERROR: REV: recv varlist worker, should only be called from ROOT rank 0 (tag 0), but calling from worker [%d]\n", myworker );
+      exit(1);
+	  
     }
   varlist<std::string> tmpv;
-  lmux();
-  world.recv( getworkerrank(targworker), getworkertag( targworker ), tmpv );
-  ulmux();
+  
+  recv< varlist<std::string> >( srcworker, myworker, tmpv );
+  
   return tmpv;
 }
 
-varlist<std::string> filesender::receive_varlist_from_root( const int& targworker, const int& mytag )
+varlist<std::string> filesender::receive_varlist_from_root( const int& myworker )
 {
-  if( checkroot() == true )
+  if( checkroot( myworker ) == true )
     {
-      fprintf(stderr, "ERROR: REV: recv varlist root, should only be called from non ROOT rank >0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: recv varlist root, should only be called from non ROOT rank != 0 or tag >0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
   
   varlist<std::string> tmpv;
-  lmux();
-  world.recv( 0, mytag, tmpv );
-  ulmux();
+
+  recv<varlist<std::string>>( ROOTWORKER, myworker, tmpv );
   return tmpv;
 }
 
-psweep_cmd filesender::receive_cmd_from_any_worker( )
+psweep_cmd filesender::receive_cmd_from_any_worker( const int& myworker )
 {
-  if( checkroot() == false )
+  if( checkroot( myworker ) == false )
     {
-      fprintf(stderr, "ERROR: REV: recv cmd from any worker, should only be called from ROOT rank 0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: recv cmd from any worker, should only be called from ROOT rank 0, but calling from worker [%d]\n", myworker );
       exit(1);
     }
+  
   std::string data;
+
+  sendrecvstruct sr = recv_any<std::string>( ROOTWORKER, data );
   
-  lmux();
+  /*lmux();
   boost::mpi::status msg = world.probe();
   //world.recv(msg.source(), boost::mpi::any_tag, data);
   world.recv(msg.source(), msg.tag(), data);
   ulmux();
-  
-  psweep_cmd pc( getworker( msg.source(), msg.tag() ),  data );
+  */
+  psweep_cmd pc( sr.sendtag, data );
   return pc;
 }
 
+//FOR INIT ONLY!!!!
 psweep_cmd filesender::receive_cmd_from_root( )
 {
-  if( checkroot() == true )
+  std::string cmd;
+  world.recv( 0, boost::mpi::any_tag, cmd);
+  return psweep_cmd( 0, cmd );
+}
+
+psweep_cmd filesender::receive_cmd_from_root( const int& myworker )
+{
+  if( checkroot(myworker) == true )
     {
-      fprintf(stderr, "ERROR: REV: recv cmd from ROOT (noarg), should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: recv cmd from ROOT (noarg), should only be called from non-ROOT rank >0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
   
   std::string data;
-  //I literally block until there is a mesg from root?
-  lmux();
-  world.recv(0, boost::mpi::any_tag, data);
-  ulmux();
 
-  psweep_cmd pc( 0, data );
+  recv<std::string>( ROOTWORKER, myworker, data );
+  
+  psweep_cmd pc( ROOTWORKER, data );
 
   return pc;
 }
 
-psweep_cmd filesender::receive_cmd_from_root( const int& mytag )
+
+pitem filesender::receive_pitem_from_root( const int& myworker ) 
 {
-  if( checkroot() == true )
+  if( checkroot( myworker) == true )
     {
-      fprintf(stderr, "ERROR: REV: recv cmd from ROOT, should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
-      exit(1);
-    }
-  
-  std::string data;
-  //I literally block until there is a mesg from root?
-  lmux();
-  world.recv(0, mytag, data);
-  ulmux();
-
-  /*
-  boost::mpi::status msg = world.probe();
-  
-  
-
-  if ( msg.source() == 0 )
-    {
-      
-    }
-  else
-    {
-      fprintf(stderr, "ERROR, rank [%d] got a non-root message (from [%d]) even though I'm requesting receive_cmd_from_root\n", world.rank(), msg.source() );
-      exit(1);
-    }
-  */
-  psweep_cmd pc( 0, data );
-
-  return pc;
-}
-
-pitem filesender::receive_pitem_from_root( const int& mytag ) 
-{
-  if( checkroot() == true )
-    {
-      fprintf(stderr, "ERROR: REV: recv pitem from ROOT, should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: recv pitem from ROOT, should only be called from non-ROOT rank >0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
   pitem newpitem;
-  lmux();
-  world.recv( 0, mytag, newpitem );
-  ulmux();
+
+  recv<pitem>( ROOTWORKER, myworker, newpitem );
+  
   return newpitem;
 }
 
-pitem filesender::receive_pitem_from_worker( const int& targworker ) 
+pitem filesender::receive_pitem_from_worker( const int& targworker, const int& myworker ) 
 {
-  if( checkroot() == false )
+  if( checkroot( myworker ) == false )
     {
-      fprintf(stderr, "ERROR: REV: recv pitem from worker, should only be called from ROOT rank 0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: recv pitem from worker, should only be called from ROOT rank 0, but calling from [%d]\n", myworker);
       exit(1);
     }
+  
   pitem newpitem;
-  lmux();
-  world.recv( getworkerrank(targworker), getworkertag(targworker), newpitem );
-  ulmux();
+
+  recv<pitem>( targworker, ROOTWORKER, newpitem );
+  
   return newpitem;
 }
 
-int filesender::receive_int_from_root( const int& mytag )
+int filesender::receive_int_from_root( const int& myworker )
 {
-  if( checkroot() == true )
+  if( checkroot( myworker ) == true )
     {
-      fprintf(stderr, "ERROR: REV: recv int from ROOT, should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: recv int from ROOT, should only be called from non-ROOT rank >0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
   int newint;
-  lmux();
-  world.recv( 0, mytag, newint );
-  ulmux();
+
+  recv<int>( ROOTWORKER, myworker, newint );
+  
   return newint;
 }
 
-int filesender::receive_int_from_worker( const int& targworker ) 
+int filesender::receive_int_from_worker( const int& targworker, const int& myworker ) 
 {
-  if( checkroot() == false )
+  if( checkroot( myworker ) == false )
     {
-      fprintf(stderr, "ERROR: REV: recv int from worker, should only be called from ROOT rank 0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: recv int from worker, should only be called from ROOT rank 0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
   int newint;
-  lmux();
-  world.recv( getworkerrank(targworker), getworkertag(targworker), newint );
-  ulmux();
+  recv<int>( myworker, ROOTWORKER, newint);
   return newint;
 }
 
 
-void filesender::send_int_to_root( const int& tosend, const int& mytag ) 
+void filesender::send_int_to_root( const int& tosend, const int& myworker ) 
 {
-  if( checkroot() == true )
+  if( checkroot( myworker ) == true )
     {
-      fprintf(stderr, "ERROR: REV: send int to ROOT, should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: send int to ROOT, should only be called from non-ROOT rank >0, but calling from worker [%d]\n", myworker );
       exit(1);
     }
+
+  sendrecvstruct tag( myworker, ROOTWORKER );
   lmux();
-  world.send( 0, mytag, tosend );
+  world.send( ROOTWORKER, tag.asint(), tosend );
   ulmux();
 }
 
-void filesender::send_int_to_worker( const int& tosend, const int& targworker )
+void filesender::send_int_to_worker( const int& tosend, const int& myworker, const int& targworker )
 {
-  if( checkroot() == false )
+  if( checkroot( myworker ) == false )
     {
-      fprintf(stderr, "ERROR: REV: send int to worker, should only be called from ROOT rank 0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: send int to worker, should only be called from ROOT rank 0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
+  sendrecvstruct tag( ROOTWORKER, targworker );
   lmux();
-  world.send( getworkerrank(targworker), getworkertag(targworker), tosend );
+  world.send( getworkerrank(targworker), tag.asint(), tosend );
   ulmux();
 }
 
 
-void filesender::send_file_to_worker( const memfile& memf, const int& targworker)
+void filesender::send_file_to_worker( const memfile& memf, const int& myworker, const int& targworker)
 {
-  if( checkroot() == false )
+  if( checkroot( myworker ) == false )
     {
-      fprintf(stderr, "ERROR: REV: send file to worker, should only be called from ROOT rank 0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: send file to worker, should only be called from ROOT rank 0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
+  sendrecvstruct tag( ROOTWORKER, targworker );
   lmux();
-  world.send( getworkerrank(targworker), getworkertag(targworker), memf );
+  world.send( getworkerrank(targworker), tag.asint(), memf );
   ulmux();
 }
 
-void filesender::send_file_to_root( const memfile& memf, const int& mytag )
+void filesender::send_file_to_root( const memfile& memf, const int& myworker )
 {
-  if( checkroot() == true )
+  if( checkroot( myworker ) == true )
     {
-      fprintf(stderr, "ERROR: REV: send file to ROOT, should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: send file to ROOT, should only be called from non-ROOT rank >0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
+  sendrecvstruct tag( myworker, ROOTWORKER );
   lmux();
-  world.send( 0, mytag, memf );
+  world.send( ROOTWORKER, tag.asint(), memf );
   ulmux();
 }
   
-void filesender::send_file_to_root_from_disk( const std::string& fname, const int& mytag )
+void filesender::send_file_to_root_from_disk( const std::string& fname, const int& myworker )
 {
   bool readfromdisk=true;
   memfile mf( fname, readfromdisk );
-  send_file_to_root( mf, mytag );
+  send_file_to_root( mf, myworker );
 }
 
-void filesender::send_file_to_worker_from_disk( const std::string& fname, const int& targworker )
+void filesender::send_file_to_worker_from_disk( const std::string& fname, const int& myworker, const int& targworker )
 {
   bool readfromdisk=true;
   memfile mf( fname, readfromdisk );
-  send_file_to_worker( mf, targworker );
+  send_file_to_worker( mf, myworker, targworker );
 }
 
-memfile filesender::receive_file_from_worker( const int& targworker )
+memfile filesender::receive_file_from_worker( const int& targworker, const int& myworker )
 {
-  if( checkroot() == false )
+  if( checkroot( myworker ) == false )
     {
-      fprintf(stderr, "ERROR: REV: recv file from worker, should only be called from ROOT rank 0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: recv file from worker, should only be called from ROOT rank 0, but calling from worker [%d]\n", myworker);
       exit(1);
     }
   memfile mf;
-  lmux();
-  world.recv( getworkerrank(targworker), getworkertag(targworker), mf );
-  ulmux();
+  recv<memfile>(myworker, ROOTWORKER, mf);
   return mf;
 }
 
-memfile filesender::receive_file_from_root( const int& mytag )
+memfile filesender::receive_file_from_root( const int& myworker )
 {
-  if( checkroot() == true )
+  if( checkroot( myworker ) == true )
     {
-      fprintf(stderr, "ERROR: REV: recv file from ROOT, should only be called from non-ROOT rank >0, but calling from [%d]\n", getrank());
+      fprintf(stderr, "ERROR: REV: recv file from ROOT, should only be called from non-ROOT rank >0, but calling from [%d]\n", myworker);
       exit(1);
     }
   memfile mf;
-  lmux();
-  world.recv( 0, mytag, mf );
-  ulmux();
+  recv<memfile>( ROOTWORKER, myworker, mf );
   return mf;
 }
 
 
 //Handle pitem is called by WORKER
-memfsys filesender::worker_handle_pitem( pitem& mypitem, const std::string& dir, const int& mytag )
+memfsys filesender::worker_handle_pitem( pitem& mypitem, const std::string& dir, const int& myworker )
 {
+  
   //First, get an INT, number of files.
-  int numfiles = receive_int_from_root( mytag ); //get_int( 0 );
+  int numfiles = receive_int_from_root( myworker );
   std::vector< memfile > mfs;
   std::vector< std::string > newfnames;
   std::vector< std::string > oldfnames;
@@ -569,66 +661,35 @@ memfsys filesender::worker_handle_pitem( pitem& mypitem, const std::string& dir,
   std::string fnamebase= "reqfile";
   for(size_t f=0; f<numfiles; ++f)
     {
-      memfile mf = receive_file_from_root( mytag );
-      //mfs.push_back( mf );
-
-#ifdef PRINTWORKER
-      fprintf(stdout, "RANK [%d] TAG [%d] (worker [%d]): Received file with fname [%s]\n", getrank(), mytag, (size_t)getworker(getrank, mytag), mf.filename.c_str() );
-#endif
-	
-      //mfs.push_back( mf );
-      //
-
-	
+      memfile mf = receive_file_from_root( myworker );
+      
+      //fprintf(stdout, "RANK [%d] TAG [%d] (worker [%d]): Received file with fname [%s]\n", getrank(), mytag, (size_t)getworker(getrank, mytag), mf.filename.c_str() );
+      	
       std::string myfname = fnamebase + std::to_string( f );
       newfnames.push_back( myfname );
       oldfnames.push_back( mf.filename ); //this is old fname, I guess I could get it elsewhere... myfname is the NEW one...
-	
-      //now mfs and newfnames contain orig and new fnames.
-      //REV: make something to check base of file and make sure that it
-      //is same file?
-
-      //REV: It fucking renamed the INPUT file to reqfile0. So, I need to make sure to keep it named the same?
-      //I.e. I rename something? Fuck...how does user know what to do? If it is named something different. That makes it difficult to know which
-      //is which for the user haha... just have user reference certain file names specifically if he needs them. Yea...that works I guess. OK.
-      //So, now what he does, is he searches for that variable's value *now*???? Not by filename but by variable? Ugh, that's so ugly. I.e.
-      //print out INPUT FILE now... I.e. I need to re-work the command to replace any instances of OLD inputfile with NEW inputfile...meh.
-#ifdef PRINTWORKER
-      fprintf(stdout, "IN RANK [%d] TAG [%d] (worker [%ld]): GOT LOCAL MEM FILE: [%s]\n", getrank(), mytag, getworker(getrank(), mytag), std::string(dir+"/"+myfname).c_str());
-#endif
+      
+      
+      //fprintf(stdout, "IN RANK [%d] TAG [%d] (worker [%ld]): GOT LOCAL MEM FILE: [%s]\n", getrank(), mytag, getworker(getrank(), mytag), std::string(dir+"/"+myfname).c_str());
+      
       mf.filename = dir + "/" + myfname;
 	
       if( todisk == true)
 	{
-#ifdef PRINTWORKER
-	  fprintf(stdout, "IN RANK [%d] TAG [%d] (worker [%ld]): PRINTING TO DISK LOCAL MEM FILE: [%s]\n", world.rank(), , mytag, getworker(world.rank(), mytag), std::string(dir+"/"+myfname).c_str());
-#endif
+	  //fprintf(stdout, "IN RANK [%d] TAG [%d] (worker [%ld]): PRINTING TO DISK LOCAL MEM FILE: [%s]\n", world.rank(), , mytag, getworker(world.rank(), mytag), std::string(dir+"/"+myfname).c_str());
 	  mf.tofile( dir + "/" + myfname );
 	}
 
-
       myfsys.add_file( mf );
-      //write to file OK.
-      //REV: Add to filesystem and/or push back...heh
-	
-	
-	
-      //memfile_ptr mfp( mf );
-      //mfp.tofile( dir + "/" + myfname );
-      
-      //REV: so I now need to MODIFY mypitem for the required files,
-      //and I also need to MODIFY for success, output, etc.
-      //Do this all in its own function to make it easier?
-      
     }
-    
+  
   mypitem.re_base_directory( mypitem.mydir, dir, oldfnames, newfnames);
   //REV: I will now create memfsys using that array as the thing...I will write them out if necessary.
         
   mypitem.mydir = dir;
   //mypitem will now be rebased appropriately, although hierarchical varlists etc. are not carried with it of course.
     
-
+  
   return myfsys;
 }
 
@@ -636,7 +697,6 @@ memfsys filesender::worker_handle_pitem( pitem& mypitem, const std::string& dir,
 
 bool filesender::cmd_is_exit(  const psweep_cmd& pcmd )
 {
-  //if( strcmp( pcmd.CMD, "EXIT") == 0 )
   if( pcmd.CMD.compare( "EXIT" ) == 0 )
     {
       return true;
@@ -649,12 +709,12 @@ bool filesender::cmd_is_exit(  const psweep_cmd& pcmd )
 
 
 //REV: This is only for WORKERS
-pitem filesender::handle_cmd( const psweep_cmd& pcmd, const int& mytag )
+pitem filesender::handle_cmd( const psweep_cmd& pcmd, const int& myworker )
 {
   //get the CMD from it, return...
   if( pcmd.SRC != 0 )
     {
-      fprintf(stderr, "ERROR rank [%d] tag [%d] (worker: [%ld]) got cmd from non-root rank...[%d]\n", getrank(), mytag, getworker(getrank(), mytag),  pcmd.SRC);
+      fprintf(stderr, "ERROR rank [%d] tag [%d] (worker: [%d]) got cmd from non-root rank...[%d]\n", getrank(), getworkertag(myworker), myworker,  pcmd.SRC);
       exit(1); //EXIT more gracefully?
     }
 
@@ -662,51 +722,40 @@ pitem filesender::handle_cmd( const psweep_cmd& pcmd, const int& mytag )
   if( pcmd.CMD.compare("EXIT") == 0 )
     {
       //exit
-      fprintf(stderr, "::: rank [%d] tag [%d] (worker: [%ld]) received EXIT command from root rank\n", getrank(), mytag, (size_t)getworker(getrank(), mytag));
+      fprintf(stderr, "::: rank [%d] tag [%d] (worker: [%d]) received EXIT command from root rank\n", getrank(), getworkertag(myworker), myworker);
       exit(1);
     }
   //else if( strcmp( pcmd.CMD, "PITEM") == 0 )
   else if( pcmd.CMD.compare( "PITEM") == 0 )
     {
       //will process this pitem.
-      pitem mypitem = receive_pitem_from_root( mytag ); //get_pitem_from_targ_rank( 0 );
+      pitem mypitem = receive_pitem_from_root( myworker ); //get_pitem_from_targ_rank( 0 );
 
       return mypitem;
     }
   else
     {
-      fprintf(stderr, "ERROR::: rank [%d] tag [%d] (worker: [%ld]) received unknown command [%s]\n", getrank(), mytag, getworker(getrank(), mytag), pcmd.CMD.c_str() );
+      fprintf(stderr, "ERROR::: rank [%d] tag [%d] (worker: [%d]) received unknown command [%s]\n", getrank(), getworkertag(myworker), myworker, pcmd.CMD.c_str() );
       exit(1);
     }
 }
 
 
-void filesender::worker_notify_finished( pitem& mypitem, memfsys& myfsys, const int& mytag )
+void filesender::worker_notify_finished( pitem& mypitem, memfsys& myfsys, const int& myworker )
 {
 
-  fprintf(stdout, "WORKER [%ld] sending DONE to root\n", getworker( getrank(), mytag ) );
-  send_cmd_to_root( "DONE", mytag );
+  fprintf(stdout, "WORKER [%d] sending DONE to root\n", myworker );
+  send_cmd_to_root( "DONE", myworker );
 
-  //Then send what? A "finished" struct? No, just send the "results"
-  //I guess...
-  //Files are: Number of SUCCESS and OUTPUT files? Note INPUT is also
-  //in REQUIRED by default, so OK.
-  //Note, there may be DOUBLES between OUTPUT and SUCCESS files, in fact
-  //I know there are? Only send OUTPUT files then, much easier ;) Even
-  //better just send a varlist...containing the output.
-  //Check OUTPUT and SUCCESS separately.
-  //Check also INPUT and REQUIRED separately. Make sure there are no
-  //doubles...
-
-  fprintf(stdout, "WORKER [%ld] done sending DONE to root, will send INT\n", getworker( getrank(), mytag ) );
+  fprintf(stdout, "WORKER [%d] done sending DONE to root, will send INT\n", myworker );
   
   //Note, all OUTPUT are automatically appended to SUCCESS, so just
   //return all SUCCESS files.
   size_t nsuccess = mypitem.success_files.size();
-
-
-  send_int_to_root( nsuccess, mytag);
-  fprintf(stdout, "WORKER [%ld] done sending INT to root. Will now send [%ld] files\n", getworker( getrank(), mytag ), nsuccess );  
+  
+  
+  send_int_to_root( nsuccess, myworker);
+  fprintf(stdout, "WORKER [%d] done sending INT to root. Will now send [%ld] files\n", myworker, nsuccess );  
   for(size_t x=0; x<nsuccess; ++x)
     {
       std::string mfname = mypitem.success_files[x];
@@ -714,16 +763,16 @@ void filesender::worker_notify_finished( pitem& mypitem, memfsys& myfsys, const 
       memfile_ptr mfp = myfsys.open( mfname, todisk );
       //REV: This is where a problem could happen...
       //Send from disk if todisk is true...
-      send_file_to_root( mfp.get_memfile(), mytag );
+      send_file_to_root( mfp.get_memfile(), myworker );
       mfp.close();
     }
 
 
-  fprintf(stdout, "WORKER [%ld] done sending FILES to root. Will send VARLIST\n", getworker( getrank(), mytag ) );
+  fprintf(stdout, "WORKER [%d] done sending FILES to root. Will send VARLIST\n", myworker );
   varlist<std::string> resvar = mypitem.get_output( myfsys, todisk );
     
-  send_varlist_to_root( resvar, mytag );
-  fprintf(stdout, "WORKER [%ld] done sending VARLIST to root\n", getworker( getrank(), mytag ) );
+  send_varlist_to_root( resvar, myworker );
+  fprintf(stdout, "WORKER [%d] done sending VARLIST to root\n", myworker );
     
   return;
 }
@@ -731,7 +780,7 @@ void filesender::worker_notify_finished( pitem& mypitem, memfsys& myfsys, const 
 
 //REV: this needs to "find" which PITEM was allocated to that worker/ thread.
 //REV: Note we could use todisk, but easier to do it as todisk?
-varlist<std::string> filesender::handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem, memfsys& myfsys, const bool& usedisk )
+varlist<std::string> filesender::handle_finished_work( const psweep_cmd& pc, pitem& corresp_pitem, memfsys& myfsys, const int& myworker, const bool& usedisk )
 {
   int targworker = pc.SRC;
   std::string cmd = pc.CMD;
@@ -740,18 +789,14 @@ varlist<std::string> filesender::handle_finished_work( const psweep_cmd& pc, pit
       fprintf(stderr, "WHOA, got a non-DONE cmd?!! From worker [%d]. CMD: [%s]\n", targworker, cmd.c_str() );
       exit(1);
     }
-  //else, do all receiving for that CMD blocking all others for now.
-  //I.e. only receive messages from others... Assume it will leave
-  //(received) buffers from other guys in place while I'm doing this?
-  //Or, allow it to do non-blocking, i.e. spin off threads? That
-  //seems best.
+  
   fprintf(stdout, "ROOT: handling finished work from worker [%d]. Getting INT\n", targworker);
-  size_t nfiles = receive_int_from_worker( targworker );
+  size_t nfiles = receive_int_from_worker( targworker, myworker );
   fprintf(stdout, "ROOT: handling finished work from worker [%d]. Got INT (nfiles=[%ld])\n", targworker, nfiles);
 
   for(size_t x=0; x<nfiles; ++x)
     {
-      memfile mf = receive_file_from_worker( targworker );
+      memfile mf = receive_file_from_worker( targworker, myworker );
       myfsys.add_file( mf );
 	
       std::string origdir = corresp_pitem.mydir;
@@ -789,7 +834,7 @@ varlist<std::string> filesender::handle_finished_work( const psweep_cmd& pc, pit
     }
   fprintf(stdout, "ROOT: handling finished work from worker [%d]. Finished receiving all files (nfiles=[%ld]). Now getting varlist\n", targworker, nfiles);
 
-  varlist<std::string> outputvlist = receive_varlist_from_worker( targworker );
+  varlist<std::string> outputvlist = receive_varlist_from_worker( targworker, myworker );
   fprintf(stdout, "ROOT: handling finished work from worker [%d]. GOT varlist\n", targworker);
   
   return outputvlist;
@@ -837,51 +882,53 @@ void filesender::cleanup_workspace( const pitem& mypitem )
 //REV: 11 Mar 2016: MODIFIED TO GET MY OWN RANK IN HERE ;)
 //void filesender::execute_slave_loop( const size_t& mytag, const std::string& runtag
 //REV: Can't use refs b/c I start with thread
-void filesender::execute_slave_loop( const size_t mytag, const std::string runtag )
+void filesender::execute_slave_loop( const int myworker, const std::string runtag )
 {
   bool loopslave=true;
-  std::string LOCALDIR = "/tmp/" + runtag + "_" + std::to_string( getworker( getrank(), mytag ) );
+  std::string LOCALDIR = "/tmp/" + runtag + "_" + std::to_string( myworker );
   
-  fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. Starting slave loop...\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
+  fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Starting slave loop...\n", myworker, getworkerrank(myworker), getworkertag( myworker ), mygpuidx );
   //REV: This will do nothing if there is no CUDA.
+
   set_cuda_device( mygpuidx ); 
 
-  fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. SET GPU, now sending READY to root!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
+  fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. SET GPU, now sending READY to root!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
   //REV: need to send first guy to tell its ready
   std::string pcinit = "READY";
-  send_cmd_to_root( pcinit, mytag );
+  send_cmd_to_root( pcinit, myworker );
 
-  fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. **DONE** sending READY to root. Now waiting for CMD!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
+  fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. **DONE** sending READY to root. Now waiting for CMD!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
   
   while( loopslave == true )
     {
       make_directory( LOCALDIR );
       
-      psweep_cmd cmd = receive_cmd_from_root( mytag );
-      fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. GOT CMD FROM ROOT!!!!!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
+      psweep_cmd cmd = receive_cmd_from_root( myworker );
+      fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Got CMD from root!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
+      
       
       if( cmd_is_exit( cmd ) == true )
 	{
-	  fprintf(stderr, "REV: WORKER [%ld] received EXIT\n", getworker( getrank(), mytag) );
+	  fprintf(stderr, "REV: WORKER [%d] received EXIT\n", myworker );
 	  loopslave = false;
 	  break;
 	}
 
       //REV: may EXIT, or contain a PITEM (to execute).
-      pitem mypitem = handle_cmd( cmd, mytag );
-      fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. handled CMD. Will handle PITEM!!!!!!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
+      pitem mypitem = handle_cmd( cmd, myworker );
+      fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Will handle pitem!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
 	
-      memfsys myfsys = worker_handle_pitem( mypitem, LOCALDIR, mytag);
-      fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. handled PITEM. Executing!!!!!!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
-		
+      memfsys myfsys = worker_handle_pitem( mypitem, LOCALDIR, myworker);
+      fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Finished handle PITEM, executing!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
+      		
       bool blah = execute_work( mypitem, myfsys );
 
-      fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. DONE Executing, notifying of finished...!!!!!!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
-
-      //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
-      worker_notify_finished( mypitem, myfsys, mytag );
+      fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Done executing, notifying of done...!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
       
-      fprintf(stdout, "WORKER [%ld]  (rank [%ld], thread [%ld]): GPU device is [%ld]. DONE notifying, cleaning up and waiting for next cmd...!!!!!!\n", getworker(getrank(), mytag), getrank(), mytag, mygpuidx );
+      //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
+      worker_notify_finished( mypitem, myfsys, myworker );
+      
+      fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. DONE notify, cleaning up.....!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
       
       cleanup_workspace( mypitem );
     }
@@ -914,15 +961,15 @@ bool filesender::is_ready_for_work( const psweep_cmd& pcmd )
 }
 
 //REV: Always read from files here...assume there will be none shared.
-void filesender::master_to_slave( const pitem& mypitem, const size_t& workeridx, memfsys& myfsys )
+void filesender::master_to_slave( const pitem& mypitem, const int& workeridx, const int& myworker, memfsys& myfsys )
 {
-  send_cmd_to_worker( "PITEM", workeridx );
+  send_cmd_to_worker( "PITEM", workeridx, myworker );
 
-  send_pitem_to_worker( mypitem, workeridx );
+  send_pitem_to_worker( mypitem, workeridx, myworker );
 
   int nfiles = mypitem.required_files.size();
     
-  send_int_to_worker( nfiles, workeridx );
+  send_int_to_worker( nfiles, workeridx, myworker );
 
   //Then, send the files.
   for(size_t f=0; f<mypitem.required_files.size(); ++f)
@@ -932,7 +979,7 @@ void filesender::master_to_slave( const pitem& mypitem, const size_t& workeridx,
       memfile_ptr mfp = myfsys.open( mypitem.required_files[f], true ); //will attempt to read through if it does not exist. Note may be empty?
 	
       //send_file_from_disk( workeridx, mypitem.required_files[f] );
-      send_file_to_worker( mfp.get_memfile(), workeridx );
+      send_file_to_worker( mfp.get_memfile(), workeridx, myworker );
       mfp.close();
     }
 
@@ -1004,7 +1051,7 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	  //pass around a WORKING thing separate from the list of PP.
 	  //OK, do it.
 
-	  psweep_cmd pcmd = receive_cmd_from_any_worker();
+	  psweep_cmd pcmd = receive_cmd_from_any_worker( ROOTWORKER );
 	  
 	  if( is_finished_work( pcmd ) == true )
 	    {
@@ -1023,7 +1070,7 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	      
 	      //Specifically, call it on the parampoint#, from pg.parampoint_memfsystems[ pc.parampointn ].
 	      //REV: THIS will write to files! Modify to use a local (temporary) memfsys
-	      varlist<std::string> result = handle_finished_work( pcmd, handledpitem, pg.parampoint_memfsystems[ pc.parampointn ], usedisk );
+	      varlist<std::string> result = handle_finished_work( pcmd, handledpitem, pg.parampoint_memfsystems[ pc.parampointn ], ROOTWORKER, usedisk );
 		
 	      fprintf(stdout, "MASTER: got result from worker [%ld]. Now marking done...\n", workernum);
 	      
@@ -1077,6 +1124,7 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	  //For example, after a whole PP is finished, how do I know what to do with it?
 	  master_to_slave( wprog.get_corresponding_pitem( pg, pc),
 			   farmedworker,
+			   ROOTWORKER,
 			   pg.parampoint_memfsystems[pc.parampointn] );
 	  fprintf(stdout, "DONE master to slave.\n");
 	}
