@@ -5,6 +5,25 @@
 #define ROOTWORKER 0
 
 
+void filesender::broadcast_to_workers( const std::string& cmd )
+{
+  for(size_t w=1; w<_workingworkers.size(); ++w)
+    {
+      send_cmd_to_worker( cmd, ROOTWORKER, w );
+    }
+}
+
+void filesender::signal_exit_to_workers()
+{
+  if(!getrank() == 0 )
+    {
+      fprintf(stderr, "REV: ERROR, calling exit from non-zero rank!!!! Still might be from non-zero thread, we are not checking...\n");
+    }
+  std::string cmd = "EXIT";
+  //REV: If threads havent been spawned yet, nothing will happen at join? Will it hang?
+  broadcast_to_workers( cmd );
+}
+
 void filesender::start_worker_loop(const std::string& runtag)
 {
   //REV: In here, I will mess around with threads!
@@ -258,9 +277,9 @@ filesender::~filesender()
 {
   for(size_t w=0; w<workerthreads.size(); ++w)
     {
-      fprintf(stdout, "(FILESENDER destructor:) Rank [%d], WAITING to join worker thread [%d]\n", getrank(), w);
+      fprintf(stdout, "(FILESENDER destructor:) Rank [%d], WAITING to join worker thread [%ld]\n", getrank(), w);
       workerthreads[w].join();
-      fprintf(stdout, "(FILESENDER destructor:) Rank [%d], joined worker thread [%d]\n", getrank(), w);
+      fprintf(stdout, "(FILESENDER destructor:) Rank [%d], joined worker thread [%ld]\n", getrank(), w);
     }
   fprintf(stdout, "(FILESENDER destructor:) Rank [%d], all threads joined, Calling MPI finalize and exiting.\n", getrank());
   

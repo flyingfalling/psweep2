@@ -304,9 +304,13 @@ void searcher::run_search( const std::string& searchtype, const std::string& scr
 
 void searcher::doexit( filesender* myfs )
   {
-    fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
-    std::string contents="EXIT";
-    boost::mpi::broadcast(myfs->world, contents, 0);
+    fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT (in SEARCHER.CPP)\n");
+    //std::string contents="EXIT";
+    //boost::mpi::broadcast(myfs->world, contents, 0);
+    //This won't work with worker threads. Need to iter through WORKERS.
+    
+    myfs->signal_exit_to_workers();
+    
     
     delete(myfs);
   }
@@ -502,9 +506,10 @@ void searcher::run_search( const std::string& searchtype, const std::string& scr
       }
   
     fprintf(stderr, "ROOT FINISHED! Broadcasting EXIT\n");
-    std::string contents="EXIT";
-    boost::mpi::broadcast(fs->world, contents, 0);
-  
+    //std::string contents="EXIT";
+    //boost::mpi::broadcast(fs->world, contents, 0);
+    fs->signal_exit_to_workers();
+    
     delete(fs);
   
   }

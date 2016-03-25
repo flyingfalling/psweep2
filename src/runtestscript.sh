@@ -6,7 +6,7 @@ NRANKS=4
 WPERRANK=25
 
 NCHAINS=100
-MAXGEN=100000
+MAXGEN=500
 STATEFILE=psweepdreamABCz.state
 MINMAXFILE=testabc_minmax.bounds
 OBSFILE=testabc_observ.data

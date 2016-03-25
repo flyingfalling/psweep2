@@ -326,6 +326,9 @@ struct filesender
     //REV: the other one should naturally delete it here.
   }
 
+  inline void broadcast_to_workers( const std::string& cmd );
+  inline void signal_exit_to_workers( );
+  
   inline void start_worker_loop(const std::string& runtag);
   inline void start_worker_loop_ROOT(const std::string& runtag);
   inline void init_local_worker_idx();
