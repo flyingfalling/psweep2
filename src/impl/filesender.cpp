@@ -1007,6 +1007,8 @@ void filesender::cleanup_workspace( const pitem& mypitem )
 //REV: Can't use refs b/c I start with thread
 void filesender::execute_slave_loop( const int myworker, const std::string runtag )
 {
+  unsigned long long nloops=0;
+  
   bool loopslave=true;
   std::string LOCALDIR = "/tmp/" + runtag + "_" + std::to_string( myworker );
   
@@ -1025,6 +1027,7 @@ void filesender::execute_slave_loop( const int myworker, const std::string runta
   
   while( loopslave == true )
     {
+      ++nloops;
       make_directory( LOCALDIR );
       
       psweep_cmd cmd = receive_cmd_from_root( myworker );
@@ -1057,6 +1060,7 @@ void filesender::execute_slave_loop( const int myworker, const std::string runta
       
       cleanup_workspace( mypitem );
     }
+  fprintf(stdout, "WORKER [%d]: END OF SLAVE LOOP. I executed [%llu] commands.\n", myworker, nloops );
 }
 
 

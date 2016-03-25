@@ -21,14 +21,16 @@ CUDADIR=./cudaimpl
 
 INSTALL_PATH=/usr/local
 
+headers = $(wildcard (INCLDIR)/*.h)
 srcs = $(wildcard $(CPPDIR)/*.cpp)
 objs = $(srcs:.cpp=.o)
 deps = $(srcs:.cpp=.d)
 
-CUDA_SUPPORT="YES"
+
+DEF_CUDA_SUPPORT="YES"
 
 
-ifdef CUDA_SUPPORT
+ifdef DEF_CUDA_SUPPORT
 CPPFLAG += -DCUDA_SUPPORT
 NVCCFLAGS += -DCUDA_SUPPORT
 #srcs += $(wildcard $(CUDADIR)/*.cu)
@@ -41,8 +43,8 @@ install: libpsweep2.so
 	cp libpsweep2.so $(INSTALL_PATH)/lib
 	ldconfig -v
 
-libpsweep2.so: $(objs)
-ifdef CUDA_SUPPORT
+libpsweep2.so: $(objs) $(headers) Makefile
+ifdef DEF_CUDA_SUPPORT
 	$(NVCC) $(NVCCSHAREDLIBFLAG) $(CUDALD) $(NVCCFLAGS) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) -c cudaimpl/psweep2_cuda_functs_impl.cu -lcuda -lcudart
 	$(MPICC) -shared $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) $(objs) psweep2_cuda_functs_impl.o -o libpsweep2.so $(LIBS)
 else

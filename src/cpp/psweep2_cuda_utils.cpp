@@ -16,7 +16,10 @@ size_t compute_gpu_idx( const size_t& localidx, const size_t& nworkersperrank, c
     }
   fprintf(stdout, "Computing local index. My localidx is [%ld], with [%ld] workers per rank. Found [%ld] devs on the machine\n", localidx, nworkersperrank, devs.size());
   mydevidx = devs[mydevidx];
+#else
+  fprintf(stdout, "WARNING: doing nothing in compute_gpu_idx(localidx=%lu, nworkersperrank=%lu, ranknum=%lu) because CUDA_SUPPORT was not defined at compilatio of psweep2\n", localidx, nworkersperrank, ranknum);
 #endif
+  
 
   return mydevidx;
 }
@@ -27,6 +30,8 @@ void set_cuda_device(const size_t& idx)
 
 #ifdef CUDA_SUPPORT
   real_set_cuda_device(idx);
+#else
+  fprintf(stdout, "WARNING: doing nothing in set_cuda_device(arg=[%lu]) because CUDA_SUPPORT was not defined at compilation of psweep2\n", idx);
 #endif
 
 }
