@@ -30,23 +30,14 @@ void filesender::start_worker_loop(const std::string& runtag)
   int myworker = getworker( getrank(), 0 );
   execute_slave_loop(myworker, runtag);
 
-  //Joined in destructor...
-  /*for(size_t tag=0; tag<workerthreads.size(); ++tag)
-    {
-      workerthreads[tag].join();
-      }*/
+  //This execute slave loop maintains control.
+  
 }
 
 
 //Special case for ROOT...
 void filesender::start_worker_loop_ROOT(const std::string& runtag)
 {
-  //REV: In here, I will mess around with threads!
-  //Each filesender instance will only have a single dev#, etc.
-  //but multiple threads of course. First thread is one of them.
-  //std::thread mythread();
-  //std::vector< std::thread > thrs;
-  
   workerthreads.resize( workersperrank );
   for(size_t tag=0; tag<workerthreads.size(); ++tag)
     {
@@ -58,6 +49,8 @@ void filesender::start_worker_loop_ROOT(const std::string& runtag)
       //Need to use "this" as second, due to the execute class funct issue.
       workerthreads[tag] = std::thread( &filesender::execute_slave_loop, this, myworker, runtag );
     }
+
+  //ROOT thread maintains control
   
 }
 
@@ -265,8 +258,11 @@ filesender::~filesender()
 {
   for(size_t w=0; w<workerthreads.size(); ++w)
     {
+      fprintf(stdout, "(FILESENDER destructor:) Rank [%d], WAITING to join worker thread [%d]\n", getrank(), w);
       workerthreads[w].join();
+      fprintf(stdout, "(FILESENDER destructor:) Rank [%d], joined worker thread [%d]\n", getrank(), w);
     }
+  fprintf(stdout, "(FILESENDER destructor:) Rank [%d], all threads joined, Calling MPI finalize and exiting.\n", getrank());
   
   MPI_Finalize();
 }
@@ -1020,7 +1016,8 @@ void filesender::execute_slave_loop( const int myworker, const std::string runta
 	{
 	  fprintf(stderr, "REV: WORKER [%d] received EXIT\n", myworker );
 	  loopslave = false;
-	  break;
+	  return;
+	  //break;
 	}
 
       //REV: may EXIT, or contain a PITEM (to execute).

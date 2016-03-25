@@ -307,7 +307,8 @@ struct filesender
 	fs->start_worker_loop_ROOT( runtag );
 	
 	return(fs);
-	//return
+	//return. Desctructor will be called at some later date. Note, that even for this root rank,
+	//it will still have threads running "over here", so it needs to appropriately join them before exiting.
       }
     else
       {
