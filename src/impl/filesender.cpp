@@ -502,7 +502,7 @@ void filesender::recv( const int& sendworker, const int& myworker, T& val )
       else
 	{
 	  ulmux();
-	  usleep( 100 ); //microseconds?
+	  usleep( 1000 ); //microseconds?
 	}
     }
 }
@@ -1047,6 +1047,7 @@ void filesender::execute_slave_loop( const int myworker, const std::string runta
 	{
 	  fprintf(stderr, "REV: WORKER [%d] received EXIT\n", myworker );
 	  loopslave = false;
+	  fprintf(stdout, "WORKER [%d]: END OF SLAVE LOOP. I executed [%llu] commands.\n", myworker, nloops );
 	  return;
 	  //break;
 	}
@@ -1083,7 +1084,7 @@ void filesender::execute_slave_loop( const int myworker, const std::string runta
 	  fprintf(stdout, "Worker [%d]: Total exec time including dir creation/cleanup was: [%lf] seconds\n", myworker, exectimer.elapsed());
 	}
     }
-  fprintf(stdout, "WORKER [%d]: END OF SLAVE LOOP. I executed [%llu] commands.\n", myworker, nloops );
+
 }
 
 
@@ -1161,7 +1162,7 @@ void filesender::master_to_slave( const pitem& mypitem, const int& workeridx, co
 //pointer to it...
 void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, seedgen& sg, const bool& usedisk )
 {
-    
+  
   work_progress wprog( pg, newlist, _workingworkers.size(), sg, usedisk );
   
   //REV: these should never happen at the same time, i.e. it shouldn't
