@@ -1,6 +1,7 @@
 
 #include <filesender.h>
 #include <unistd.h>
+#include <Timer.h>
 
 #define ROOTWORKER 0
 
@@ -1024,11 +1025,19 @@ void filesender::execute_slave_loop( const int myworker, const std::string runta
   send<std::string>( pcinit, myworker, ROOTWORKER );
 
   fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. **DONE** sending READY to root. Now LOOPING!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
-  
+  Timer exectimer;
+  Timer cmdtimer;
+  unsigned long long timer_skip=1000;
   while( loopslave == true )
     {
       ++nloops;
-      make_directory( LOCALDIR );
+
+      if( (nloops % timer_skip) == 0 )
+	{
+	  exectimer.reset();
+	}
+      
+      make_directory( LOCALDIR ); //WHOA makedir ????
       
       psweep_cmd cmd = receive_cmd_from_root( myworker );
       //fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Got CMD from root!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
@@ -1048,9 +1057,18 @@ void filesender::execute_slave_loop( const int myworker, const std::string runta
 	
       memfsys myfsys = worker_handle_pitem( mypitem, LOCALDIR, myworker);
       //fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Finished handle PITEM, executing!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
-      		
+
+      if( (nloops % timer_skip) == 0 )
+	{
+	  cmdtimer.reset();
+	}
       bool blah = execute_work( mypitem, myfsys );
 
+      if( (nloops % timer_skip) == 0 )
+	{
+	  fprintf(stdout, "Worker [%d]: CMD execution time of CMD [%s] (note: true cmd would have more processing) was [%lf] seconds\n", myworker, CONCATENATE_STR_ARRAY( mypitem.mycmd, " ").c_str(), cmdtimer.elapsed());
+	}
+      
       //fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. Done executing, notifying of done...!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
       
       //this includes the many pieces of "notifying, waiting for response, then sending results, then waiting, then sending files, etc..
@@ -1059,6 +1077,11 @@ void filesender::execute_slave_loop( const int myworker, const std::string runta
       //fprintf(stdout, "WORKER [%d]  (rank [%d], thread [%d]): GPU device is [%d]. DONE notify, cleaning up.....!\n", myworker, getrank(), getworkertag(myworker), mygpuidx );
       
       cleanup_workspace( mypitem );
+
+      if( (nloops % timer_skip) == 0 )
+	{
+	  fprintf(stdout, "Worker [%d]: Total exec time including dir creation/cleanup was: [%lf] seconds\n", myworker, exectimer.elapsed());
+	}
     }
   fprintf(stdout, "WORKER [%d]: END OF SLAVE LOOP. I executed [%llu] commands.\n", myworker, nloops );
 }
