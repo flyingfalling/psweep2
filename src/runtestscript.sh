@@ -6,7 +6,7 @@ NRANKS=12
 WPERRANK=10
 
 NCHAINS=120
-MAXGEN=300000
+MAXGEN=450000
 STATEFILE=psweepdreamABCz.state
 MINMAXFILE=testabc_minmax.bounds
 OBSFILE=testabc_observ.data
@@ -15,7 +15,7 @@ DIR=testabcdir
 SEARCHTYPE=DREAM-ABCz
 WORKSCRIPT=../configs/test_abc_twopeak_gpu.cfg
 
-HOSTFILE=/nfs-mirror/gpumachinefile
+HOSTFILE=./gpumachinefile
 
 stdo=stdout2
 stde=stderr2

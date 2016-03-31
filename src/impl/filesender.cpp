@@ -1162,6 +1162,7 @@ void filesender::master_to_slave( const pitem& mypitem, const int& workeridx, co
 //pointer to it...
 void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std::string>>& newlist, seedgen& sg, const bool& usedisk )
 {
+  Timer gentimer;
   
   work_progress wprog( pg, newlist, _workingworkers.size(), sg, usedisk );
   
@@ -1286,6 +1287,6 @@ void filesender::comp_pp_list( parampoint_generator& pg, std::vector<varlist<std
 	  //fprintf(stdout, "DONE master to slave.\n");
 	}
     } //end while !all done.
-  //fprintf(stdout, "\n\nROOT FINISHED GENERATION? (comp pp)\n\n");
+  fprintf(stdout, "  Generation took [%lf] seconds (comp_pp_list)\n", gentimer.elapsed());
 } //end comp_pp_list
 
