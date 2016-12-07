@@ -28,7 +28,7 @@ objs = $(srcs:.cpp=.o)
 deps = $(srcs:.cpp=.d)
 
 
-DEF_CUDA_SUPPORT= #"YES"
+DEF_CUDA_SUPPORT="YES"
 
 
 ifdef DEF_CUDA_SUPPORT
