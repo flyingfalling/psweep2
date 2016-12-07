@@ -18,7 +18,8 @@ DIR=testabcdir
 SEARCHTYPE=DREAM-ABCz
 WORKSCRIPT=../configs/test_abc_twopeak_gpu.cfg
 
-HOSTFILE=/nfs-mirror/gpumachinefile
+#HOSTFILE=/nfs-mirror/gpumachinefile
+HOSTFILE=/home/riveale/git/code/psweep2/src/machinefile/coi0coi1.machines
 
 stdo=stdout_psweepABCz
 stde=stderr_psweepABCz
