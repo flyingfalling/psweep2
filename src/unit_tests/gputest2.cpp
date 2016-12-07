@@ -163,7 +163,9 @@ void user_funct( const std::vector<std::string>& argv, memfsys& fsys )
 
 int main( int argc, char* argv[] )
 {
+  fprintf(stdout, "STARTED PSWEEP?!\n");
   psweep2 p;
+  
   p.register_funct( "./userfunct", user_funct );
   p.run_search( argc, argv );
   
