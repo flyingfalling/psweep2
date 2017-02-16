@@ -10,11 +10,12 @@ LIBFLAG=-L. -L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 LIBS=-lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5
 CUDALIBS=-lcuda -lcudart
 SHAREDLIBFLAG=-fPIC
-CUDALD=-L/usr/local/cuda-7.5/targets/x86_64-linux/lib
-NVCC=/usr/local/cuda/bin/nvcc
+CUDALD=-L/usr/lib/nvidia-cuda-toolkit
+NVCC=nvcc
 #GENCODE=-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_37,code=sm_37 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52
 GENCODE=-gencode arch=compute_37,code=sm_37
-NVCCFLAGS=-m64 -g -G -DDEBUG=6 $(GENCODE)
+#REV: had to add the -D_FORCE_INLINES for some nasty stuff with gcc version being too far ahead...
+NVCCFLAGS=-m64 -g -G -DDEBUG=6 $(GENCODE) -D_FORCE_INLINES -ccbin=$(CXX) -Xcompiler -fPIC
 NVCCSHAREDLIBFLAG=-Xcompiler '-fPIC'
 
 CUDADIR=./cudaimpl
