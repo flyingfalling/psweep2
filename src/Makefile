@@ -8,8 +8,10 @@ CPPFLAG=-std=c++11 -O3 #-g -Wall
 INCLFLAG=-I. -I$(INCLDIR) -I$(IMPLDIR) -I$(H5INCL)
 LIBFLAG=-L. -L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 LIBS=-lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5
-CUDALIBS=-lcuda -lcudart
+
 SHAREDLIBFLAG=-fPIC
+
+CUDALIBS=-lcuda -lcudart
 CUDALD=-L/usr/lib/nvidia-cuda-toolkit
 NVCC=nvcc
 #GENCODE=-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_37,code=sm_37 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52
@@ -28,7 +30,7 @@ objs = $(srcs:.cpp=.o)
 deps = $(srcs:.cpp=.d)
 
 
-DEF_CUDA_SUPPORT="YES"
+#DEF_CUDA_SUPPORT="YES"
 
 
 ifdef DEF_CUDA_SUPPORT
@@ -37,12 +39,18 @@ NVCCFLAGS += -DCUDA_SUPPORT
 #srcs += $(wildcard $(CUDADIR)/*.cu)
 endif
 
-default: libpsweep2.so
+default: libpsweep2.so psweep2.exe
 
-install: libpsweep2.so
+install: libpsweep2.so psweep2.exe
 	mkdir -p "$(INSTALL_PATH)/lib"
 	cp libpsweep2.so $(INSTALL_PATH)/lib
+	mkdir -p "$(INSTALL_PATH)/bin"
+	cp psweep2.exe $(INSTALL_PATH)/bin
 	ldconfig -v
+
+psweep2.exe: libpsweep2.so cpp/main.cpp
+	$(MPICC) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) cpp/main.cpp -o psweep2.exe -lpsweep2 $(LIBS)
+
 
 libpsweep2.so: $(objs) $(headers) Makefile
 ifdef DEF_CUDA_SUPPORT
