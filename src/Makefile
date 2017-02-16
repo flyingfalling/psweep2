@@ -48,8 +48,8 @@ install: libpsweep2.so psweep2.exe
 	cp psweep2.exe $(INSTALL_PATH)/bin
 	ldconfig -v
 
-psweep2.exe: libpsweep2.so cpp/main.cpp
-	$(MPICC) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) cpp/main.cpp -o psweep2.exe -lpsweep2 $(LIBS)
+psweep2.exe: libpsweep2.so psweep2.cpp
+	$(MPICC) $(CPPFLAG) $(INCLFLAG) $(LIBFLAG) psweep2.cpp -o psweep2.exe -lpsweep2 $(LIBS)
 
 
 libpsweep2.so: $(objs) $(headers) Makefile
