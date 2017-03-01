@@ -199,13 +199,30 @@ struct hdf5_collection
 
   std::string my_path_filename()
   {
-    return (file_path + "/" + file_name);
+    if( file_path != "" )
+      {
+	return (file_path + "/" + file_name);
+      }
+    else
+      {
+	return (file_name );
+      }
+    
   }
   
   std::string backup_path_filename( )
   {
     std::string bufname = "__" + file_name;
-    return (file_path + "/" + bufname);
+
+    if( file_path != "" )
+      {
+	return (file_path + "/" + bufname);
+      }
+    else
+      {
+	return (bufname );
+      }
+    
   }
   
   
