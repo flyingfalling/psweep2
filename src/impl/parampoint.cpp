@@ -117,6 +117,7 @@ bool pitem::execute_cmd( fake_system& fakesys, memfsys& myfsys )
 	size_t NTRIES=10;
 	while( notdone.size() > 0 && tries < NTRIES)
 	  {
+	    fprintf(stdout, "----EXECUTING (TRYING AGAIN) [%s]\n", execute_string.c_str() );
 	    sysret = system( execute_string.c_str() ); //Delete/reset this pitem?
 	    notdone = checkdone( myfsys );
 	    ++NTRIES;
