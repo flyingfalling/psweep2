@@ -153,7 +153,7 @@ dream_abc_z_state::abczconfig dream_abc_z_state::parseopts( optlist& opts )
 	    fprintf(stderr, "ERROR in RESTART: expects at least one argument: Name of state file to restart from...\n");
 	    exit(1);
 	  }
-	fprintf(stdout, "DREAM ABC: User specified **RESTART** option. The previously created HDF5 Collection [%s] will be used for this search!!! (note: An additional argument can be added to this option, an integer value MAXGENS that specifies net MAXGENS)\n", conf._statefilename.c_str());
+	fprintf(stdout, "DREAM ABC: User specified **RESTART** option. The previously created HDF5 Collection [%s] will be used for this search!!! Note: An additional argument can be added to this option, an integer value MAXGENS that specifies net MAXGENS. -MAXGENS parameter (and all other config parameters) will be ignored.\n", conf._statefilename.c_str());
 	conf.restart = true;
 	
 	if(c[0].size() > 1)
