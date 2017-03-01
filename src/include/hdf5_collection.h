@@ -184,8 +184,9 @@ struct matrix_props
 
 struct hdf5_collection
 {
-  H5::H5File file; 
-  std::string file_name;
+  H5::H5File file;
+  std::string file_path;
+  std::string file_name; //REV: 1 Mar 2017: separated into file_name and file_path.
   
   std::vector< matrix_props > matrices;
   std::vector< std::string > parameters; //Just a list of their names. To make backing up easier. Load it when I "load"?
@@ -195,8 +196,37 @@ struct hdf5_collection
   //const std::string DATA_GRP_NAME = "__DATA";
 
   bool backup_initialized=false;
-  
 
+  std::string my_path_filename()
+  {
+    return (file_path + "/" + file_name);
+  }
+  
+  std::string backup_path_filename( )
+  {
+    std::string bufname = "__" + file_name;
+    return (file_path + "/" + bufname);
+  }
+  
+  
+  void set_file_name_path( const std::string& fname )
+  {
+
+    bool keep_empty_tokens=false;
+    std::vector<std::string> tokenized_fname = tokenize_string(fname, "/", keep_empty_tokens);
+    if( tokenized_fname.size() < 1 )
+      {
+	fprintf(stderr, "REV: hdf5_collection::set_file_name_path: fname [%s] cannot be tokenized with /\n", fname.c_str() );
+	exit(1);
+      }
+    
+    file_name = tokenized_fname.back();
+    tokenized_fname.pop_back();
+    
+    file_path = CONCATENATE_STR_ARRAY(tokenized_fname, "/");
+    
+  }
+  
   inline void clear();
   
   template <typename T>

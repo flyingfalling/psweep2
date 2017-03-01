@@ -1045,14 +1045,14 @@ void hdf5_collection::make_parameters_dataspace()
   void hdf5_collection::backupCOPY( )
   {
     //Automatically backups to "__"+file_name
-    std::string bufname = "__" + file_name;
+    //std::string bufname = "__" + file_name;
 
     file.flush(H5F_SCOPE_GLOBAL);
     
-    fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", file_name.c_str(), bufname.c_str() );
+    fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", my_path_filename().c_str(), backup_path_filename().c_str() );
 
     //REV: Sendfile requires file size be < 2GB!!!!!!!!!
-    copy_file( file_name, bufname );
+    copy_file( my_path_filename(), backup_path_filename() );
     return;
   }
   
@@ -1142,7 +1142,7 @@ void hdf5_collection::make_parameters_dataspace()
   {
     if( matrices.size() != targc.matrices.size() )
       {
-	fprintf(stderr, "WHOA in backup matrices! Not same number of matrices of source file: [%s] (%ld) and target [%s] (%ld)\n", file_name.c_str(), matrices.size(), targc.file_name.c_str(), targc.matrices.size() );
+	fprintf(stderr, "WHOA in backup matrices! Not same number of matrices of source file: [%s] (%ld) and target [%s] (%ld)\n", my_path_filename().c_str(), matrices.size(), targc.my_path_filename().c_str(), targc.matrices.size() );
 	for(size_t x=0; x<matrices.size(); ++x)
 	  {
 	    fprintf(stderr, "ORIG: [%s]\n", matrices[x].name.c_str() );
@@ -1163,7 +1163,7 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
   {
     if( parameters.size() != targc.parameters.size() )
       {
-	fprintf(stderr, "WHOA in backup parameters! Not same number of parameters of source file: [%s] (%ld) and target [%s] (%ld)\n", file_name.c_str(), parameters.size(), targc.file_name.c_str(), targc.parameters.size() );
+	fprintf(stderr, "WHOA in backup parameters! Not same number of parameters of source file: [%s] (%ld) and target [%s] (%ld)\n", my_path_filename().c_str(), parameters.size(), targc.my_path_filename().c_str(), targc.parameters.size() );
 	exit(1);
       }
     for(size_t m=0; m<parameters.size(); ++m)
@@ -1187,15 +1187,15 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
       }
     
     //Automatically backups to "__"+file_name
-    std::string bufname = "__" + file_name;
+    //std::string bufname = "__" + file_name;
     
     //REV: More efficient method to backup (and gets rid of 2GB max file size from sendfile() haha...damn that's stupid.
     //Only copies DIFFERENCES. If matrix is LARGER, it only copies the difference in rows at the end.
     //For all parameters, it copies them.
-    fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", file_name.c_str(), bufname.c_str() );
+    fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", my_path_filename().c_str(), backup_path_filename().c_str() );
 
     hdf5_collection tmpc;
-    tmpc.load_collection( bufname );
+    tmpc.load_collection( backup_path_filename() );
 
     //We can now do sets etc. based on diffs.
 
@@ -1215,7 +1215,9 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
   void hdf5_collection::new_collection( const std::string& fname )
   {
     file = H5::H5File( fname, H5F_ACC_TRUNC );
-    file_name = fname;
+
+    set_file_name_path( fname );
+    
     make_parameters_grp();
     //make_parameters_dataspace();
   }
@@ -1502,7 +1504,9 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
   void hdf5_collection::load_collection( const std::string& fname )
   {
     file = H5::H5File( fname, H5F_ACC_RDWR );
-    file_name = fname;
+
+    set_file_name_path( fname );
+
     //Read all the datasets in there. That requires me enumerating them.
     
     load_params();
