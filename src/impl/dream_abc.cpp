@@ -1228,10 +1228,10 @@
     //fprintf(stdout, "Finished computing fitnesses! Fitness results is: [%ld]\n", pg.parampoint_vars.size() );
     //TODO REV: get results from RESULTS, specifically FITNESS? Just get from RESULTS (should be a varlist heh)
     //We know same order as varlists we gave, so OK.
-    
+        
     //std::vector<varlist<std::string> > results = pg.get_last_N_results( get_param<int64_t>(N_chains_param) );
     std::vector<varlist<std::string> > results = pg.get_last_N_results( vals.size() );
-
+    
     //fprintf(stdout, "Got last N results\n");
     
     pg.cleanup_parampoints_upto( vals.size() );
@@ -1240,10 +1240,10 @@
     
     //Add these guys to H.
     state.add_to_matrix<float64_t>( H_hist, state.get_varnames( H_hist ), vals );
-
+    
     //fprintf(stdout, "Added to matrix...\n");
     std::vector<float64_t> fitnesses( results.size(), -66666.22222 );
-
+    
     int64_t tgen = get_param<int64_t>(t_gen);
     //TODO: Append results to piX and piH
     for(size_t x=0; x<results.size(); ++x)
@@ -1252,6 +1252,7 @@
 	std::vector<float64_t> statdiv;
 	std::vector<float64_t> ed = compute_epsilon_divergence( compute_stat_abs( compute_stat_divergence( results[x], statdiv) ) );
 	//fprintf(stdout, "Computed epsilon div [%ld]\n", x);
+	//REV: statdiv contains RAW results per-name?
 	float64_t fit = compute_rho( ed );
 	//fprintf(stdout, "GEN [%ld]: Computed rho chain [%ld] (%lf)\n", tgen, x, fit);
 	fitnesses[x] = fit;
