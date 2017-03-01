@@ -119,7 +119,7 @@ void parsedoption::enumerate()
     
     if( !ss )
       {
-	fprintf(stderr, "ERROR in argn_as_int64: parsed arg was not a int64, or there was no argument, etc.\n");
+	fprintf(stderr, "ERROR in argn_as_int64: parsed arg [%s] was not a int64, or there was no argument, etc.\n", argval.c_str());
 	exit(1);
       }
     else
