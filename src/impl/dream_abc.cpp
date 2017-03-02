@@ -108,18 +108,9 @@
       }
     else if(sane == false && bu == false )
       {
-	bool keep_empty_tokens=false;
-	std::vector<std::string> tokenized_fname = tokenize_string(file, "/", keep_empty_tokens);
-	if( tokenized_fname.size() < 1 )
-	  {
-	    fprintf(stderr, "REV: dream_abc::load state: fname [%s] cannot be tokenized with /\n", file.c_str() );
-	    exit(1);
-	  }
-	std::string file_name = tokenized_fname.back();
-	tokenized_fname.pop_back();
 	
-	std::string file_path = CONCATENATE_STR_ARRAY(tokenized_fname, "/");
-
+	std::string file_name;
+	std::string file_path = get_canonical_dir_of_fname( file, file_name );
 	std::string bufname = file_path + "/" + "__" + file_name;
 	
 	//std::string bufname = "__" + file;
