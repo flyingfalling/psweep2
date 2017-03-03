@@ -143,24 +143,12 @@ std::string get_canonical_dir_of_fname( const std::string& s, std::string& fname
       
     }
 
-  if(fnstack.size() < 1)
-    {
-      fprintf(stderr, "REV: ERROR, trying to get dir of a file(name) that is HERE\n");
-    }
-  
-  
   fnametail = fnstack.top();
   fnstack.pop(); //REV: 3 mar 2017: This is pop_back right?
   
   std::vector<std::string> ret( fnstack.size() );
   
-  if(ret.size() == 0)
-    {
-      fprintf(stderr, "ERROR, ret vect size is 0 (i.e. filename is in *this* directory)\n"); exit(1);
-    }
   
-  
-
   //REV: just reversing everything
   //REV: going backwards so size is "stuck" (not checking against new ret.size() every time)
   for(size_t x=ret.size(); x>0; --x)
