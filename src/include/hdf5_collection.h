@@ -230,18 +230,12 @@ struct hdf5_collection
   {
 
     bool keep_empty_tokens=false;
-    std::vector<std::string> tokenized_fname = tokenize_string(fname, "/", keep_empty_tokens);
-    if( tokenized_fname.size() < 1 )
-      {
-	fprintf(stderr, "REV: hdf5_collection::set_file_name_path: fname [%s] cannot be tokenized with /\n", fname.c_str() );
-	exit(1);
-      }
+
+    std::string fnametail = "";
+    std::string dir = get_canonical_dir_of_fname( fname, fnametail );
     
-    file_name = tokenized_fname.back();
-    tokenized_fname.pop_back();
-    
-    file_path = CONCATENATE_STR_ARRAY(tokenized_fname, "/");
-    
+    file_name = fnametail;
+    file_path = dir;
   }
   
   inline void clear();

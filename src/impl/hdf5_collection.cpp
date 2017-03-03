@@ -745,8 +745,10 @@ void matrix_props::load_matrix( const std::string& matname, H5::H5File& f ) //, 
     
     //REV: Pain in the ass the name will start with root "/". Will it
     //double up?
-    std::vector<std::string> tokenized = tokenize_string(matname, "/", false);
-    name = tokenized[tokenized.size()-1];
+    //std::vector<std::string> tokenized = tokenize_string(matname, "/", false);
+    //name = tokenized[tokenized.size()-1];
+      std::string name;
+    std::string tdir = get_canonical_dir_of_fname( matname, name );
     fprintf(stdout, "In load matrix: will try to load name [%s]\n", name.c_str());
     
     //Load it from the existing file.
