@@ -121,15 +121,21 @@
 	std::string file_path = CONCATENATE_STR_ARRAY(tokenized_fname, "/");
 
 	std::string bufname = file_path + "/" + "__" + file_name;
+	if( file[0] == '/')
+	  {
+	    bufname = "/" + bufname;
+	  }
 	
 	//std::string bufname = "__" + file;
 	//state.load_collection( bufname );
 	//state = hdf5_collection; //"undo" load?
 	state.clear();
 	//REV: BETTER! Copy it to the non __ file.
+	fprintf(stdout, "Copying file [%s] to [%s]\n", bufname.c_str(), file.c_str());
 	copy_file( bufname, file );
-	
-	load_state( file, true );
+
+	bool already_tried_backup=true;
+	load_state( file, already_tried_backup );
       }
     else
       {
