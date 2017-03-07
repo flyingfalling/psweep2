@@ -205,6 +205,7 @@ struct hdf5_collection
       }
     else
       {
+	fprintf(stderr, "REVER: error/warning in my_path_filename in hdf5_collection: file_path is empty! Returning raw filename anyways...\n");
 	return (file_name );
       }
     
