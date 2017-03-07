@@ -1088,9 +1088,14 @@ void hdf5_collection::make_parameters_dataspace()
   void hdf5_collection::update_matrix( matrix_props& newmat, hdf5_collection& col )
   {
     std::vector<size_t> locs = col.find_matrix( newmat.name );
-    if(locs.size() != 1 )
+    if( locs.size() < 1 )
       {
-	fprintf(stderr, "Could not find matrix [%s] in target backup collection!\n", newmat.name.c_str() );
+	fprintf(stderr, "Could not find matrix [%s] in target backup collection (opened now: path [%s] file [%s] full path [%s])!\n", newmat.name.c_str(), file_path.c_str(), file_name.c_str(), my_path_filename().c_str() );
+	exit(1);
+      }
+    else if( locs.size() > 1)
+      {
+	fprintf(stderr, "REV: error in update_matrix: found more than one matrix [%s] in targ backup collection\n", newmat.name.c_str() );
 	exit(1);
       }
     size_t i = locs[0];
