@@ -1198,7 +1198,7 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
   {
     //REV: This makes it so they match more...?
     file.flush(H5F_SCOPE_GLOBAL);
-
+    
     //fprintf(stderr, "Calling backup\n");
     if(!backup_initialized)
       {
@@ -1214,30 +1214,15 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
     //Only copies DIFFERENCES. If matrix is LARGER, it only copies the difference in rows at the end.
     //For all parameters, it copies them.
     fprintf(stdout, "Copying (backing up) file [%s] to [%s] (backup())\n", my_path_filename().c_str(), backup_path_filename().c_str() );
-
-    
-
-    fprintf(stdout, "BACKUP: Before tmpc loads (loading: [%s]\n", backup_path_filename().c_str() );
-    
+            
     hdf5_collection tmpc;
     tmpc.load_collection( backup_path_filename() );
     
-    fprintf(stdout, "BACKUP: After tmpc loads, before backup matrices. ENUMERATING MATRICES\n");
-    
-    for( size_t x=0; x<tmpc.matrices.size(); ++x )
-      {
-	tmpc.matrices[x].enumerate_to_file( stdout, 100000, 0 );
-      }
-    
     backup_matrices( tmpc );
 
-    fprintf(stdout, "BACKUP: Finished backup matrices, next backup params\n");
     backup_parameters( tmpc );
-    fprintf(stdout, "BACKUP: Finished backup parameters\n");
-
-    //Flush the file of the tmp guy and hope it's blocking.
-    tmpc.file.flush(H5F_SCOPE_GLOBAL);
     
+        
     return;
   }
 
@@ -1352,7 +1337,7 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
     std::vector<size_t> ret;
     for(size_t x=0; x<matrices.size(); ++x)
       {
-#if DEBUG > 5
+#if DEBUG > 10
 	fprintf(stdout, "Searching for matrix [%s] (comparing to [%s])\n", matname.c_str(), matrices[x].name.c_str() );
 #endif
 	if( matrices[x].name.compare( matname ) == 0 )
