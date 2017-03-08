@@ -658,6 +658,7 @@ template <typename T>
 //Need to do this incrementally incase there is a problem
   void matrix_props::enumerate_to_file( FILE* f, const size_t& skip, const size_t& startpoint )
   {
+    fprintf(stdout, "Enumerating matrix [%s] to file\n", name.c_str() );
     for(size_t x=0; x<my_colnames.size(); ++x)
       {
 	fprintf(f, "%s ", my_colnames[x].c_str() );
@@ -747,14 +748,25 @@ void matrix_props::load_matrix( const std::string& matname, H5::H5File& f ) //, 
     //double up?
     //std::vector<std::string> tokenized = tokenize_string(matname, "/", false);
     //name = tokenized[tokenized.size()-1];
-      std::string name;
+      //std::string myname;
+      //REV: NAME HERE IS THE LOCAL NAME ITS WRITING TO
     std::string tdir = get_canonical_dir_of_fname( matname, name );
-    fprintf(stdout, "In load matrix: will try to load name [%s]\n", name.c_str());
+    //std::string canonicalfname = canonicalize_fname( matname );
+    std::string fullpath = tdir + "/" + name;
+    fprintf(stdout, "In load matrix: will try to load name [%s] in dir [%s], full path [%s]\n", name.c_str(), tdir.c_str(), fullpath.c_str());
     
     //Load it from the existing file.
+
+    //REV: Do I name it something else or do I name it my name? Why was it working before...?
+    //DO I name it the full path or just the filename? I assume the full path.
+
+
+    //REV: set name to full path...ugh.
+    //name = fullpath;
     
     //REV CHECKING IF ITS DSET OPEN/CLOSE that matters!!
-    dataset = f.openDataSet( name );
+    dataset = f.openDataSet( fullpath );
+    //dataset = f.openDataSet( name );
     
     //I don't need TYPE to open the dataset (yet)
     //load_datatype();
@@ -1051,7 +1063,7 @@ void hdf5_collection::make_parameters_dataspace()
 
     file.flush(H5F_SCOPE_GLOBAL);
     
-    fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", my_path_filename().c_str(), backup_path_filename().c_str() );
+    fprintf(stdout, "Copying (backing up) file [%s] to [%s] (backupCOPY)\n", my_path_filename().c_str(), backup_path_filename().c_str() );
 
     //REV: Sendfile requires file size be < 2GB!!!!!!!!!
     copy_file( my_path_filename(), backup_path_filename() );
@@ -1088,14 +1100,16 @@ void hdf5_collection::make_parameters_dataspace()
   void hdf5_collection::update_matrix( matrix_props& newmat, hdf5_collection& col )
   {
     std::vector<size_t> locs = col.find_matrix( newmat.name );
+
+    //REV: col is empty (or at least, names of matrices are not transferred...?)
     if( locs.size() < 1 )
       {
-	fprintf(stderr, "Could not find matrix [%s] in target backup collection (opened now: path [%s] file [%s] full path [%s])!\n", newmat.name.c_str(), file_path.c_str(), file_name.c_str(), my_path_filename().c_str() );
+	fprintf(stderr, "Could not find matrix [%s] in target collection (opened now: path [%s] file [%s] full path [%s])!\n", newmat.name.c_str(), file_path.c_str(), file_name.c_str(), my_path_filename().c_str() );
 	exit(1);
       }
     else if( locs.size() > 1)
       {
-	fprintf(stderr, "REV: error in update_matrix: found more than one matrix [%s] in targ backup collection\n", newmat.name.c_str() );
+	fprintf(stderr, "REV: error in update_matrix: found more than one matrix [%s] in targ collection\n", newmat.name.c_str() );
 	exit(1);
       }
     size_t i = locs[0];
@@ -1199,18 +1213,30 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
     //REV: More efficient method to backup (and gets rid of 2GB max file size from sendfile() haha...damn that's stupid.
     //Only copies DIFFERENCES. If matrix is LARGER, it only copies the difference in rows at the end.
     //For all parameters, it copies them.
-    fprintf(stdout, "Copying (backing up) file [%s] to [%s]\n", my_path_filename().c_str(), backup_path_filename().c_str() );
+    fprintf(stdout, "Copying (backing up) file [%s] to [%s] (backup())\n", my_path_filename().c_str(), backup_path_filename().c_str() );
 
+    
+
+    fprintf(stdout, "BACKUP: Before tmpc loads (loading: [%s]\n", backup_path_filename().c_str() );
+    
     hdf5_collection tmpc;
     tmpc.load_collection( backup_path_filename() );
-
-    //We can now do sets etc. based on diffs.
-
-    //H5::H5File tmpfile( bufname,  );
+    
+    fprintf(stdout, "BACKUP: After tmpc loads, before backup matrices. ENUMERATING MATRICES\n");
+    
+    for( size_t x=0; x<tmpc.matrices.size(); ++x )
+      {
+	tmpc.matrices[x].enumerate_to_file( stdout, 100000, 0 );
+      }
+    
     backup_matrices( tmpc );
+
+    fprintf(stdout, "BACKUP: Finished backup matrices, next backup params\n");
     backup_parameters( tmpc );
+    fprintf(stdout, "BACKUP: Finished backup parameters\n");
 
     //Flush the file of the tmp guy and hope it's blocking.
+    tmpc.file.flush(H5F_SCOPE_GLOBAL);
     
     return;
   }
@@ -1319,11 +1345,16 @@ void hdf5_collection::backup_parameters( hdf5_collection& targc )
     matrices.push_back(mp1);
   }
 
+
+
   std::vector<size_t> hdf5_collection::find_matrix( const std::string& matname )
   {
     std::vector<size_t> ret;
     for(size_t x=0; x<matrices.size(); ++x)
       {
+#if DEBUG > 5
+	fprintf(stdout, "Searching for matrix [%s] (comparing to [%s])\n", matname.c_str(), matrices[x].name.c_str() );
+#endif
 	if( matrices[x].name.compare( matname ) == 0 )
 	  {
 	    ret.push_back(x);

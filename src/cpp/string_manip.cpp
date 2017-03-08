@@ -163,18 +163,29 @@ std::string get_canonical_dir_of_fname( const std::string& s, std::string& fname
   
   if(isglobal)
     {
-      finalstring = "/" + finalstring;
+      //if global and non-empty, it's the trailing slash that will be added when user does dir+"/"+fname, not the leading one, which wasn't added by
+      //the CONCAT_STR_ARRAY above. So, we add it manually
+      if( finalstring != "" )
+	{
+	  finalstring = "/" + finalstring;
+	}
     }
   else
     {
       std::string doubledotstr = "";
       for(size_t x=0; x<negative_stack_size; ++x)
 	{
-	  doubledotstr = doubledotstr + "../";
+	  doubledotstr = doubledotstr + "/..";
 	}
-      finalstring = "./" + doubledotstr + finalstring;
+      //REV: just catching case where finalstring is not empty, we want to put a / between ./../.. etc. and /finalstring
+      if( finalstring != "" )
+	{
+	  finalstring = "/" + finalstring;
+	}
+      finalstring = "." + doubledotstr + finalstring;
     }
-  
+
+  //REV: this is dir
   return finalstring;
     
   //Ending is the filename or dir name. Note remove all double or multiple slashes // etc.

@@ -4,10 +4,13 @@ H5INCL=/usr/include/hdf5/serial
 INCLDIR=./include
 IMPLDIR=./impl
 CPPDIR=./cpp
-CPPFLAG=-std=c++11 -O3 #-g -Wall
+DEBUGLEVEL=6
+CPPFLAG=-std=c++11 -O3 -DDEBUG=$(DEBUGLEVEL) #-g -Wall
 INCLFLAG=-I. -I$(INCLDIR) -I$(IMPLDIR) -I$(H5INCL)
 LIBFLAG=-L. -L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 LIBS=-lboost_mpi -lboost_iostreams -lboost_serialization -lboost_filesystem -lboost_system -lhdf5_cpp -lhdf5
+
+
 
 SHAREDLIBFLAG=-fPIC
 

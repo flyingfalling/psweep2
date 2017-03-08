@@ -952,7 +952,7 @@ varlist<std::string> filesender::handle_finished_work( const psweep_cmd& pc, pit
       if( usedisk )
 	{
 	  memfile_ptr mfp(mf);
-	  mfp.tofile( origdir+"/"+fname );
+	  mfp.tofile( origdir + "/" + fname );
 	  mfp.close();
 	}
     }

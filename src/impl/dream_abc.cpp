@@ -109,19 +109,9 @@
     else if(sane == false && bu == false )
       {
 	
-<<<<<<< HEAD
-	std::string file_name;
-	std::string file_path = get_canonical_dir_of_fname( file, file_name );
-	std::string bufname = file_path + "/" + "__" + file_name;
-	if( file[0] == '/')
-	  {
-	    bufname = "/" + bufname;
-	  }
-=======
 	//std::string file_name;
 	//std::string file_path = get_canonical_dir_of_fname( file, file_name );
 	std::string bufname = state.backup_path_filename(); //file_path + "/" + "__" + file_name;
->>>>>>> e0ca8185c53364833dcec0ad43fd822a3ef76af5
 	
 	//std::string bufname = "__" + file;
 	//state.load_collection( bufname );
