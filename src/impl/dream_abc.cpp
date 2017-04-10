@@ -1259,6 +1259,8 @@
 	std::vector<float64_t> ed = compute_epsilon_divergence( compute_stat_abs( compute_stat_divergence( results[x], statdiv) ) );
 	//fprintf(stdout, "Computed epsilon div [%ld]\n", x);
 	//REV: statdiv contains RAW results per-name?
+	//REV: 6 Apr 2017: In 2016 paper, Vrugt suggests using SUM( indicator( satisfy epsilon?) ) for all observations, and if same or greater,
+	//accept, otherwise, stay.
 	float64_t fit = compute_rho( ed );
 	//fprintf(stdout, "GEN [%ld]: Computed rho chain [%ld] (%lf)\n", tgen, x, fit);
 	fitnesses[x] = fit;
