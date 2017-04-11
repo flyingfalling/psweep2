@@ -1,0 +1,11 @@
+
+
+Make it so that backups etc. are based on average generation (?) time, instead of number of guys.
+
+Make it so that user can select his own fitness/distance function, e.g. number of data points that are satisfying limits of acceptability?
+
+Allow user to also give a "scale" (or "weight") for every data point, which is not just the size of epsilon, but also um, the multiplier for adding to "number
+meeting acceptability criteria"?
+
+Implement MT-DREAM-z or something? Just to try. User needs to choose the "likelihood function". Not, also allow user to e.g. train some more complex functions,
+such as the GLM being trained on the individual variables, like Vrugt etc. were doing.
