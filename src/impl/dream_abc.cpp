@@ -4,26 +4,26 @@
 
 
  void dream_abc_state::new_state(const std::string& statefilename,
-			 const std::vector<std::string>& varnames,
-			 const std::vector<float64_t>& mins,
-			 const std::vector<float64_t>& maxes,
-			 const std::vector<std::string>& observation_varnames,
-			 const std::vector<float64_t>& observation_stats,
-			 const std::vector<float64_t>& observation_epsilons,
-					int64_t maxgens,
-					int64_t numchains,
-					int64_t ndelta,
-					float64_t bnoise,
-					float64_t bstar,
-					float64_t rthresh,
-					int64_t GRskip,
-					int64_t nCR,
-					int64_t pCRskip,
-					float64_t pjump,
-			 float64_t backupskip
-			 )
-  {
-    state.new_collection( statefilename );
+				 const std::vector<std::string>& varnames,
+				 const std::vector<float64_t>& mins,
+				 const std::vector<float64_t>& maxes,
+				 const std::vector<std::string>& observation_varnames,
+				 const std::vector<float64_t>& observation_stats,
+				 const std::vector<float64_t>& observation_epsilons,
+				 int64_t maxgens,
+				 int64_t numchains,
+				 int64_t ndelta,
+				 float64_t bnoise,
+				 float64_t bstar,
+				 float64_t rthresh,
+				 int64_t GRskip,
+				 int64_t nCR,
+				 int64_t pCRskip,
+				 float64_t pjump,
+				 float64_t backupskip
+				 )
+ {
+   state.new_collection( statefilename );
     
     //Observations of data from real world, that we will fit.
     state.add_float64_vector( Y_param, observation_varnames, observation_stats );
