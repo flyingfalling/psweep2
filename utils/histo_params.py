@@ -43,6 +43,9 @@ epsilons = file['epsilon_param'].value;
 obs = file['Y_param'].value;
 modelY = file['model_observ_diverg_hist'].value;
 
+mins = file['dim_mins_param'].value[0];
+maxes = file['dim_maxes_param'].value[0];
+
 #REV: Y_param contains the "target" values.
 #REV: I know "divergence" from them. Adding epsilon[blah] to my guy negative gives me the original value.
 
@@ -53,77 +56,39 @@ gen = paramsdict[ 't_gen' ];
 #REV: do the same thing for X? Nah we already have Xval I guess...
 #REV: make same plot for each separate variable, different colors for different chains.
 #REV: I can then go and "access" the value at that point, fine.
-chainaccs = [ [] for _ in range(0,nchains) ];
-
-for g in range( gen-100000, gen ):
-    start = (g) * nchains;
-    end = (g+1) * nchains;
-    #REV: note accepts first one is not accept, so need to do something else.
-    acc = accepts[start-nchains:end-nchains];
-    #x = Xvals[start:end];
-    #divs = modelY[start:end];
-    
-    for chain, val in enumerate(acc):
-        if( val ):
-            chainaccs[ chain ].append( g );
-            #it accepted this turn, use new values.
-            #print( "Accepted chain ", chain );
-            #REV: size is 4
-            #size = len(epsilons);
-            #tmpstart = size*chain;
-            #tmpend = size*(chain+1);
-            #tmpdiv = divs[tmpstart:tmpend];
-
-            #REV: there is no epsilon etc. in this yet. tmpdiv is the raw result.
-            #print( "New divs: ", tmpdiv );
-            #print( "Errors: ", obs-tmpdiv );
-            
 
 #REV: now I can build the model performance matrices.
 #REV: note, at some point, I need to actually save the model "run" values, to show what happened. Need a way to save it in the HDF5 file itself?
 #REV: or I could re-run it? Use same random seeds? Impossible...
 
+from matplotlib.backends.backend_pdf import PdfPages
 
+vals = [ [] for i in Xnames ];
 
-obsvals = [ [ [] for j in range(nchains)] for i in obs[0] ];
+startrow = (gen-50000) * nchains;
+endrow = gen * nchains;
 
-#REV: within each [], need Nchains, times array of Nparams, * N generations
+for g in range( startrow, endrow ):
+    for paramidx, param in enumerate(Xnames):
+        vals[ paramidx ].append( Xvals[ g ][ paramidx ] ); 
 
-for c in range(0, nchains):
-    #print( "Chain ", c, " has ", len(chainaccs[c]) );
-    for accgen in chainaccs[c]:
-        gen = accgen;
-        genstart = (accgen+0)*nchains;
-        #genend = (accgen+1)*nchains;
-        myresult = modelY[genstart + c]; #REV: this should work...
-        #print(myresult);
-        #REV: they better be in right order? :0
-        for o, val in enumerate(myresult):
-            if( val < 1e6 ):
-            #print( "Appending ", (gen,val), " to ", o, c );
-                obsvals[o][c].append( (gen, val) );
-            #print( "Type: ", obsvals[o][c].__class__ );
-            #print( "Size of obs o,c ", o, c, len(obsvals[o][c]) );
+mypdf = PdfPages('histo_iBP.pdf');
 
-
-
-
-for o, obsval in enumerate(obsvals):
+for paramidx, param in enumerate(Xnames):
+    plt.rc('text', usetex=False); #REV: what does this do?
     fig = plt.figure();
-    for c in range(nchains):
-        gens = [];
-        vals = [];
-        for item in obsvals[o][c]:
-            mygen = item[0];
-            gens.append(mygen);
-            myval = item[1];
-            vals.append(myval);
-        plt.plot( gens, vals, linestyle='-' );
-    trueval = obs[0][o];
-    plt.axhline( trueval, lw=3.0, linestyle='--' );
-    filename = 'myplt' + str(o);
-    plt.title( obsnames[o].decode('ascii') );
-    plt.savefig(filename+'.pdf', format='pdf');
+    pname = str( param.decode('ascii') );
+    min = mins[paramidx];
+    max = maxes[paramidx];
+    print( "Param ", pname, " min ", min, " max ", max );
+    val = vals[paramidx];
+    nbins = 50;
+    n, bins, patches = plt.hist(val, nbins, normed=0, facecolor='green', alpha=0.75);
+    plt.xlim( [min, max] );
+    plt.title( pname );
+    #filename = 'histo_' + pname;
+    #plt.savefig(filename + '.pdf', format='pdf');
+    mypdf.savefig( fig );
     plt.close(fig);
 
-
+mypdf.close();
