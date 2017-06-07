@@ -7,7 +7,11 @@
 
 import h5py
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
+
+#import matplotlib.pyplot as plt
 
 
 hdf5_file_name = '__tecnet2_iBP_run11apr2017.state';
@@ -28,26 +32,93 @@ nchains = paramsdict[ 'N_chains_param' ];
 Xnames = file['__X_hist'].value;
 Xvals = file['X_hist'].value; #REV: chains are flat. I.e. need to div by 
 
+obsnames = file['__Y_param'].value;
 accepts = file['accept_hist'].value;
 epsilons = file['epsilon_param'].value;
-
-errors = file['model_observ_diverg_hist'].value;
+obs = file['Y_param'].value;
+modelY = file['model_observ_diverg_hist'].value;
 
 #REV: Y_param contains the "target" values.
 #REV: I know "divergence" from them. Adding epsilon[blah] to my guy negative gives me the original value.
 
 gen = paramsdict[ 't_gen' ];
 
-for g in range( gen-1000, gen ):
-    start = g * 80;
-    end = (g+1) * 80;
-    acc = accepts[start:end];
-    x = Xvals[start:end];
-    divs = errors[start:end];
+
+#REV: print chain, gen, newval. Otherwise, they all stay at old value :0
+#REV: do the same thing for X? Nah we already have Xval I guess...
+#REV: make same plot for each separate variable, different colors for different chains.
+#REV: I can then go and "access" the value at that point, fine.
+chainaccs = [ [] for _ in range(0,nchains) ];
+
+for g in range( gen-100000, gen ):
+    start = (g) * nchains;
+    end = (g+1) * nchains;
+    #REV: note accepts first one is not accept, so need to do something else.
+    acc = accepts[start-nchains:end-nchains];
+    #x = Xvals[start:end];
+    #divs = modelY[start:end];
     
     for chain, val in enumerate(acc):
         if( val ):
+            chainaccs[ chain ].append( g );
             #it accepted this turn, use new values.
-            print( "Accepted chain ", chain );
-            print( "New divs: ", divs+epsilons );
+            #print( "Accepted chain ", chain );
+            #REV: size is 4
+            #size = len(epsilons);
+            #tmpstart = size*chain;
+            #tmpend = size*(chain+1);
+            #tmpdiv = divs[tmpstart:tmpend];
+
+            #REV: there is no epsilon etc. in this yet. tmpdiv is the raw result.
+            #print( "New divs: ", tmpdiv );
+            #print( "Errors: ", obs-tmpdiv );
             
+
+#REV: now I can build the model performance matrices.
+#REV: note, at some point, I need to actually save the model "run" values, to show what happened. Need a way to save it in the HDF5 file itself?
+#REV: or I could re-run it? Use same random seeds? Impossible...
+
+
+
+obsvals = [ [ [] for j in range(nchains)] for i in obs[0] ];
+
+#REV: within each [], need Nchains, times array of Nparams, * N generations
+
+for c in range(0, nchains):
+    #print( "Chain ", c, " has ", len(chainaccs[c]) );
+    for accgen in chainaccs[c]:
+        gen = accgen;
+        genstart = (accgen+0)*nchains;
+        #genend = (accgen+1)*nchains;
+        myresult = modelY[genstart + c]; #REV: this should work...
+        #print(myresult);
+        #REV: they better be in right order? :0
+        for o, val in enumerate(myresult):
+            if( val < 1e6 ):
+            #print( "Appending ", (gen,val), " to ", o, c );
+                obsvals[o][c].append( (gen, val) );
+            #print( "Type: ", obsvals[o][c].__class__ );
+            #print( "Size of obs o,c ", o, c, len(obsvals[o][c]) );
+
+
+
+
+for o, obsval in enumerate(obsvals):
+    fig = plt.figure();
+    for c in range(nchains):
+        gens = [];
+        vals = [];
+        for item in obsvals[o][c]:
+            mygen = item[0];
+            gens.append(mygen);
+            myval = item[1];
+            vals.append(myval);
+        plt.plot( gens, vals, linestyle='-' );
+    trueval = obs[0][o];
+    plt.axhline( trueval, lw=3.0, linestyle='--' );
+    filename = 'myplt' + str(o);
+    plt.title( obsnames[o].decode('ascii') );
+    plt.savefig(filename+'.pdf', format='pdf');
+    plt.close(fig);
+
+
