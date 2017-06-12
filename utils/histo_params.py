@@ -16,7 +16,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
-#import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 
 hdf5_file_name = '__tecnet2_iBP_run11apr2017.state';
@@ -61,7 +61,7 @@ gen = paramsdict[ 't_gen' ];
 #REV: note, at some point, I need to actually save the model "run" values, to show what happened. Need a way to save it in the HDF5 file itself?
 #REV: or I could re-run it? Use same random seeds? Impossible...
 
-from matplotlib.backends.backend_pdf import PdfPages
+
 
 vals = [ [] for i in Xnames ];
 

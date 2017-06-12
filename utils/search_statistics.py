@@ -16,10 +16,11 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
-#import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 
-hdf5_file_name = '__tecnet2_iBP_run11apr2017.state';
+#hdf5_file_name = '__tecnet2_iBP_run11apr2017.state';
+hdf5_file_name = '__tecnet2_iBP_run9jun2017_abc.state';
 file = h5py.File(hdf5_file_name, 'r')
 
 for item in file:
@@ -106,9 +107,10 @@ for c in range(0, nchains):
             #print( "Size of obs o,c ", o, c, len(obsvals[o][c]) );
 
 
-
+mypdf = PdfPages('obs_stats_iBP.pdf');
 
 for o, obsval in enumerate(obsvals):
+    plt.rc('text', usetex=False);
     fig = plt.figure();
     for c in range(nchains):
         gens = [];
@@ -121,9 +123,12 @@ for o, obsval in enumerate(obsvals):
         plt.plot( gens, vals, linestyle='-' );
     trueval = obs[0][o];
     plt.axhline( trueval, lw=3.0, linestyle='--' );
-    filename = 'myplt' + str(o);
     plt.title( obsnames[o].decode('ascii') );
-    plt.savefig(filename+'.pdf', format='pdf');
+    #plt.savefig(filename+'.pdf', format='pdf');
+    mypdf.savefig( fig );
     plt.close(fig);
+    
 
 
+
+mypdf.close();
