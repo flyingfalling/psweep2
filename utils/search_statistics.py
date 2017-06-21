@@ -49,20 +49,35 @@ modelY = file['model_observ_diverg_hist'].value;
 
 gen = paramsdict[ 't_gen' ];
 
-
+print( gen );
 #REV: print chain, gen, newval. Otherwise, they all stay at old value :0
 #REV: do the same thing for X? Nah we already have Xval I guess...
 #REV: make same plot for each separate variable, different colors for different chains.
 #REV: I can then go and "access" the value at that point, fine.
 chainaccs = [ [] for _ in range(0,nchains) ];
 
-for g in range( gen-100000, gen ):
+
+lastNgens = 30000;
+accwindowlen = 500;
+accwindow=accepts[(gen-(lastNgens+accwindowlen)) * nchains : (gen-(lastNgens)) * nchains ];
+accrates=[];
+
+for g in range( gen-lastNgens, gen ):
     start = (g) * nchains;
     end = (g+1) * nchains;
     #REV: note accepts first one is not accept, so need to do something else.
     acc = accepts[start-nchains:end-nchains];
     #x = Xvals[start:end];
     #divs = modelY[start:end];
+    
+    thiswindow = 100.0 * np.sum( accwindow ) / (nchains * accwindowlen); #REV: assume accept is 1.
+    #print( accwindow );
+    #print( "Sum of this window: ", thiswindow );
+    #print( accrates );
+    accrates = np.append( accrates, thiswindow );
+    #print( "Acc rates: ", accrates );
+    accwindow = accwindow[ nchains : ]; #REV: cut off first.
+    accwindow = np.append( accwindow, acc );
     
     for chain, val in enumerate(acc):
         if( val ):
@@ -127,7 +142,19 @@ for o, obsval in enumerate(obsvals):
     #plt.savefig(filename+'.pdf', format='pdf');
     mypdf.savefig( fig );
     plt.close(fig);
+
+
+gen = paramsdict[ 't_gen' ];
+
     
+plt.rc('text', usetex=False);
+fig = plt.figure();
+gens = range( gen-lastNgens, gen );
+print( "Len accrates: ", len(accrates), " len gens: ", len(gens) );
+plt.plot( gens, accrates, linestyle='-' );
+plt.title( 'Acceptance rates (probability per chain per generation)' );
+mypdf.savefig(fig);
+plt.close(fig);
 
 
 

@@ -19,7 +19,9 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 
-hdf5_file_name = '__tecnet2_iBP_run11apr2017.state';
+#hdf5_file_name = '__tecnet2_iBP_run11apr2017.state';
+hdf5_file_name = '__tecnet2_iBP_run9jun2017_abc.state';
+
 file = h5py.File(hdf5_file_name, 'r')
 
 for item in file:
@@ -65,7 +67,7 @@ gen = paramsdict[ 't_gen' ];
 
 vals = [ [] for i in Xnames ];
 
-startrow = (gen-50000) * nchains;
+startrow = (gen-20000) * nchains;
 endrow = gen * nchains;
 
 for g in range( startrow, endrow ):
