@@ -67,7 +67,9 @@ gen = paramsdict[ 't_gen' ];
 
 vals = [ [] for i in Xnames ];
 
-startrow = (gen-20000) * nchains;
+lastNgens = 10000;
+
+startrow = (gen-lastNgens) * nchains;
 endrow = gen * nchains;
 
 for g in range( startrow, endrow ):

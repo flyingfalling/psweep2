@@ -1,14 +1,3 @@
-#REV: neuron uses NANOAMPERES.
-
-#REV: Assuming that andreas used PICO, I need to multiply 20 by 1e-3. So, instead of 20, it should be 0.2? 20.0 -> 2.0 -> 0.2 -> 0.02
-
-
-#REV: python which opens the HDF5 file, reads out "accuracy" for each diagnostic variable for each chain (not proposals, but values?).
-#REV: e.g. for a neuron we are fitting Vrest, Rin, Vthresh. We want to see how those evolve.
-
-#REV: Also, plot a distribution for each model over the last N generations, for each chain. Could run a PCA etc.
-#REV: within chain? Or between chains?
-
 
 import h5py
 import numpy as np
@@ -44,23 +33,27 @@ epsilons = file['epsilon_param'].value;
 obs = file['Y_param'].value;
 modelY = file['model_observ_diverg_hist'].value;
 
+mins = file['dim_mins_param'].value[0];
+maxes = file['dim_maxes_param'].value[0];
+
 #REV: Y_param contains the "target" values.
 #REV: I know "divergence" from them. Adding epsilon[blah] to my guy negative gives me the original value.
 
 gen = paramsdict[ 't_gen' ];
+finalgen = paramsdict[ 't_gen' ];
 
-print( gen );
 #REV: print chain, gen, newval. Otherwise, they all stay at old value :0
 #REV: do the same thing for X? Nah we already have Xval I guess...
 #REV: make same plot for each separate variable, different colors for different chains.
 #REV: I can then go and "access" the value at that point, fine.
 chainaccs = [ [] for _ in range(0,nchains) ];
+lastNgens = 100000;
 
+startgen = gen-lastNgens;
 
-lastNgens = 30000;
-accwindowlen = 500;
-accwindow=accepts[(gen-(lastNgens+accwindowlen)) * nchains : (gen-(lastNgens)) * nchains ];
-accrates=[];
+#REV: add dummy at beginning to get a start position.
+for c in range(0, nchains):
+    chainaccs[c].append( startgen );
 
 for g in range( gen-lastNgens, gen ):
     start = (g) * nchains;
@@ -70,29 +63,9 @@ for g in range( gen-lastNgens, gen ):
     #x = Xvals[start:end];
     #divs = modelY[start:end];
     
-    thiswindow = 100.0 * np.sum( accwindow ) / (nchains * accwindowlen); #REV: assume accept is 1.
-    #print( accwindow );
-    #print( "Sum of this window: ", thiswindow );
-    #print( accrates );
-    accrates = np.append( accrates, thiswindow );
-    #print( "Acc rates: ", accrates );
-    accwindow = accwindow[ nchains : ]; #REV: cut off first.
-    accwindow = np.append( accwindow, acc );
-    
     for chain, val in enumerate(acc):
         if( val ):
             chainaccs[ chain ].append( g );
-            #it accepted this turn, use new values.
-            #print( "Accepted chain ", chain );
-            #REV: size is 4
-            #size = len(epsilons);
-            #tmpstart = size*chain;
-            #tmpend = size*(chain+1);
-            #tmpdiv = divs[tmpstart:tmpend];
-
-            #REV: there is no epsilon etc. in this yet. tmpdiv is the raw result.
-            #print( "New divs: ", tmpdiv );
-            #print( "Errors: ", obs-tmpdiv );
             
 
 #REV: now I can build the model performance matrices.
@@ -101,9 +74,11 @@ for g in range( gen-lastNgens, gen ):
 
 
 
-obsvals = [ [ [] for j in range(nchains)] for i in obs[0] ];
+paramvals = [ [ [] for j in range(nchains)] for i in Xnames ];
 
-#REV: within each [], need Nchains, times array of Nparams, * N generations
+
+#REV: always append value at beginning too.
+
 
 for c in range(0, nchains):
     #print( "Chain ", c, " has ", len(chainaccs[c]) );
@@ -111,51 +86,44 @@ for c in range(0, nchains):
         gen = accgen;
         genstart = (accgen+0)*nchains;
         #genend = (accgen+1)*nchains;
-        myresult = modelY[genstart + c]; #REV: this should work...
+        myresult = Xvals[genstart + c]; #REV: this should work...
         #print(myresult);
         #REV: they better be in right order? :0
         for o, val in enumerate(myresult):
-            if( val < 1e6 ):
-            #print( "Appending ", (gen,val), " to ", o, c );
-                obsvals[o][c].append( (gen, val) );
+            paramvals[o][c].append( (gen, val) );
             #print( "Type: ", obsvals[o][c].__class__ );
             #print( "Size of obs o,c ", o, c, len(obsvals[o][c]) );
 
 
-mypdf = PdfPages('obs_stats_iBP.pdf');
+#REV: add additional at the end...
+            
+#REV: within each [], need Nchains, times array of Nparams, * N generations
 
-for o, obsval in enumerate(obsvals):
+mypdf = PdfPages('param_traj_iBP.pdf');
+
+
+for o, DUMMY in enumerate(paramvals):
     plt.rc('text', usetex=False);
     fig = plt.figure();
     for c in range(nchains):
         gens = [];
         vals = [];
-        for item in obsvals[o][c]:
+        for item in paramvals[o][c]:
             mygen = item[0];
             gens.append(mygen);
             myval = item[1];
             vals.append(myval);
+        gens.append( finalgen );
+        vals.append( vals[-1] );
         plt.plot( gens, vals, linestyle='-' );
-    trueval = obs[0][o];
-    plt.axhline( trueval, lw=3.0, linestyle='--' );
-    plt.title( obsnames[o].decode('ascii') );
+    plt.title( Xnames[o].decode('ascii') );
+    plt.ylim([mins[o], maxes[o]]);
     #plt.savefig(filename+'.pdf', format='pdf');
     mypdf.savefig( fig );
     plt.close(fig);
 
 
-gen = paramsdict[ 't_gen' ];
-
-    
-plt.rc('text', usetex=False);
-fig = plt.figure();
-gens = range( gen-lastNgens, gen );
-print( "Len accrates: ", len(accrates), " len gens: ", len(gens) );
-plt.plot( gens, accrates, linestyle='-' );
-plt.title( 'Acceptance rates (Percent per chain per generation)' );
-mypdf.savefig(fig);
-plt.close(fig);
 
 
-
+ 
 mypdf.close();
