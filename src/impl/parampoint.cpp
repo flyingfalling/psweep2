@@ -17,7 +17,7 @@ std::uint32_t seedgen::nextseed()
   {
     std::uniform_int_distribution<std::uint32_t> mydistr(0, 666666666);
     std::vector<std::uint32_t> seeds(1);
-    seq = std::seed_seq( { mydistr( reng ) } );
+    std::seed_seq seq( { mydistr( reng ) } );
     seq.generate(seeds.begin(), seeds.end());
     
     //fprintf( stdout, "GENERATED SEED: [%d]\n", seeds[0] );

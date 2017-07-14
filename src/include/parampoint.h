@@ -14,10 +14,12 @@
 
 #include <fake_system.h>
 
+#include <random>
+
 
 struct seedgen
 {
-  std::seed_seq seq;
+  //std::seed_seq seq;
   std::default_random_engine reng; //keep my own in here to generate values to generate seeds...
   
   
