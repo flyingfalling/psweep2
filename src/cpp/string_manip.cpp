@@ -33,33 +33,34 @@ std::vector<std::string> tokenize_string(const std::string& src, const std::stri
 }
 
 
+//REV: comment out to prevent confusion on which version of tokenize_string is being called
 /* keep empty, i.e. do I want to know when it is e.g. :: or //? */
-std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats)
-{
-  std::vector<std::string> res;
+// std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats)
+// {
+//   std::vector<std::string> res;
   
-  /* REV: size_t is uint? */
-  size_t prev = 0;
-  size_t next = 0;
+//   /* REV: size_t is uint? */
+//   size_t prev = 0;
+//   size_t next = 0;
 
-  /* npos is -1 */
-  while ((next = source.find_first_of(delim, prev)) != std::string::npos)
-    {
-      if (include_empty_repeats || ((next-prev) != 0) )
-	{
-	  res.push_back(source.substr(prev, (next-prev)) );
-	}
-      prev = next + 1;
-    }
+//   /* npos is -1 */
+//   while ((next = source.find_first_of(delim, prev)) != std::string::npos)
+//     {
+//       if (include_empty_repeats || ((next-prev) != 0) )
+// 	{
+// 	  res.push_back(source.substr(prev, (next-prev)) );
+// 	}
+//       prev = next + 1;
+//     }
 
-  /* REV: push back remainder if there is anything left (i.e. after the last token?) */
-  if (prev < source.size())
-    {
-      res.push_back(source.substr(prev));
-    }
+//   /* REV: push back remainder if there is anything left (i.e. after the last token?) */
+//   if (prev < source.size())
+//     {
+//       res.push_back(source.substr(prev));
+//     }
 
-  return res;
-}
+//   return res;
+// }
 
 
 std::string get_canonical_dir_of_fname( const std::string& s, std::string& fnametail )

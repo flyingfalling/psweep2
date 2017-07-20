@@ -15,7 +15,7 @@ std::vector<std::string> tokenize_string(const std::string& src, const std::stri
 
 
 /* keep empty, i.e. do I want to know when it is e.g. :: or //? */
-std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats=false);
+//std::vector<std::string> tokenize_string(const std::string& source, const char* delim, bool include_empty_repeats=false);
 
 std::string get_canonical_dir_of_fname( const std::string& s, std::string& fnametail );
 
